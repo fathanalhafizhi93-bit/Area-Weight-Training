@@ -124,14 +124,14 @@ service cloud.firestore {
       allow create: if isValidId(userId)
         && isVerifiedOwner(userId)
         && isValidUserProfile(incoming(), userId)
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
+        && incoming().createdAt is timestamp && incoming().createdAt <= request.time
+        && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
       allow update: if isValidId(userId)
         && isVerifiedOwner(userId)
         && isValidUserProfile(incoming(), userId)
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
+        && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time
         && incoming().diff(existing()).affectedKeys().hasOnly([
           'displayName', 'defaultRingtoneId', 'restRingtoneId', 'volume',
           'notificationsEnabled', 'snoozeMinutes', 'autoStartRestTimer', 'updatedAt'
@@ -144,15 +144,15 @@ service cloud.firestore {
         allow create: if isValidId(userId) && isValidDayKey(dayKey)
           && isVerifiedOwner(userId)
           && isValidDaySchedule(incoming(), userId, dayKey)
-          && incoming().createdAt == request.time
-          && incoming().updatedAt == request.time;
+          && incoming().createdAt is timestamp && incoming().createdAt <= request.time
+          && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
         allow update: if isValidId(userId) && isValidDayKey(dayKey)
           && isVerifiedOwner(userId)
           && isValidDaySchedule(incoming(), userId, dayKey)
           && incoming().userId == existing().userId
           && incoming().dayKey == existing().dayKey
           && incoming().createdAt == existing().createdAt
-          && incoming().updatedAt == request.time
+          && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'isGymDay', 'alarmEnabled', 'alarmTime', 'focusTitle',
             'ringtoneId', 'exercises', 'updatedAt'
@@ -166,8 +166,8 @@ service cloud.firestore {
         allow create: if isValidId(userId) && isValidDateKey(dateKey)
           && isVerifiedOwner(userId)
           && isValidWorkoutLog(incoming(), userId, dateKey)
-          && incoming().createdAt == request.time
-          && incoming().updatedAt == request.time;
+          && incoming().createdAt is timestamp && incoming().createdAt <= request.time
+          && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
         allow update: if isValidId(userId) && isValidDateKey(dateKey)
           && isVerifiedOwner(userId)
           && isValidWorkoutLog(incoming(), userId, dateKey)
@@ -175,7 +175,7 @@ service cloud.firestore {
           && incoming().dateKey == existing().dateKey
           && incoming().dayKey == existing().dayKey
           && incoming().createdAt == existing().createdAt
-          && incoming().updatedAt == request.time
+          && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'focusTitle', 'entries', 'completed', 'updatedAt'
           ]);
@@ -188,14 +188,14 @@ service cloud.firestore {
         allow create: if isValidId(userId) && isValidId(ringtoneId)
           && isVerifiedOwner(userId)
           && isValidCustomRingtone(incoming(), userId)
-          && incoming().createdAt == request.time
-          && incoming().updatedAt == request.time;
+          && incoming().createdAt is timestamp && incoming().createdAt <= request.time
+          && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
         allow update: if isValidId(userId) && isValidId(ringtoneId)
           && isVerifiedOwner(userId)
           && isValidCustomRingtone(incoming(), userId)
           && incoming().userId == existing().userId
           && incoming().createdAt == existing().createdAt
-          && incoming().updatedAt == request.time
+          && incoming().updatedAt is timestamp && incoming().updatedAt <= request.time
           && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']);
         allow delete: if isValidId(userId) && isValidId(ringtoneId) && isVerifiedOwner(userId);
       }
