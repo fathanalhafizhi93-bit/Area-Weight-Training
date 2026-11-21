@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -164,8 +165,7 @@ fun SettingsScreen(
     val itemAnimMod: Modifier = Modifier
 
     val useListHaze = !tokens.performance.noBlur &&
-        tokens.uiTheme != com.fathan.ironpulse.model.UiTheme.CARBON_FORGE &&
-        tokens.uiTheme != com.fathan.ironpulse.model.UiTheme.UBUNTU_YARU
+        tokens.uiTheme == UiTheme.MATERIAL_YOU
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -173,11 +173,13 @@ fun SettingsScreen(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = contentPadding.calculateTopPadding() + headerHeightDp + 20.dp,
-                bottom = contentPadding.calculateBottomPadding() + 36.dp
+                top = contentPadding.calculateTopPadding() + headerHeightDp + 22.dp,
+                bottom = contentPadding.calculateBottomPadding() + 40.dp
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 640.dp)
                 .fillMaxSize()
                 .then(if (useListHaze) Modifier.hazeSource(settingsListHaze) else Modifier)
         ) {
@@ -385,10 +387,11 @@ fun SettingsScreen(
             hazeState = settingsListHaze,
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .widthIn(max = 640.dp)
                 .padding(
                     start = 16.dp,
                     end = 16.dp,
-                    top = contentPadding.calculateTopPadding() + 10.dp
+                    top = contentPadding.calculateTopPadding() + 12.dp
                 )
                 .onSizeChanged { headerHeightPx = it.height }
         )
@@ -890,12 +893,22 @@ private fun ThemesGridCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = lang.t("Gaya Antarmuka (6 Tema)", "Interface Style (6 Themes)"),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = tokens.palette.onSurface
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = lang.t("Gaya Antarmuka (3 Tema)", "Interface Style (3 Themes)"),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+                Text(
+                    text = lang.t(
+                        "Tema ringan & cepat tanpa efek berat.",
+                        "Lightweight, fast themes built for smooth performance."
+                    ),
+                    fontSize = 11.5.sp,
+                    color = tokens.palette.onSurfaceVariant
+                )
+            }
             TextButton(onClick = onResetTheme) {
                 Icon(Icons.Rounded.Refresh, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -903,24 +916,16 @@ private fun ThemesGridCard(
             }
         }
 
-        UiTheme.entries.chunked(2).forEach { pair ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                pair.forEach { theme ->
-                    ThemePreviewCard(
-                        theme = theme,
-                        selected = selectedTheme == theme,
-                        lang = lang,
-                        accentColor = tokens.accentColor,
-                        onSelect = { onSelectTheme(theme) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (pair.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            UiTheme.entries.forEach { theme ->
+                ThemePreviewCard(
+                    theme = theme,
+                    selected = selectedTheme == theme,
+                    lang = lang,
+                    accentColor = tokens.accentColor,
+                    onSelect = { onSelectTheme(theme) },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -1334,24 +1339,25 @@ private fun ThemePreviewCard(
             width = if (selected) 1.5.dp else 1.dp,
             color = if (selected) previewAccent else tokens.surfaceBorderColor
         ),
-        modifier = modifier.tactilePress(pressedScale = 0.96f, disabledByPerf = tokens.performance.noAnimations)
+        modifier = modifier.tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
     ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val previewShape = RoundedCornerShape(
                 when (theme) {
                     UiTheme.MATERIAL_YOU -> 14.dp
-                    UiTheme.MIDNIGHT_FROSTED -> 13.dp
                     UiTheme.CARBON_FORGE -> 6.dp
                     UiTheme.UBUNTU_YARU -> 7.dp
-                    UiTheme.AEROGLASS, UiTheme.OBSIDIAN -> 10.dp
                 }
             )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .width(92.dp)
                     .height(54.dp)
                     .clip(previewShape)
                     .drawWithCache {
@@ -1360,51 +1366,30 @@ private fun ThemePreviewCard(
                         val grainScale = density.roundToInt().coerceIn(1, 3)
                         val baseBg = when (theme) {
                             UiTheme.MATERIAL_YOU -> Color(0xFF23202A)
-                            UiTheme.OBSIDIAN -> Color(0xFF12151C)
-                            UiTheme.MIDNIGHT_FROSTED -> Color(0xFF131D34)
                             UiTheme.CARBON_FORGE -> Color(0xFF101318)
-                            UiTheme.AEROGLASS -> Color(0xFF102A42)
                             UiTheme.UBUNTU_YARU -> Color(0xFF2C2C2C)
                         }
                         val shaderBrush = when (theme) {
                             UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = false)
-                            UiTheme.MIDNIGHT_FROSTED -> ThemeMaterialShaderCache.getFrostedGrainBrush(pixelScale = grainScale, subtle = false)
                             UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = false)
-                            else -> null
+                            UiTheme.MATERIAL_YOU -> null
                         }
                         val finishBrush = when (theme) {
                             UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
                                 0.0f to previewAccent.copy(alpha = 0.08f),
                                 1.0f to Color.Transparent
                             )
-                            UiTheme.OBSIDIAN -> Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = 0.08f),
-                                0.5f to Color.Transparent,
-                                1.0f to Color.Black.copy(alpha = 0.30f)
-                            )
-                            UiTheme.MIDNIGHT_FROSTED -> Brush.linearGradient(
-                                listOf(Color(0xFFC7D9FF).copy(alpha = 0.18f), Color.Transparent)
-                            )
                             UiTheme.CARBON_FORGE -> Brush.verticalGradient(
                                 0.0f to Color.White.copy(alpha = 0.07f),
                                 0.45f to Color.Transparent,
                                 1.0f to Color.Black.copy(alpha = 0.24f)
-                            )
-                            UiTheme.AEROGLASS -> Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = 0.34f),
-                                0.46f to Color.White.copy(alpha = 0.08f),
-                                0.49f to Color(0xFF0EA5E9).copy(alpha = 0.04f),
-                                1.0f to Color(0xFF38BDF8).copy(alpha = 0.18f)
                             )
                             UiTheme.UBUNTU_YARU -> Brush.horizontalGradient(
                                 listOf(Color(0x28E95420), Color.Transparent)
                             )
                         }
                         val topRim = when (theme) {
-                            UiTheme.AEROGLASS -> Color.White.copy(alpha = 0.48f)
-                            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.30f)
                             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.20f)
-                            UiTheme.OBSIDIAN -> Color.White.copy(alpha = 0.14f)
                             UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.09f)
                             UiTheme.MATERIAL_YOU -> Color.Transparent
                         }
@@ -1425,12 +1410,9 @@ private fun ThemePreviewCard(
                     .border(
                         1.dp,
                         when (theme) {
-                            UiTheme.AEROGLASS -> Color(0x78BAE6FD)
-                            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.26f)
                             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
                             UiTheme.UBUNTU_YARU -> Color(0xFF141414)
                             UiTheme.MATERIAL_YOU -> previewAccent.copy(alpha = 0.28f)
-                            UiTheme.OBSIDIAN -> Color.White.copy(alpha = 0.14f)
                         },
                         previewShape
                     )
@@ -1445,14 +1427,14 @@ private fun ThemePreviewCard(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Box(
                             modifier = Modifier
-                                .width(42.dp)
+                                .width(34.dp)
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(Color.White.copy(alpha = 0.76f))
                         )
                         Box(
                             modifier = Modifier
-                                .width(28.dp)
+                                .width(22.dp)
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(Color.White.copy(alpha = 0.32f))
@@ -1460,62 +1442,50 @@ private fun ThemePreviewCard(
                     }
                     val pillShape = RoundedCornerShape(
                         when (theme) {
-                            UiTheme.MATERIAL_YOU, UiTheme.MIDNIGHT_FROSTED -> 999.dp
+                            UiTheme.MATERIAL_YOU -> 999.dp
                             UiTheme.CARBON_FORGE -> 3.dp
                             UiTheme.UBUNTU_YARU -> 5.dp
-                            else -> 6.dp
                         }
                     )
                     Box(
                         modifier = Modifier
-                            .size(width = 24.dp, height = 14.dp)
+                            .size(width = 22.dp, height = 14.dp)
                             .clip(pillShape)
                             .background(previewAccent)
-                            .then(
-                                if (theme == UiTheme.AEROGLASS) {
-                                    Modifier.background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color.White.copy(alpha = 0.35f),
-                                            0.5f to Color.Transparent
-                                        )
-                                    )
-                                } else Modifier
-                            )
                     )
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = lang.t(theme.titleId, theme.titleEn),
-                    fontSize = 12.5.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = tokens.palette.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    overflow = TextOverflow.Ellipsis
                 )
-                if (selected) {
-                    Icon(
-                        imageVector = Icons.Rounded.CheckCircle,
-                        contentDescription = null,
-                        tint = previewAccent,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                Text(
+                    text = lang.t(theme.subtitleId, theme.subtitleEn),
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    color = tokens.palette.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Text(
-                text = lang.t(theme.subtitleId, theme.subtitleEn),
-                fontSize = 10.5.sp,
-                lineHeight = 14.sp,
-                color = tokens.palette.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = lang.t("Dipilih", "Selected"),
+                    tint = previewAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

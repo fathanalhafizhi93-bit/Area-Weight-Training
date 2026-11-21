@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -104,90 +105,106 @@ fun ScheduleScreen(
     var timePickerDay by remember { mutableStateOf<DayKey?>(null) }
     var editingFocusDay by remember { mutableStateOf<DayKey?>(null) }
 
-    LazyColumn(
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = contentPadding.calculateTopPadding() + 14.dp,
-            bottom = contentPadding.calculateBottomPadding() + 92.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
     ) {
-        // Header
-        item(key = "schedule_header", contentType = "header") {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Box(
+        LazyColumn(
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = contentPadding.calculateTopPadding() + 14.dp,
+                bottom = contentPadding.calculateBottomPadding() + 92.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxSize()
+        ) {
+            // Header
+            item(key = "schedule_header", contentType = "header") {
+                Column(
                     modifier = Modifier
-                        .width(40.dp)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(tokens.accentColor)
-                )
-                Text(
-                    text = lang.t("Jadwal & Alarm Mingguan", "Weekly Schedule & Alarms"),
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFF4F5F7)
-                )
-                Text(
-                    text = lang.t(
-                        "Pilih hari latihan Senin sampai Minggu, atur jam pengingat, dan tentukan fokus otot tiap hari.",
-                        "Choose training days Monday through Sunday, set reminder times, and define each day's muscle focus."
-                    ),
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp,
-                    color = tokens.mutedTextColor
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm Aktif", "Active Alarms")}",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tokens.accentColor
-                )
-                HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = Color.White.copy(alpha = 0.1f))
-            }
-        }
-
-        items(DayKey.entries, key = { it.key }, contentType = { "day_card" }) { day ->
-            val sched = state.schedules[day] ?: return@items
-            DayScheduleCard(
-                day = day,
-                sched = sched,
-                isToday = day == state.todayDayKey,
-                isEditingFocus = editingFocusDay == day,
-                defaultRingtoneId = state.profile?.defaultRingtoneId ?: "builtin_athletic_bell",
-                customRingtones = state.customRingtones,
-                onStartEditingFocus = { editingFocusDay = day },
-                onStopEditingFocus = { if (editingFocusDay == day) editingFocusDay = null },
-                onToggleGymDay = {
-                    val nextGym = !sched.isGymDay
-                    if (!nextGym && editingFocusDay == day) editingFocusDay = null
-                    viewModel.updateScheduleFields(
-                        dayKey = day,
-                        isGymDay = nextGym,
-                        alarmEnabled = nextGym
+                        .fillMaxWidth()
+                        .ironGlassSurface(tokens)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = lang.t("PROGRAM & ALARM MINGGUAN", "WEEKLY SCHEDULE & ALARMS"),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.4.sp,
+                        color = tokens.accentColor
                     )
-                },
-                onOpenExercises = { onOpenExercisesForDay(day) },
-                onSaveFocusTitle = { nextTitle ->
-                    viewModel.updateScheduleFields(dayKey = day, focusTitle = nextTitle)
-                    editingFocusDay = null
-                },
-                onOpenTimePicker = { timePickerDay = day },
-                onToggleAlarmEnabled = {
-                    viewModel.updateScheduleFields(dayKey = day, alarmEnabled = !sched.alarmEnabled)
-                },
-                onSelectRingtone = { nextId ->
-                    viewModel.updateScheduleFields(dayKey = day, ringtoneId = nextId)
-                },
-                modifier = if (noAnim) Modifier else Modifier.animateItem()
-            )
+                    Text(
+                        text = lang.t("Jadwal & Alarm Mingguan", "Weekly Schedule & Alarms"),
+                        fontSize = 23.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = tokens.palette.onSurface
+                    )
+                    Text(
+                        text = lang.t(
+                            "Pilih hari latihan Senin sampai Minggu, atur jam pengingat, dan tentukan fokus otot tiap hari.",
+                            "Choose training days Monday through Sunday, set reminder times, and define each day's muscle focus."
+                        ),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                        color = tokens.palette.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = tokens.accentColor.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f))
+                    ) {
+                        Text(
+                            text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm Aktif", "Active Alarms")}",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.accentColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            items(DayKey.entries, key = { it.key }, contentType = { "day_card" }) { day ->
+                val sched = state.schedules[day] ?: return@items
+                DayScheduleCard(
+                    day = day,
+                    sched = sched,
+                    isToday = day == state.todayDayKey,
+                    isEditingFocus = editingFocusDay == day,
+                    defaultRingtoneId = state.profile?.defaultRingtoneId ?: "builtin_athletic_bell",
+                    customRingtones = state.customRingtones,
+                    onStartEditingFocus = { editingFocusDay = day },
+                    onStopEditingFocus = { if (editingFocusDay == day) editingFocusDay = null },
+                    onToggleGymDay = {
+                        val nextGym = !sched.isGymDay
+                        if (!nextGym && editingFocusDay == day) editingFocusDay = null
+                        viewModel.updateScheduleFields(
+                            dayKey = day,
+                            isGymDay = nextGym,
+                            alarmEnabled = nextGym
+                        )
+                    },
+                    onOpenExercises = { onOpenExercisesForDay(day) },
+                    onSaveFocusTitle = { nextTitle ->
+                        viewModel.updateScheduleFields(dayKey = day, focusTitle = nextTitle)
+                        editingFocusDay = null
+                    },
+                    onOpenTimePicker = { timePickerDay = day },
+                    onToggleAlarmEnabled = {
+                        viewModel.updateScheduleFields(dayKey = day, alarmEnabled = !sched.alarmEnabled)
+                    },
+                    onSelectRingtone = { nextId ->
+                        viewModel.updateScheduleFields(dayKey = day, ringtoneId = nextId)
+                    },
+                    modifier = if (noAnim) Modifier else Modifier.animateItem()
+                )
+            }
         }
     }
 

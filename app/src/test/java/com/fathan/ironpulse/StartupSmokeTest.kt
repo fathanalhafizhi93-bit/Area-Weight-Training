@@ -21,10 +21,22 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
+import com.fathan.ironpulse.data.GymCachedSnapshot
+import com.fathan.ironpulse.data.GymPresets
+import com.fathan.ironpulse.data.LocalGymCacheStore
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
+import com.fathan.ironpulse.model.CustomRingtone
+import com.fathan.ironpulse.model.DayKey
+import com.fathan.ironpulse.model.MuscleGroup
+import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.UiTheme
+import com.fathan.ironpulse.model.UserProfile
+import com.fathan.ironpulse.model.WorkoutLog
+import com.fathan.ironpulse.model.WorkoutLogEntry
+import com.fathan.ironpulse.model.WorkoutSetLog
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
@@ -46,11 +58,16 @@ import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -64,7 +81,7 @@ class StartupSmokeTest {
         composeRule.setContent {
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.MIDNIGHT_FROSTED,
+                    uiTheme = UiTheme.MATERIAL_YOU,
                     lang = AppLanguage.ID
                 )
             ) {
@@ -90,7 +107,7 @@ class StartupSmokeTest {
 
         composeRule.setContent {
             var blurEnabled by remember { mutableStateOf(false) }
-            var activeTheme by remember { mutableStateOf(UiTheme.MIDNIGHT_FROSTED) }
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
             blurStateSetter = { blurEnabled = it }
             themeSetter = { activeTheme = it }
 
@@ -172,7 +189,7 @@ class StartupSmokeTest {
         composeRule.setContent {
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.MIDNIGHT_FROSTED,
+                    uiTheme = UiTheme.MATERIAL_YOU,
                     lang = AppLanguage.ID
                 )
             ) {
@@ -195,7 +212,7 @@ class StartupSmokeTest {
 
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.MIDNIGHT_FROSTED,
+                    uiTheme = UiTheme.MATERIAL_YOU,
                     lang = AppLanguage.ID
                 )
             ) {
@@ -247,7 +264,7 @@ class StartupSmokeTest {
             val chromeHaze = remember { HazeState() }
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.MIDNIGHT_FROSTED,
+                    uiTheme = UiTheme.MATERIAL_YOU,
                     lang = AppLanguage.ID
                 )
             ) {
@@ -259,5 +276,89 @@ class StartupSmokeTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithText("About IronPulse").assertIsDisplayed()
         composeRule.onNodeWithText("v1.0.0 beta").assertIsDisplayed()
+    }
+
+    @Test
+    fun uiTheme_hasThreeLightweightThemesAndLegacyWireFallback() {
+        assertEquals(3, UiTheme.entries.size)
+        assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("midnight-frosted"))
+        assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("aeroglass"))
+        assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("obsidian"))
+        assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("unknown-theme"))
+        assertEquals(UiTheme.CARBON_FORGE, UiTheme.fromWire("carbon-forge"))
+        assertEquals(UiTheme.UBUNTU_YARU, UiTheme.fromWire("ubuntu-yaru"))
+    }
+
+    @Test
+    fun exerciseLibrary_hasExpandedUniqueMovementsAcrossAllGroups() {
+        val lib = GymPresets.EXERCISE_LIBRARY
+        assertTrue("Expected at least 120 exercises, was ${lib.size}", lib.size >= 120)
+
+        val uniqueNames = lib.map { it.name.trim().lowercase(Locale.ROOT) }.toSet()
+        assertEquals("Exercise names must be unique", lib.size, uniqueNames.size)
+
+        MuscleGroup.entries.forEach { group ->
+            val count = lib.count { it.muscleGroup == group }
+            assertTrue("Expected at least 12 exercises in $group, found $count", count >= 12)
+        }
+    }
+
+    @Test
+    fun localGymCacheStore_savesAndHydratesSnapshotInstantly() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val cacheStore = LocalGymCacheStore(context)
+        val uid = "cache_test_user_001"
+        cacheStore.clearUser(uid)
+
+        val defaults = GymPresets.createDefaultSchedules(uid)
+        val sampleLog = WorkoutLog(
+            userId = uid,
+            dateKey = "2026-11-21",
+            dayKey = DayKey.SAT,
+            focusTitle = "Full Body",
+            entries = listOf(
+                WorkoutLogEntry(
+                    exerciseId = "ex_1",
+                    name = "Bench Press",
+                    muscleGroup = MuscleGroup.DADA,
+                    sets = listOf(WorkoutSetLog(setNumber = 1, weightKg = 60.0, reps = 10, completed = true))
+                )
+            ),
+            completed = true
+        )
+        val snapshot = GymCachedSnapshot(
+            userInitialized = true,
+            profile = UserProfile(userId = uid, displayName = "Fathan", email = "fathan@example.com"),
+            schedules = defaults,
+            customRingtones = listOf(
+                CustomRingtone(
+                    id = "tone_1",
+                    userId = uid,
+                    name = "Bell",
+                    mimeType = "audio/mpeg",
+                    sizeBytes = 1024L,
+                    durationSeconds = 5,
+                    storageMode = RingtoneStorageMode.CLOUD
+                )
+            ),
+            todayDateKey = "2026-11-21",
+            todayLog = sampleLog,
+            workoutHistory = listOf(sampleLog),
+            weeklyStreak = 4
+        )
+
+        cacheStore.saveSnapshot(uid, snapshot)
+        val loaded = cacheStore.loadSnapshot(uid)
+        assertNotNull(loaded)
+        assertEquals(true, loaded!!.userInitialized)
+        assertEquals("Fathan", loaded.profile?.displayName)
+        assertEquals(7, loaded.schedules.size)
+        assertEquals(1, loaded.customRingtones.size)
+        assertEquals("2026-11-21", loaded.todayDateKey)
+        assertEquals(1, loaded.workoutHistory.size)
+        assertEquals(4, loaded.weeklyStreak)
+
+        cacheStore.clearUser(uid)
+        assertNull(cacheStore.loadSnapshot(uid))
     }
 }

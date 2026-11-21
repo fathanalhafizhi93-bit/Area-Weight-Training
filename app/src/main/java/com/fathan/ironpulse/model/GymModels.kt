@@ -64,33 +64,12 @@ enum class UiTheme(
         subtitleId = "Lapisan tonal dinamis Android 14/15 & tombol pil ekspresif",
         subtitleEn = "Dynamic Android 14/15 tonal surface ladder & expressive pill controls"
     ),
-    OBSIDIAN(
-        wireValue = "obsidian",
-        titleId = "Obsidian Glass",
-        titleEn = "Obsidian Glass",
-        subtitleId = "Kaca matte gelap yang seimbang dan tegas",
-        subtitleEn = "Balanced dark matte glass with crisp borders"
-    ),
-    MIDNIGHT_FROSTED(
-        wireValue = "midnight-frosted",
-        titleId = "Midnight Frosted",
-        titleEn = "Midnight Frosted",
-        subtitleId = "Kaca buram reflektif dengan tepian spekular",
-        subtitleEn = "Specular frosted glass with luminous rim highlights"
-    ),
     CARBON_FORGE(
         wireValue = "carbon-forge",
         titleId = "Carbon Forge",
         titleEn = "Carbon Forge",
         subtitleId = "Anyaman serat karbon presisi bersudut tajam",
         subtitleEn = "Micro-weave carbon fiber texture with precision corners"
-    ),
-    AEROGLASS(
-        wireValue = "aeroglass",
-        titleId = "AeroGlass",
-        titleEn = "AeroGlass",
-        subtitleId = "Kilau kaca transparan berlapis sorot atas",
-        subtitleEn = "Glossy translucent glass with upper-half sheen"
     ),
     UBUNTU_YARU(
         wireValue = "ubuntu-yaru",
@@ -101,8 +80,13 @@ enum class UiTheme(
     );
 
     companion object {
-        fun fromWire(raw: String?): UiTheme =
-            entries.firstOrNull { it.wireValue == raw } ?: MATERIAL_YOU
+        fun fromWire(raw: String?): UiTheme = when (raw) {
+            MATERIAL_YOU.wireValue -> MATERIAL_YOU
+            CARBON_FORGE.wireValue -> CARBON_FORGE
+            UBUNTU_YARU.wireValue -> UBUNTU_YARU
+            // Legacy removed heavy glass themes map seamlessly to lightweight Material You
+            else -> MATERIAL_YOU
+        }
     }
 }
 

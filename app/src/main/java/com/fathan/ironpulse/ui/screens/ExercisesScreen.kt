@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -109,101 +110,107 @@ fun ExercisesScreen(
     var showCreateCustomModal by remember { mutableStateOf(false) }
     var pendingDeleteExercise by remember { mutableStateOf<ExerciseItem?>(null) }
 
-    LazyColumn(
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = contentPadding.calculateTopPadding() + 12.dp,
-            bottom = contentPadding.calculateBottomPadding() + 92.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
     ) {
-        // Header Card
-        item(key = "exercises_header", contentType = "header") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .ironGlassSurface(tokens)
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column {
-                    Text(
-                        text = lang.t("DAFTAR & PUSTAKA GERAKAN", "EXERCISES & LIBRARY"),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.4.sp,
-                        color = tokens.accentColor
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = lang.t("Program Latihan Harian", "Daily Exercise Planner"),
-                        fontSize = 23.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = tokens.palette.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = lang.t(
-                            "Susun hingga 30 gerakan per hari dari pustaka 80+ gerakan atau buat gerakan kustom.",
-                            "Build up to 30 movements per day from the 80+ library or create custom exercises."
-                        ),
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = tokens.palette.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+        LazyColumn(
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = contentPadding.calculateTopPadding() + 14.dp,
+                bottom = contentPadding.calculateBottomPadding() + 92.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxSize()
+        ) {
+            // Header Card
+            item(key = "exercises_header", contentType = "header") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .ironGlassSurface(tokens)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Button(
-                        onClick = { showLibraryModal = true },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = tokens.accentColor,
-                            contentColor = tokens.onAccentColor
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
-                            .tactilePress(disabledByPerf = noAnim),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Icon(Icons.Rounded.LibraryAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                    Column {
                         Text(
-                            text = lang.t("Pustaka", "Library"),
+                            text = lang.t("DAFTAR & PUSTAKA GERAKAN", "EXERCISES & LIBRARY"),
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp,
+                            color = tokens.accentColor
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = lang.t("Program Latihan Harian", "Daily Exercise Planner"),
+                            fontSize = 23.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = tokens.palette.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = lang.t(
+                                "Susun hingga 30 gerakan per hari dari pustaka 120+ gerakan atau buat gerakan kustom.",
+                                "Build up to 30 movements per day from the 120+ library or create custom exercises."
+                            ),
                             fontSize = 13.sp,
-                            maxLines = 1
+                            lineHeight = 18.sp,
+                            color = tokens.palette.onSurfaceVariant
                         )
                     }
-                    OutlinedButton(
-                        onClick = { showCreateCustomModal = true },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
-                        border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
-                            .tactilePress(disabledByPerf = noAnim),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = lang.t("Buat Baru", "Custom"),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = tokens.palette.onSurface,
-                            maxLines = 1
-                        )
+                        Button(
+                            onClick = { showLibraryModal = true },
+                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = tokens.accentColor,
+                                contentColor = tokens.onAccentColor
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .tactilePress(disabledByPerf = noAnim),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Icon(Icons.Rounded.LibraryAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = lang.t("Pustaka", "Library"),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                maxLines = 1
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { showCreateCustomModal = true },
+                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .tactilePress(disabledByPerf = noAnim),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = lang.t("Buat Baru", "Custom"),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = tokens.palette.onSurface,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
-        }
 
         // 7-Day Selector Rail
         item(key = "day_rail", contentType = "day_rail") {
@@ -389,6 +396,7 @@ fun ExercisesScreen(
                     modifier = if (noAnim) Modifier else Modifier.animateItem()
                 )
             }
+        }
         }
     }
 

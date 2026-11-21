@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -83,6 +84,7 @@ import com.fathan.ironpulse.model.ExerciseItem
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.TimerDirection
+import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.ui.components.TactileStepperControl
 import com.fathan.ironpulse.ui.components.tactilePress
@@ -138,19 +140,20 @@ fun WorkoutScreen(
     val hasExercises = activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()
     val workoutListHaze = remember { HazeState() }
     val useListHaze = !tokens.performance.noBlur &&
-        tokens.uiTheme != com.fathan.ironpulse.model.UiTheme.CARBON_FORGE &&
-        tokens.uiTheme != com.fathan.ironpulse.model.UiTheme.UBUNTU_YARU
+        tokens.uiTheme == UiTheme.MATERIAL_YOU
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = contentPadding.calculateTopPadding() + 12.dp,
+                top = contentPadding.calculateTopPadding() + 14.dp,
                 bottom = contentPadding.calculateBottomPadding() + if (hasExercises) 148.dp else 92.dp
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 640.dp)
                 .fillMaxSize()
                 .then(if (useListHaze) Modifier.hazeSource(workoutListHaze) else Modifier)
         ) {
@@ -398,7 +401,9 @@ fun WorkoutScreen(
                     restBarDismissed = true
                     viewModel.stopRestTimer()
                 },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .widthIn(max = 640.dp)
             )
         }
     }

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -132,22 +133,12 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         0.45f to tokens.canvasBg,
                         1.0f to Color(0xFF171717)
                     )
-                    UiTheme.AEROGLASS -> Brush.verticalGradient(
-                        0.0f to tokens.canvasBg,
-                        0.55f to tokens.canvasSecondaryBg,
-                        1.0f to Color(0xFF030B14)
-                    )
-                    UiTheme.MIDNIGHT_FROSTED -> Brush.verticalGradient(
-                        0.0f to tokens.canvasBg,
-                        0.60f to tokens.canvasSecondaryBg,
-                        1.0f to Color(0xFF04060E)
-                    )
                     UiTheme.CARBON_FORGE -> Brush.radialGradient(
                         colors = listOf(tokens.canvasSecondaryBg, tokens.canvasBg),
                         center = Offset(size.width * 0.5f, size.height * 0.25f),
                         radius = size.height.coerceAtLeast(800f) * 0.85f
                     )
-                    else -> null
+                    UiTheme.MATERIAL_YOU -> null
                 }
                 val topGlow = when {
                     suppressGlow -> null
@@ -157,53 +148,16 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         center = Offset(size.width * 0.14f, size.height * 0.06f),
                         radius = size.width.coerceAtLeast(500f) * 0.92f
                     )
-                    tokens.uiTheme == UiTheme.MATERIAL_YOU -> Brush.radialGradient(
+                    else -> Brush.radialGradient(
                         colors = listOf(tokens.accentColor.copy(alpha = 0.09f), Color.Transparent),
                         center = Offset(size.width * 0.5f, 0f),
                         radius = size.width.coerceAtLeast(600f) * 0.95f
-                    )
-                    tokens.uiTheme == UiTheme.AEROGLASS -> Brush.radialGradient(
-                        colors = listOf(Color(0x4C38BDF8), Color.Transparent),
-                        center = Offset(size.width * 0.86f, size.height * 0.07f),
-                        radius = size.width.coerceAtLeast(500f) * 0.95f
-                    )
-                    tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED -> Brush.radialGradient(
-                        colors = listOf(Color(0x3D818CF8), Color.Transparent),
-                        center = Offset(size.width * 0.82f, size.height * 0.08f),
-                        radius = size.width.coerceAtLeast(500f) * 0.92f
-                    )
-                    else -> Brush.radialGradient(
-                        colors = listOf(tokens.phaseTokens.glowPrimary, Color.Transparent),
-                        center = Offset(size.width * 0.84f, size.height * 0.08f),
-                        radius = size.width.coerceAtLeast(500f) * 0.9f
-                    )
-                }
-                val bottomGlow = when {
-                    suppressGlow ||
-                        tokens.uiTheme == UiTheme.MATERIAL_YOU ||
-                        tokens.uiTheme == UiTheme.CARBON_FORGE ||
-                        tokens.uiTheme == UiTheme.UBUNTU_YARU -> null
-                    tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED -> Brush.radialGradient(
-                        colors = listOf(tokens.accentColor.copy(alpha = 0.22f), Color.Transparent),
-                        center = Offset(size.width * 0.16f, size.height * 0.80f),
-                        radius = size.width.coerceAtLeast(450f) * 0.90f
-                    )
-                    tokens.uiTheme == UiTheme.AEROGLASS -> Brush.radialGradient(
-                        colors = listOf(Color(0x340284C7), Color.Transparent),
-                        center = Offset(size.width * 0.14f, size.height * 0.82f),
-                        radius = size.width.coerceAtLeast(450f) * 0.88f
-                    )
-                    else -> Brush.radialGradient(
-                        colors = listOf(tokens.phaseTokens.glowSecondary, Color.Transparent),
-                        center = Offset(size.width * 0.12f, size.height * 0.82f),
-                        radius = size.width.coerceAtLeast(450f) * 0.85f
                     )
                 }
                 onDrawBehind {
                     drawRect(canvasColor)
                     if (baseGradient != null) drawRect(baseGradient)
                     if (topGlow != null) drawRect(topGlow)
-                    if (bottomGlow != null) drawRect(bottomGlow)
                 }
             }
     )
@@ -221,23 +175,17 @@ fun IronPulseTopBar(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
-    val isFrosted = tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED
-    val isAero = tokens.uiTheme == UiTheme.AEROGLASS
     val iconShape = RoundedCornerShape(
-        when {
-            isFrosted || isMaterialYou -> 999.dp
-            isAero || tokens.uiTheme == UiTheme.OBSIDIAN -> 12.dp
-            tokens.uiTheme == UiTheme.UBUNTU_YARU -> 10.dp
-            else -> 8.dp
+        when (tokens.uiTheme) {
+            UiTheme.MATERIAL_YOU -> 999.dp
+            UiTheme.UBUNTU_YARU -> 10.dp
+            UiTheme.CARBON_FORGE -> 8.dp
         }
     )
     val headerBorder = when (tokens.uiTheme) {
-        UiTheme.AEROGLASS -> Color(0x667DD3FC)
         UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
-        UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.22f)
         UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.14f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-        UiTheme.OBSIDIAN -> tokens.phaseTokens.headerBorder
     }
 
     val settingsActive = activeTab == AppTab.SETTINGS && !aboutOpen
@@ -251,10 +199,12 @@ fun IronPulseTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .ironGlassBar(tokens = tokens, bottomHairlineColor = headerBorder)
-            .statusBarsPadding()
+            .statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
             modifier = Modifier
+                .widthIn(max = 840.dp)
                 .fillMaxWidth()
                 .height(60.dp)
                 .padding(horizontal = 16.dp),
@@ -312,23 +262,10 @@ fun IronPulseTopBar(
                 val ctaShape = RoundedCornerShape(tokens.buttonRadius)
                 Box(
                     modifier = Modifier
-                        .height(38.dp)
+                        .height(40.dp)
                         .tactilePress(disabledByPerf = tokens.performance.noAnimations)
                         .clip(ctaShape)
                         .background(tokens.accentColor, ctaShape)
-                        .then(
-                            if (isAero) {
-                                Modifier.background(
-                                    Brush.verticalGradient(
-                                        0.0f to Color.White.copy(alpha = 0.34f),
-                                        0.48f to Color.White.copy(alpha = 0.08f),
-                                        0.50f to Color.Transparent,
-                                        1.0f to Color.Black.copy(alpha = 0.14f)
-                                    ),
-                                    ctaShape
-                                )
-                            } else Modifier
-                        )
                         .clickable(onClick = onTestAlarm)
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center
@@ -356,26 +293,18 @@ private fun TopBarIconButton(
 ) {
     val tokens = LocalIronPulseTokens.current
     val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
-    val isAero = tokens.uiTheme == UiTheme.AEROGLASS
-    val isFrosted = tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED
     val containerColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active -> tokens.accentColor.copy(alpha = 0.18f)
         isMaterialYou -> tokens.palette.surfaceContainerHigh
-        tokens.uiTheme == UiTheme.UBUNTU_YARU -> tokens.controlBg
-        isFrosted -> Color.White.copy(alpha = 0.09f)
-        isAero -> Color(0x2838BDF8)
         else -> tokens.controlBg
     }
     val borderColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active -> tokens.accentColor.copy(alpha = 0.65f)
         isMaterialYou -> tokens.palette.outlineVariant
-        isAero -> Color(0x66BAE6FD)
-        isFrosted -> Color.White.copy(alpha = 0.24f)
         tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-        tokens.uiTheme == UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
-        else -> Color.White.copy(alpha = 0.14f)
+        else -> Color.White.copy(alpha = 0.18f)
     }
     val tint = when {
         active && isMaterialYou -> tokens.palette.onSecondaryContainer
@@ -389,24 +318,19 @@ private fun TopBarIconButton(
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
         modifier = Modifier
-            .size(38.dp)
+            .size(40.dp)
             .tactilePress(disabledByPerf = tokens.performance.noAnimations)
     ) {
         Box(
-            modifier = when {
-                isAero -> Modifier.background(
-                    Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = 0.28f),
-                        0.5f to Color.Transparent
-                    )
-                )
-                tokens.uiTheme == UiTheme.UBUNTU_YARU || tokens.uiTheme == UiTheme.CARBON_FORGE -> Modifier.background(
+            modifier = if (tokens.uiTheme == UiTheme.UBUNTU_YARU || tokens.uiTheme == UiTheme.CARBON_FORGE) {
+                Modifier.background(
                     Brush.verticalGradient(
                         0.0f to Color.White.copy(alpha = 0.08f),
                         0.45f to Color.Transparent
                     )
                 )
-                else -> Modifier
+            } else {
+                Modifier
             },
             contentAlignment = Alignment.Center
         ) {
@@ -414,7 +338,7 @@ private fun TopBarIconButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = tint,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(19.dp)
             )
         }
     }
@@ -428,9 +352,7 @@ fun IronPulseBottomNav(
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    val isFrosted = tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED
     val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
-    val isAero = tokens.uiTheme == UiTheme.AEROGLASS
     val isCarbon = tokens.uiTheme == UiTheme.CARBON_FORGE
     val isYaru = tokens.uiTheme == UiTheme.UBUNTU_YARU
 
@@ -451,42 +373,25 @@ fun IronPulseBottomNav(
         AppTab.SETTINGS -> -1
     }
 
-    val outerPadding = if (isFrosted) {
-        Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
-    } else {
-        Modifier.fillMaxWidth()
-    }
-
     val topBorder = when (tokens.uiTheme) {
-        UiTheme.AEROGLASS -> Color(0x6BB9E6FE)
         UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
         UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.16f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-        UiTheme.OBSIDIAN -> tokens.phaseTokens.headerBorder
-        UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.28f)
     }
 
-    val frostedDockShape = remember { RoundedCornerShape(28.dp) }
-    val dockModifier = if (isFrosted) {
-        Modifier
-            .fillMaxWidth()
-            .ironGlassBar(tokens, shapeRadius = 28.dp)
-            .border(1.dp, topBorder, frostedDockShape)
-    } else {
-        Modifier
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
             .ironGlassBar(tokens, topHairlineColor = topBorder)
-            .navigationBarsPadding()
-    }
-
-    Box(modifier = outerPadding) {
+            .navigationBarsPadding(),
+        contentAlignment = Alignment.Center
+    ) {
         BoxWithConstraints(
-            modifier = dockModifier
-                .height(if (isFrosted) 62.dp else 64.dp)
-                .padding(horizontal = if (isFrosted || isAero || isYaru) 6.dp else 4.dp)
+            modifier = Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(horizontal = if (isYaru) 8.dp else 4.dp)
         ) {
             val slotWidth = maxWidth / items.size
             val slotWidthPx = with(LocalDensity.current) { slotWidth.toPx() }
@@ -510,43 +415,10 @@ fun IronPulseBottomNav(
                         }
                         .width(slotWidth)
                         .fillMaxHeight()
-                        .padding(vertical = if (isFrosted || isAero || isYaru) 5.dp else 0.dp, horizontal = 3.dp),
+                        .padding(vertical = if (isYaru) 5.dp else 0.dp, horizontal = 3.dp),
                     contentAlignment = if (isYaru) Alignment.BottomCenter else Alignment.TopCenter
                 ) {
                     when {
-                        isFrosted -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(22.dp))
-                                    .background(
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                Color.White.copy(alpha = 0.22f),
-                                                Color.White.copy(alpha = 0.11f)
-                                            )
-                                        )
-                                    )
-                                    .border(1.dp, Color.White.copy(alpha = 0.34f), RoundedCornerShape(22.dp))
-                            )
-                        }
-                        isAero -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0x3438BDF8))
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color.White.copy(alpha = 0.30f),
-                                            0.48f to Color.White.copy(alpha = 0.06f),
-                                            0.5f to Color.Transparent,
-                                            1.0f to Color(0xFF0EA5E9).copy(alpha = 0.16f)
-                                        )
-                                    )
-                                    .border(1.dp, Color(0x75B8E6FE), RoundedCornerShape(12.dp))
-                            )
-                        }
                         isYaru -> {
                             Box(
                                 modifier = Modifier
@@ -713,10 +585,9 @@ fun PhaseLogoEmblem(
     val tokens = LocalIronPulseTokens.current
     val accent = tokens.phaseTokens.accentBright
     val cornerRadius = when (tokens.uiTheme) {
-        UiTheme.MATERIAL_YOU, UiTheme.MIDNIGHT_FROSTED -> 18.dp
+        UiTheme.MATERIAL_YOU -> 18.dp
         UiTheme.CARBON_FORGE -> 9.dp
         UiTheme.UBUNTU_YARU -> 11.dp
-        else -> 14.dp
     }
 
     Box(

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -224,19 +225,14 @@ fun IronPulseRoot(
                         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                         val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                         val topBarContentHeight = 60.dp
-                        val bottomBarContentHeight = when {
-                            state.activeTab == AppTab.SETTINGS -> 0.dp
-                            tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED -> 72.dp
-                            else -> 64.dp
-                        }
+                        val bottomBarContentHeight = if (state.activeTab == AppTab.SETTINGS) 0.dp else 64.dp
                         val innerPadding = PaddingValues(
                             top = statusBarTop + topBarContentHeight,
                             bottom = navBarBottom + bottomBarContentHeight
                         )
 
                         val useChromeHazeSource = !tokens.performance.noBlur &&
-                            tokens.uiTheme != UiTheme.CARBON_FORGE &&
-                            tokens.uiTheme != UiTheme.UBUNTU_YARU
+                            tokens.uiTheme == UiTheme.MATERIAL_YOU
 
                         Box(modifier = Modifier.fillMaxSize()) {
                             // LAYER 1: Haze chrome source wrapping ambient backdrop + persisted tab stage
@@ -356,9 +352,10 @@ fun IronPulseRoot(
                                 enter = if (noAnim) EnterTransition.None else expandVertically() + fadeIn(tween(180)),
                                 exit = if (noAnim) ExitTransition.None else shrinkVertically() + fadeOut(tween(150)),
                                 modifier = Modifier
+                                    .widthIn(max = 640.dp)
                                     .fillMaxWidth()
                                     .align(Alignment.TopCenter)
-                                    .padding(top = innerPadding.calculateTopPadding() + 6.dp, start = 16.dp, end = 16.dp)
+                                    .padding(top = innerPadding.calculateTopPadding() + 8.dp, start = 16.dp, end = 16.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),

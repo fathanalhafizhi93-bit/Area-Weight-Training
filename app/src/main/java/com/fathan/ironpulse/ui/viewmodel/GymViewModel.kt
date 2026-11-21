@@ -17,7 +17,9 @@ import com.fathan.ironpulse.audio.MascotTtsSpeaker
 import com.fathan.ironpulse.audio.NativeAudioEngine
 import com.fathan.ironpulse.data.AppPreferences
 import com.fathan.ironpulse.data.FirestoreGymRepository
+import com.fathan.ironpulse.data.GymCachedSnapshot
 import com.fathan.ironpulse.data.GymPresets
+import com.fathan.ironpulse.data.LocalGymCacheStore
 import com.fathan.ironpulse.data.MascotDialogueContext
 import com.fathan.ironpulse.data.MascotDialogues
 import com.fathan.ironpulse.data.PreferencesStore
@@ -186,6 +188,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo = FirestoreGymRepository(application)
     private val prefsStore = PreferencesStore(application)
+    private val localCacheStore = LocalGymCacheStore(application)
     private val audioEngine = NativeAudioEngine(application)
     private val ttsSpeaker = MascotTtsSpeaker(application)
     val haptics = HapticFeedbackHelper(application)
@@ -282,6 +285,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     val snackbarEvents: SharedFlow<String> = _snackbarEvents.asSharedFlow()
 
     private var userSyncJob: Job? = null
+    private var cacheSaveJob: Job? = null
     private var lastRestCompletionTick: Long = 0L
 
     // Mascot internal timers & pools
@@ -565,9 +569,31 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         startUserFirestoreSync(current)
     }
 
+    private fun scheduleCachePersist(uid: String, markInitialized: Boolean = false) {
+        if (uid.isBlank() || _user.value?.uid != uid) return
+        cacheSaveJob?.cancel()
+        cacheSaveJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(220L)
+            if (_user.value?.uid != uid) return@launch
+            localCacheStore.updateSnapshot(uid) { existing ->
+                val activeScheds = _schedules.value
+                val activeHist = _workoutHistory.value
+                val activeTones = _customRingtones.value
+                GymCachedSnapshot(
+                    userInitialized = existing.userInitialized || markInitialized || (_profile.value != null && activeScheds.size == DayKey.entries.size),
+                    profile = _profile.value ?: existing.profile,
+                    schedules = if (activeScheds.isNotEmpty()) activeScheds else existing.schedules,
+                    customRingtones = if (activeTones.isNotEmpty() || existing.userInitialized) activeTones else existing.customRingtones,
+                    todayDateKey = _todayDateKey.value,
+                    todayLog = _todayLog.value,
+                    workoutHistory = if (activeHist.isNotEmpty() || existing.userInitialized) activeHist else existing.workoutHistory,
+                    weeklyStreak = _weeklyStreak.value
+                )
+            }
+        }
+    }
+
     private fun startUserFirestoreSync(firebaseUser: FirebaseUser) {
-        _dataLoading.value = true
-        _historyLoading.value = true
         _syncError.value = null
         val uid = firebaseUser.uid
 
@@ -581,24 +607,51 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         userSyncJob = viewModelScope.launch {
-            try {
-                repo.ensureUserInitialized(firebaseUser)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _syncError.value = "Sinkronisasi cloud tertunda: ${e.localizedMessage ?: "Periksa koneksi internet."}"
-                if (_schedules.value.isEmpty()) {
-                    _schedules.value = GymPresets.createDefaultSchedules(uid)
+            val cached = withContext(Dispatchers.IO) {
+                localCacheStore.loadSnapshot(uid)
+            }
+            val hasWarmCache = cached != null && (
+                cached.schedules.isNotEmpty() ||
+                    cached.profile != null ||
+                    cached.workoutHistory.isNotEmpty()
+                )
+
+            if (hasWarmCache && cached != null) {
+                if (cached.profile != null) _profile.value = cached.profile
+                _schedules.value = if (cached.schedules.size == DayKey.entries.size) {
+                    cached.schedules
+                } else {
+                    GymPresets.createDefaultSchedules(uid) + cached.schedules
+                }
+                _customRingtones.value = cached.customRingtones
+                _workoutHistory.value = cached.workoutHistory
+                _weeklyStreak.value = cached.weeklyStreak
+                if (cached.todayDateKey == _todayDateKey.value) {
+                    _todayLog.value = cached.todayLog
                 }
                 _dataLoading.value = false
+                _historyLoading.value = false
+                syncNativeAlarmsIfReady()
+                refreshMascotDialogueOnly()
+                if (!initialGreetingFired && cached.profile != null && !_showLaunchIntro.value && !_showNamePrompt.value && !_tutorialOpen.value) {
+                    initialGreetingFired = true
+                    updateMascotSpeech(playChirp = true, speakTts = false)
+                }
+            } else {
+                // Render default schedule immediately instead of blocking behind network initialization
+                _schedules.value = GymPresets.createDefaultSchedules(uid)
+                _dataLoading.value = false
+                _historyLoading.value = true
             }
 
+            // Start all Firestore listeners immediately; disk cache + network stream will keep UI synchronized
             launch {
                 repo.observeProfile(uid) { err ->
                     _syncError.value = "Gagal memuat profil: ${err.localizedMessage ?: "Coba lagi."}"
                 }.collect { prof ->
                     _profile.value = prof
                     syncNativeAlarmsIfReady()
+                    scheduleCachePersist(uid)
                     if (!initialGreetingFired && prof != null && !_showLaunchIntro.value && !_showNamePrompt.value && !_tutorialOpen.value) {
                         initialGreetingFired = true
                         updateMascotSpeech(playChirp = true, speakTts = true)
@@ -614,6 +667,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     _dataLoading.value = false
                     syncNativeAlarmsIfReady()
                     refreshMascotDialogueOnly()
+                    scheduleCachePersist(uid)
                 }
             }
             launch {
@@ -621,6 +675,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     _syncError.value = "Gagal memuat ringtone: ${err.localizedMessage ?: "Coba lagi."}"
                 }.collect { tones ->
                     _customRingtones.value = tones
+                    scheduleCachePersist(uid)
                 }
             }
             launch {
@@ -633,6 +688,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                         GymModelHelpers.computeWeeklyStreak(hist)
                     }
                     _historyLoading.value = false
+                    scheduleCachePersist(uid)
                 }
             }
             launch {
@@ -640,6 +696,25 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     repo.observeTodayLog(uid, dateKey).collect { log ->
                         _todayLog.value = log
                         refreshMascotDialogueOnly()
+                        scheduleCachePersist(uid)
+                    }
+                }
+            }
+
+            // Background user initialization without blocking listeners or warm cache startup
+            val needsRemoteInit = cached == null ||
+                !cached.userInitialized ||
+                cached.profile == null ||
+                cached.schedules.size < DayKey.entries.size
+            if (needsRemoteInit) {
+                launch {
+                    try {
+                        repo.ensureUserInitialized(firebaseUser)
+                        scheduleCachePersist(uid, markInitialized = true)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        _syncError.value = "Sinkronisasi cloud tertunda: ${e.localizedMessage ?: "Periksa koneksi internet."}"
                     }
                 }
             }
@@ -956,10 +1031,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun signOut() {
+        val signedOutUid = _user.value?.uid
         haptics.destructive()
         audioEngine.stop()
         ttsSpeaker.stop()
         RestTimerService.stop(getApplication())
+        cacheSaveJob?.cancel()
         userSyncJob?.cancel()
         _profile.value = null
         _schedules.value = emptyMap()
@@ -969,6 +1046,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         _weeklyStreak.value = 0
         viewModelScope.launch {
             withContext(NonCancellable) {
+                if (!signedOutUid.isNullOrBlank()) {
+                    withContext(Dispatchers.IO) {
+                        localCacheStore.clearUser(signedOutUid)
+                    }
+                }
                 repo.signOut()
                 runCatching {
                     CredentialManager.create(getApplication())

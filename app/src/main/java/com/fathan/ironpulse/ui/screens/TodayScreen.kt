@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -169,17 +170,23 @@ fun TodayScreen(
         NumberFormat.getIntegerInstance(if (lang == AppLanguage.EN) Locale.US else Locale.forLanguageTag("id-ID"))
     }
 
-    LazyColumn(
-        state = listState,
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = contentPadding.calculateTopPadding() + 12.dp,
-            bottom = contentPadding.calculateBottomPadding() + 92.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize()
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
     ) {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = contentPadding.calculateTopPadding() + 14.dp,
+                bottom = contentPadding.calculateBottomPadding() + 92.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxSize()
+        ) {
         // 1. HERO BANNER CARD
         item(key = "hero_banner", contentType = "hero") {
             Box(
@@ -731,6 +738,7 @@ fun TodayScreen(
                 }
             }
         }
+    }
     }
 }
 

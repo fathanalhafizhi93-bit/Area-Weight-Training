@@ -88,7 +88,7 @@ class PreferencesStore(context: Context) {
         } else {
             val normalized = MaterialYouColorEngine.normalizeHexColor(
                 hex,
-                MaterialYouColorEngine.defaultTintForTheme(UiTheme.OBSIDIAN)
+                MaterialYouColorEngine.defaultTintForTheme(UiTheme.MATERIAL_YOU)
             )
             prefs.edit().putString(KEY_MATERIAL_TINT, normalized).apply()
             _state.value = _state.value.copy(materialTintColorHex = normalized)

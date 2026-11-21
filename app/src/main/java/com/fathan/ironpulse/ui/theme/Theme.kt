@@ -179,12 +179,11 @@ val LocalTabActive = compositionLocalOf { true }
 
 /**
  * Hardware-accelerated repeating GPU shader textures cached once per density/mode key.
- * Zero per-card CPU Path loops: Carbon 2x2 twill, Midnight Frosted crystalline grain,
- * and Ubuntu Yaru warm matte stipple all render in a single GPU pass at 120 FPS.
+ * Zero per-card CPU Path loops: Carbon 2x2 twill and Ubuntu Yaru warm matte stipple
+ * render in a single GPU pass at 120 FPS.
  */
 object ThemeMaterialShaderCache {
     private val carbonCache = ConcurrentHashMap<Long, ShaderBrush>()
-    private val frostCache = ConcurrentHashMap<Long, ShaderBrush>()
     private val yaruCache = ConcurrentHashMap<Long, ShaderBrush>()
 
     fun getCarbonTwillBrush(cellPx: Int, subtle: Boolean = false): ShaderBrush {
@@ -192,14 +191,6 @@ object ThemeMaterialShaderCache {
         val key = (safeCell.toLong() shl 1) or (if (subtle) 1L else 0L)
         return carbonCache[key] ?: synchronized(carbonCache) {
             carbonCache[key] ?: buildCarbonTwillBrush(safeCell, subtle).also { carbonCache[key] = it }
-        }
-    }
-
-    fun getFrostedGrainBrush(pixelScale: Int = 2, subtle: Boolean = false): ShaderBrush {
-        val safeScale = pixelScale.coerceIn(1, 4)
-        val key = (safeScale.toLong() shl 1) or (if (subtle) 1L else 0L)
-        return frostCache[key] ?: synchronized(frostCache) {
-            frostCache[key] ?: buildFrostedGrainBrush(safeScale, subtle).also { frostCache[key] = it }
         }
     }
 
@@ -240,39 +231,6 @@ object ThemeMaterialShaderCache {
                     1 -> canvas.drawRect(left, top, right, bottom, midPaint)
                     2 -> canvas.drawRect(left, top, right, bottom, shPaint)
                 }
-            }
-        }
-        val imageShader = ImageShader(bitmap.asImageBitmap(), TileMode.Repeated, TileMode.Repeated)
-        return ShaderBrush(imageShader)
-    }
-
-    private fun buildFrostedGrainBrush(scale: Int, subtle: Boolean): ShaderBrush {
-        val grid = 24
-        val tileSize = grid * scale
-        val bitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888)
-        val canvas = AndroidCanvas(bitmap)
-        val paint = Paint().apply { isAntiAlias = false }
-
-        for (y in 0 until grid) {
-            for (x in 0 until grid) {
-                val h = ((x * 73856093) xor (y * 19349663) xor ((x + y) * 83492791)) and 0xFF
-                val a = when {
-                    h > 218 -> if (subtle) 12 else 18
-                    h < 34 -> if (subtle) 14 else 20
-                    else -> continue
-                }
-                paint.color = if (h > 218) {
-                    android.graphics.Color.argb(a, 226, 238, 255)
-                } else {
-                    android.graphics.Color.argb(a, 6, 12, 26)
-                }
-                canvas.drawRect(
-                    (x * scale).toFloat(),
-                    (y * scale).toFloat(),
-                    ((x + 1) * scale).toFloat(),
-                    ((y + 1) * scale).toFloat(),
-                    paint
-                )
             }
         }
         val imageShader = ImageShader(bitmap.asImageBitmap(), TileMode.Repeated, TileMode.Repeated)
@@ -358,7 +316,6 @@ fun Modifier.ironGlassSurface(
     } else {
         LocalBackdropHazeState.current
     }
-    val isTranslucentGlass = !noBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val useChromeLiveBlur = blurOverChrome && !permNoBlur && targetHazeState != null
 
     return when (tokens.uiTheme) {
@@ -454,169 +411,6 @@ fun Modifier.ironGlassSurface(
                 }
                 .border(1.dp, borderColor, shape)
         }
-        UiTheme.MIDNIGHT_FROSTED -> {
-            val topAlpha = if (noBlur) 0.09f else if (isTranslucentGlass) {
-                if (subtle) 0.12f else 0.16f
-            } else {
-                if (subtle) 0.13f else 0.19f
-            }
-            val botAlpha = when {
-                noBlur -> 0.90f
-                isTranslucentGlass && blurOverChrome -> if (subtle) 0.46f else 0.54f
-                isTranslucentGlass -> if (subtle) 0.40f else 0.50f
-                else -> if (subtle) 0.62f else 0.74f
-            }
-            val rimAlpha = if (subtle) 0.20f else 0.32f
-            this
-                .clip(shape)
-                .then(
-                    if (useChromeLiveBlur) {
-                        Modifier.applyBackdropHaze(
-                            targetHazeState = targetHazeState,
-                            tint = tint,
-                            permNoBlur = false,
-                            blurEnabledNow = globalBlurAllowed,
-                            blurRadius = 20.dp,
-                            noiseFactor = 0f,
-                            fallbackAlpha = if (subtle) 0.28f else 0.36f
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
-                .drawWithCache {
-                    val strokePx = 1.dp.toPx()
-                    val grainScale = density.roundToInt().coerceIn(1, 3)
-                    val frostGrain = ThemeMaterialShaderCache.getFrostedGrainBrush(
-                        pixelScale = grainScale,
-                        subtle = subtle
-                    )
-                    val brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFC7D9FF).copy(alpha = topAlpha),
-                            tint.copy(alpha = botAlpha)
-                        ),
-                        start = Offset.Zero,
-                        end = Offset(size.width.coerceAtLeast(300f), size.height.coerceAtLeast(300f))
-                    )
-                    val rim = Color.White.copy(alpha = rimAlpha)
-                    onDrawBehind {
-                        drawRect(brush)
-                        drawRect(frostGrain)
-                        drawLine(
-                            color = rim,
-                            start = Offset(0f, strokePx * 0.5f),
-                            end = Offset(size.width, strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
-                    }
-                }
-                .border(1.dp, borderColor, shape)
-        }
-        UiTheme.AEROGLASS -> {
-            val baseAlpha = when {
-                noBlur -> 0.88f
-                isTranslucentGlass && blurOverChrome -> if (subtle) 0.42f else 0.52f
-                isTranslucentGlass -> if (subtle) 0.36f else 0.44f
-                else -> if (subtle) 0.54f else 0.66f
-            }
-            val topSheen = if (subtle) 0.20f else 0.30f
-            this
-                .clip(shape)
-                .then(
-                    if (useChromeLiveBlur) {
-                        Modifier.applyBackdropHaze(
-                            targetHazeState = targetHazeState,
-                            tint = tint,
-                            permNoBlur = false,
-                            blurEnabledNow = globalBlurAllowed,
-                            blurRadius = 18.dp,
-                            noiseFactor = 0f,
-                            fallbackAlpha = if (subtle) 0.26f else 0.34f
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
-                .drawWithCache {
-                    val strokePx = 1.dp.toPx()
-                    val sheen = Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = topSheen),
-                        0.46f to Color.White.copy(alpha = 0.07f),
-                        0.485f to Color(0xFF0EA5E9).copy(alpha = 0.03f),
-                        1.0f to Color(0xFF38BDF8).copy(alpha = 0.16f)
-                    )
-                    val base = tint.copy(alpha = baseAlpha)
-                    val topRim = Color.White.copy(alpha = 0.48f)
-                    val botRim = Color(0xFF7DD3FC).copy(alpha = 0.24f)
-                    onDrawBehind {
-                        drawRect(base)
-                        drawRect(sheen)
-                        drawLine(
-                            color = topRim,
-                            start = Offset(0f, strokePx * 0.5f),
-                            end = Offset(size.width, strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
-                        drawLine(
-                            color = botRim,
-                            start = Offset(0f, size.height - strokePx * 0.5f),
-                            end = Offset(size.width, size.height - strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
-                    }
-                }
-                .border(1.dp, borderColor, shape)
-        }
-        UiTheme.OBSIDIAN -> {
-            val alpha = when {
-                noBlur -> 0.95f
-                isTranslucentGlass && blurOverChrome -> if (subtle) 0.66f else 0.76f
-                isTranslucentGlass -> if (subtle) 0.62f else 0.72f
-                else -> if (subtle) 0.78f else 0.88f
-            }
-            this
-                .clip(shape)
-                .then(
-                    if (useChromeLiveBlur) {
-                        Modifier.applyBackdropHaze(
-                            targetHazeState = targetHazeState,
-                            tint = tint,
-                            permNoBlur = false,
-                            blurEnabledNow = globalBlurAllowed,
-                            blurRadius = 18.dp,
-                            noiseFactor = 0f,
-                            fallbackAlpha = if (subtle) 0.32f else 0.42f
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
-                .drawWithCache {
-                    val strokePx = 1.dp.toPx()
-                    val brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = if (subtle) 0.05f else 0.08f),
-                            tint.copy(alpha = alpha),
-                            Color.Black.copy(alpha = if (subtle) 0.14f else 0.24f)
-                        ),
-                        start = Offset.Zero,
-                        end = Offset(0f, size.height.coerceAtLeast(240f))
-                    )
-                    val rim = Color.White.copy(alpha = if (subtle) 0.09f else 0.15f)
-                    onDrawBehind {
-                        drawRect(tint.copy(alpha = alpha * 0.65f))
-                        drawRect(brush)
-                        drawLine(
-                            color = rim,
-                            start = Offset(0f, strokePx * 0.5f),
-                            end = Offset(size.width, strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
-                    }
-                }
-                .border(1.dp, borderColor, shape)
-        }
     }
 }
 
@@ -635,31 +429,17 @@ fun Modifier.ironGlassBar(
     val permNoBlur = tokens.performance.noBlur
     val noBlur = permNoBlur || !globalBlurAllowed
     val chromeHazeState = hazeStateOverride ?: LocalChromeHazeState.current
-    val supportsBarBlur = when (tokens.uiTheme) {
-        UiTheme.MIDNIGHT_FROSTED,
-        UiTheme.AEROGLASS,
-        UiTheme.OBSIDIAN,
-        UiTheme.MATERIAL_YOU -> true
-        UiTheme.CARBON_FORGE,
-        UiTheme.UBUNTU_YARU -> false
-    }
+    val supportsBarBlur = tokens.uiTheme == UiTheme.MATERIAL_YOU
     val canGpuBlur = !noBlur && !permNoBlur && supportsBarBlur && chromeHazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     val barHazeModifier = if (!permNoBlur && supportsBarBlur && chromeHazeState != null) {
         val barHazeStyle = remember(tokens.uiTheme, tint) {
-            val (radius, fallbackAlpha) = when (tokens.uiTheme) {
-                UiTheme.MIDNIGHT_FROSTED -> 20.dp to 0.42f
-                UiTheme.AEROGLASS -> 18.dp to 0.36f
-                UiTheme.OBSIDIAN -> 18.dp to 0.45f
-                UiTheme.MATERIAL_YOU -> 16.dp to 0.30f
-                else -> 16.dp to 0.30f
-            }
             HazeStyle(
                 backgroundColor = Color.Transparent,
                 tints = emptyList(),
-                blurRadius = radius,
+                blurRadius = 16.dp,
                 noiseFactor = 0f,
-                fallbackTint = HazeTint(tint.copy(alpha = fallbackAlpha))
+                fallbackTint = HazeTint(tint.copy(alpha = 0.30f))
             )
         }
         Modifier.hazeEffect(
@@ -684,53 +464,18 @@ fun Modifier.ironGlassBar(
                 UiTheme.MATERIAL_YOU -> null
                 UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(grainScale, subtle = true)
                 UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
-                UiTheme.MIDNIGHT_FROSTED -> Brush.verticalGradient(
-                    colors = listOf(
-                        tint.copy(alpha = if (noBlur) 0.96f else if (canGpuBlur) 0.42f else 0.80f),
-                        Color(0xFF0A1020).copy(alpha = if (noBlur) 0.94f else if (canGpuBlur) 0.34f else 0.74f)
-                    )
-                )
-                UiTheme.AEROGLASS -> Brush.verticalGradient(
-                    0.0f to Color.White.copy(alpha = 0.24f),
-                    0.47f to Color.White.copy(alpha = 0.06f),
-                    0.50f to Color.Transparent,
-                    1.0f to Color(0xFF0EA5E9).copy(alpha = 0.14f)
-                )
-                UiTheme.OBSIDIAN -> Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.05f),
-                        Color.Transparent
-                    )
-                )
-            }
-            val overlayBrush = if (tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED) {
-                ThemeMaterialShaderCache.getFrostedGrainBrush(grainScale, subtle = true)
-            } else {
-                null
             }
             val solidBg = when (tokens.uiTheme) {
                 UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerLow.copy(
-                    alpha = if (noBlur) 1f else if (canGpuBlur) 0.70f else 0.92f
+                    alpha = if (noBlur) 1f else if (canGpuBlur) 0.72f else 0.94f
                 )
                 UiTheme.UBUNTU_YARU -> Color(0xFF242424)
                 UiTheme.CARBON_FORGE -> tint.copy(alpha = 0.98f)
-                UiTheme.AEROGLASS -> tint.copy(
-                    alpha = if (noBlur) 0.94f else if (canGpuBlur) 0.36f else 0.72f
-                )
-                UiTheme.OBSIDIAN -> tint.copy(
-                    alpha = if (noBlur) 0.97f else if (canGpuBlur) 0.62f else 0.86f
-                )
-                UiTheme.MIDNIGHT_FROSTED -> Color.Transparent
             }
             onDrawBehind {
-                if (solidBg != Color.Transparent) {
-                    drawRect(solidBg)
-                }
+                drawRect(solidBg)
                 if (primaryBrush != null) {
                     drawRect(primaryBrush)
-                }
-                if (overlayBrush != null) {
-                    drawRect(overlayBrush)
                 }
                 if (topHairlineColor != null) {
                     drawLine(
@@ -845,102 +590,67 @@ fun IronPulseTheme(
             UiTheme.MATERIAL_YOU -> palette.surface
             UiTheme.UBUNTU_YARU -> Color(0xFF1C1C1C)
             UiTheme.CARBON_FORGE -> Color(0xFF060709)
-            UiTheme.MIDNIGHT_FROSTED -> Color(0xFF040710)
-            UiTheme.AEROGLASS -> Color(0xFF04101D)
-            UiTheme.OBSIDIAN -> Color(0xFF07080B)
         }
         val canvasSecondaryBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
             UiTheme.UBUNTU_YARU -> Color(0xFF261722) // subtle Ubuntu aubergine warmth at top
             UiTheme.CARBON_FORGE -> Color(0xFF0B0D11)
-            UiTheme.MIDNIGHT_FROSTED -> Color(0xFF0A1226)
-            UiTheme.AEROGLASS -> Color(0xFF092138)
-            UiTheme.OBSIDIAN -> Color(0xFF0D1017)
         }
         val borderColor = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant
-            UiTheme.AEROGLASS -> Color(0x75BAE6FD)
-            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.26f)
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
             UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-            UiTheme.OBSIDIAN -> Color.White.copy(alpha = 0.13f)
         }
         val subtleBorder = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant.copy(alpha = 0.65f)
-            UiTheme.AEROGLASS -> Color(0x4DBAE6FD)
-            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.17f)
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.12f)
             UiTheme.UBUNTU_YARU -> Color(0xFF181818)
-            UiTheme.OBSIDIAN -> Color.White.copy(alpha = 0.09f)
         }
         val cardRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 24.dp
-            UiTheme.MIDNIGHT_FROSTED -> 22.dp
             UiTheme.CARBON_FORGE -> 10.dp
             UiTheme.UBUNTU_YARU -> 12.dp
-            UiTheme.AEROGLASS -> 16.dp
-            UiTheme.OBSIDIAN -> 16.dp
         }
         val buttonRadius = when (uiTheme) {
-            UiTheme.MATERIAL_YOU, UiTheme.MIDNIGHT_FROSTED -> 999.dp
+            UiTheme.MATERIAL_YOU -> 999.dp
             UiTheme.CARBON_FORGE -> 8.dp
             UiTheme.UBUNTU_YARU -> 10.dp
-            UiTheme.AEROGLASS -> 12.dp
-            UiTheme.OBSIDIAN -> 12.dp
         }
         val inputRadius = when (uiTheme) {
             UiTheme.CARBON_FORGE -> 8.dp
             UiTheme.UBUNTU_YARU -> 10.dp
-            else -> 12.dp
+            UiTheme.MATERIAL_YOU -> 12.dp
         }
         val bubbleRadius = when (uiTheme) {
-            UiTheme.MATERIAL_YOU, UiTheme.MIDNIGHT_FROSTED -> 20.dp
+            UiTheme.MATERIAL_YOU -> 20.dp
             UiTheme.CARBON_FORGE -> 10.dp
             UiTheme.UBUNTU_YARU -> 12.dp
-            UiTheme.AEROGLASS, UiTheme.OBSIDIAN -> 16.dp
         }
         val heroScrimAlpha = when (uiTheme) {
             UiTheme.CARBON_FORGE -> 0.42f
-            UiTheme.AEROGLASS -> 0.48f
-            UiTheme.MIDNIGHT_FROSTED -> 0.56f
             UiTheme.UBUNTU_YARU -> 0.52f
             UiTheme.MATERIAL_YOU -> 0.62f
-            UiTheme.OBSIDIAN -> 0.72f
         }
         val wellBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
             UiTheme.UBUNTU_YARU -> Color(0xFF212121)
             UiTheme.CARBON_FORGE -> Color(0xFF090B0E)
-            UiTheme.MIDNIGHT_FROSTED -> Color(0x88080D18)
-            UiTheme.AEROGLASS -> Color(0x780B1C2E)
-            UiTheme.OBSIDIAN -> Color(0xFF0C0E13)
         }
         val controlBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh
             UiTheme.UBUNTU_YARU -> Color(0xFF353535)
             UiTheme.CARBON_FORGE -> Color(0xFF161A22)
-            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.11f)
-            UiTheme.AEROGLASS -> Color(0x3238BDF8)
-            UiTheme.OBSIDIAN -> Color(0xFF171B24)
         }
         val subtleChipBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh.copy(alpha = 0.75f)
             UiTheme.UBUNTU_YARU -> Color(0xFF303030)
             UiTheme.CARBON_FORGE -> Color(0xFF131720)
-            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.08f)
-            UiTheme.AEROGLASS -> Color(0x267DD3FC)
-            UiTheme.OBSIDIAN -> Color(0xFF141821)
         }
         val mutedTextColor = when (uiTheme) {
             UiTheme.UBUNTU_YARU -> Color(0xFFB5B4B0)
-            UiTheme.MIDNIGHT_FROSTED -> Color(0xFFB8C4DC)
-            UiTheme.AEROGLASS -> Color(0xFFBAE0F5)
             else -> palette.onSurfaceVariant
         }
         val cardTopHighlight = when (uiTheme) {
-            UiTheme.AEROGLASS -> Color.White.copy(alpha = 0.46f)
-            UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.30f)
-            UiTheme.OBSIDIAN -> Color.White.copy(alpha = 0.14f)
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
             UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.08f)
             UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.03f)
@@ -950,7 +660,7 @@ fun IronPulseTheme(
             palette = palette,
             accentColor = palette.primary,
             onAccentColor = palette.onPrimary,
-            effectiveTintColor = MaterialYouColorEngine.parseColor(effectiveTintHex, Color(0xFF161A23)),
+            effectiveTintColor = MaterialYouColorEngine.parseColor(effectiveTintHex, Color(0xFF1C1B22)),
             canvasBg = canvasBg,
             canvasSecondaryBg = canvasSecondaryBg,
             wellBg = wellBg,
@@ -965,7 +675,7 @@ fun IronPulseTheme(
             inputRadius = inputRadius,
             bubbleRadius = bubbleRadius,
             heroScrimAlpha = heroScrimAlpha,
-            buttonHasGloss = uiTheme == UiTheme.AEROGLASS,
+            buttonHasGloss = false,
             timePhase = timePhase,
             phaseTokens = phaseTokens,
             performance = prefs.performance,

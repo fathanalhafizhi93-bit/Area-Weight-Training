@@ -26,6 +26,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.firestoreSettings
+import com.google.firebase.firestore.persistentCacheSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,6 +49,19 @@ class FirestoreGymRepository(
         db = Firebase.firestore(context.getString(R.string.firestore_database_id)),
         auth = Firebase.auth
     )
+
+    init {
+        runCatching {
+            db.firestoreSettings = firestoreSettings {
+                setLocalCacheSettings(
+                    persistentCacheSettings {
+                        setSizeBytes(100L * 1024L * 1024L)
+                    }
+                )
+            }
+            db.persistentCacheIndexManager?.enableIndexAutoCreation()
+        }
+    }
 
     fun observeAuthUser(): Flow<FirebaseUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->

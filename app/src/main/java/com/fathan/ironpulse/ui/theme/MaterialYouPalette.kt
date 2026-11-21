@@ -65,11 +65,8 @@ object MaterialYouColorEngine {
     const val YARU_ORANGE_ACCENT = "#E95420"
 
     fun defaultTintForTheme(theme: UiTheme): String = when (theme) {
-        UiTheme.OBSIDIAN -> "#161A23"
-        UiTheme.MIDNIGHT_FROSTED -> "#162238"
-        UiTheme.CARBON_FORGE -> "#12151B"
         UiTheme.MATERIAL_YOU -> "#1C1B22"
-        UiTheme.AEROGLASS -> "#1B334B"
+        UiTheme.CARBON_FORGE -> "#12151B"
         UiTheme.UBUNTU_YARU -> "#2C2C2C"
     }
 
