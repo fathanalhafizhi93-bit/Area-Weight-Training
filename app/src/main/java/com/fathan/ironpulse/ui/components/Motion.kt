@@ -3,34 +3,40 @@ package com.fathan.ironpulse.ui.components
 import android.content.res.Resources
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.PointerInputModifierNode
+import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.platform.InspectorInfo
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
@@ -82,99 +88,175 @@ object IronPulseMotion {
         stiffness = Spring.StiffnessMediumLow
     )
 
+    val IndicatorFloatSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.78f,
+        stiffness = Spring.StiffnessMediumLow
+    )
+
     val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 200)
 }
 
 /**
- * GPU-only fluid spring entrance for modal cards and dialogs.
+ * Zero-recomposition GPU-only fluid spring entrance for modal cards and dialogs.
  */
 fun Modifier.fluidModalEntrance(
     disabledByPerf: Boolean = false
-): Modifier = composed {
-    if (disabledByPerf) return@composed this
-    var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { shown = true }
-    val scale by animateFloatAsState(
-        targetValue = if (shown) 1f else 0.93f,
-        animationSpec = IronPulseMotion.ModalEntranceSpring,
-        label = "modalScale"
-    )
-    val alpha by animateFloatAsState(
-        targetValue = if (shown) 1f else 0f,
-        animationSpec = IronPulseMotion.ShortFadeSpec,
-        label = "modalAlpha"
-    )
-    this.graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-        this.alpha = alpha
-        transformOrigin = TransformOrigin(0.5f, 0.5f)
+): Modifier = if (disabledByPerf) {
+    this
+} else {
+    this then FluidModalEntranceElement
+}
+
+private data object FluidModalEntranceElement : ModifierNodeElement<FluidModalEntranceNode>() {
+    override fun create(): FluidModalEntranceNode = FluidModalEntranceNode()
+    override fun update(node: FluidModalEntranceNode) {}
+    override fun InspectorInfo.inspectableProperties() {
+        name = "fluidModalEntrance"
+    }
+}
+
+private class FluidModalEntranceNode : Modifier.Node(), LayoutModifierNode {
+    private val scaleAnim = Animatable(0.93f)
+    private val alphaAnim = Animatable(0f)
+
+    override fun onAttach() {
+        coroutineScope.launch {
+            launch { scaleAnim.animateTo(1f, IronPulseMotion.ModalEntranceSpring) }
+            launch { alphaAnim.animateTo(1f, IronPulseMotion.ShortFadeSpec) }
+        }
+    }
+
+    override fun MeasureScope.measure(
+        measurable: Measurable,
+        constraints: Constraints
+    ): MeasureResult {
+        val placeable = measurable.measure(constraints)
+        return layout(placeable.width, placeable.height) {
+            placeable.placeWithLayer(0, 0) {
+                val s = scaleAnim.value
+                scaleX = s
+                scaleY = s
+                alpha = alphaAnim.value
+                transformOrigin = TransformOrigin.Center
+            }
+        }
     }
 }
 
 /**
- * GPU-only tactile spring press scale applied on PointerEventPass.Initial so
- * it works seamlessly on Buttons, Surfaces, Cards, and clickables without
- * intercepting click handlers or blocking vertical scroll gestures.
+ * Zero-allocation, zero-recomposition Modifier.Node implementation of tactile spring press.
+ * Uses PointerEventPass.Initial so it never intercepts clicks or vertical scrolling, and drives
+ * GPU scale strictly inside placeWithLayer without idle coroutines when untouched.
  */
 fun Modifier.tactilePress(
     enabled: Boolean = true,
     pressedScale: Float = 0.968f,
     disabledByPerf: Boolean = false
-): Modifier = composed {
-    if (!enabled || disabledByPerf) return@composed this
-
-    var pressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) pressedScale else 1f,
-        animationSpec = IronPulseMotion.PressSpring,
-        label = "tactileScale"
-    )
-
+): Modifier = if (!enabled || disabledByPerf) {
     this
-        .pointerInput(enabled) {
-            val touchSlop = viewConfiguration.touchSlop
-            var downX = 0f
-            var downY = 0f
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                    when (event.type) {
-                        PointerEventType.Press -> {
-                            val first = event.changes.firstOrNull()
-                            if (first != null) {
-                                downX = first.position.x
-                                downY = first.position.y
-                                pressed = true
-                            }
-                        }
-                        PointerEventType.Move -> {
-                            if (pressed) {
-                                val first = event.changes.firstOrNull()
-                                if (first == null ||
-                                    abs(first.position.x - downX) > touchSlop ||
-                                    abs(first.position.y - downY) > touchSlop
-                                ) {
-                                    pressed = false
-                                }
-                            }
-                        }
-                        PointerEventType.Release, PointerEventType.Exit -> {
-                            pressed = false
-                        }
-                        else -> {
-                            if (!event.changes.any { it.pressed }) {
-                                pressed = false
-                            }
-                        }
+} else {
+    this then TactilePressElement(pressedScale)
+}
+
+private data class TactilePressElement(
+    val pressedScale: Float
+) : ModifierNodeElement<TactilePressNode>() {
+    override fun create(): TactilePressNode = TactilePressNode(pressedScale)
+    override fun update(node: TactilePressNode) {
+        node.pressedScale = pressedScale
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "tactilePress"
+        properties["pressedScale"] = pressedScale
+    }
+}
+
+private class TactilePressNode(
+    var pressedScale: Float
+) : Modifier.Node(),
+    PointerInputModifierNode,
+    LayoutModifierNode,
+    CompositionLocalConsumerModifierNode {
+
+    private val scaleAnim = Animatable(1f)
+    private var animJob: Job? = null
+    private var isPressed = false
+    private var downX = 0f
+    private var downY = 0f
+
+    private fun setPressed(next: Boolean) {
+        if (isPressed == next) return
+        isPressed = next
+        if (!isAttached) return
+        val target = if (next) pressedScale else 1f
+        animJob?.cancel()
+        animJob = coroutineScope.launch {
+            scaleAnim.animateTo(target, IronPulseMotion.PressSpring)
+        }
+    }
+
+    override fun onPointerEvent(
+        pointerEvent: PointerEvent,
+        pass: PointerEventPass,
+        bounds: IntSize
+    ) {
+        if (pass != PointerEventPass.Initial) return
+        when (pointerEvent.type) {
+            PointerEventType.Press -> {
+                val first = pointerEvent.changes.firstOrNull()
+                if (first != null) {
+                    downX = first.position.x
+                    downY = first.position.y
+                    setPressed(true)
+                }
+            }
+            PointerEventType.Move -> {
+                if (isPressed) {
+                    val touchSlop = currentValueOf(LocalViewConfiguration).touchSlop
+                    val first = pointerEvent.changes.firstOrNull()
+                    if (first == null ||
+                        abs(first.position.x - downX) > touchSlop ||
+                        abs(first.position.y - downY) > touchSlop
+                    ) {
+                        setPressed(false)
                     }
                 }
             }
+            PointerEventType.Release, PointerEventType.Exit -> {
+                setPressed(false)
+            }
+            else -> {
+                if (!pointerEvent.changes.any { it.pressed }) {
+                    setPressed(false)
+                }
+            }
         }
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
+    }
+
+    override fun onCancelPointerInput() {
+        setPressed(false)
+    }
+
+    override fun onDetach() {
+        isPressed = false
+        animJob?.cancel()
+        animJob = null
+    }
+
+    override fun MeasureScope.measure(
+        measurable: Measurable,
+        constraints: Constraints
+    ): MeasureResult {
+        val placeable = measurable.measure(constraints)
+        return layout(placeable.width, placeable.height) {
+            placeable.placeWithLayer(0, 0) {
+                val s = scaleAnim.value
+                scaleX = s
+                scaleY = s
+            }
         }
+    }
 }
 
 private object ScaledBackdropCache {

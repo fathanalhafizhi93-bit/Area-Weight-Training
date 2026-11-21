@@ -150,7 +150,7 @@ fun HistoryScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         // Header Card
-        item {
+        item(key = "history_header", contentType = "header") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -184,7 +184,7 @@ fun HistoryScreen(
 
         // Loading skeleton vs KPI & Calendar
         if (state.historyLoading && state.workoutHistory.isEmpty()) {
-            item {
+            item(key = "history_loading", contentType = "loading") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -205,7 +205,7 @@ fun HistoryScreen(
             }
         } else {
             // 3 KPI Summary Cards
-            item {
+            item(key = "history_kpis", contentType = "kpis") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -235,7 +235,7 @@ fun HistoryScreen(
             }
 
             // Interactive Month Calendar Card
-            item {
+            item(key = "history_calendar", contentType = "calendar") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -406,7 +406,7 @@ fun HistoryScreen(
             }
 
             // Selected Date Session Detail
-            item {
+            item(key = "history_detail", contentType = "detail") {
                 val readableDate = remember(selectedDateKey, lang) {
                     GymModelHelpers.formatReadableDate(selectedDateKey, lang)
                 }

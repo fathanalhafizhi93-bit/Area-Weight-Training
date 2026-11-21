@@ -47,6 +47,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -82,32 +84,46 @@ import androidx.compose.ui.util.lerp
 import kotlin.math.PI
 import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import kotlinx.coroutines.flow.StateFlow
 
+class OrbBoundsHolder {
+    var rect: Rect? = null
+}
+
+private class DockOriginHolder {
+    var origin: Offset = Offset.Zero
+}
+
 @Composable
 fun MascotOrbFace(
     mascot: MascotUiState,
     eyeStateFlow: StateFlow<MascotEyeState>? = null,
     size: Dp = 64.dp,
+    animActive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
+    val tabActive = LocalTabActive.current
     val staticMode = tokens.performance.staticMascot || tokens.performance.noAnimations
-    val eyeState = if (eyeStateFlow != null) {
+    val runAnim = !staticMode && animActive && tabActive
+    val eyeState = if (eyeStateFlow != null && runAnim) {
         eyeStateFlow.collectAsStateWithLifecycle().value
     } else {
-        MascotEyeState()
+        remember { MascotEyeState() }
     }
     val phaseColor = remember(mascot.phaseColorHex) {
         MaterialYouColorEngine.parseColor(mascot.phaseColorHex, Color(0xFFFBBF24))
+    }
+    val ringBorderColor = remember(phaseColor, staticMode) {
+        phaseColor.copy(alpha = if (staticMode) 0.45f else 0.55f)
     }
 
     val urgent = mascot.urgentMood
@@ -149,11 +165,14 @@ fun MascotOrbFace(
     val isClosedCalmPose = isSleepPose || isZenPose || isCozyPose || isDreamPose
     val density = LocalDensity.current
 
-    val ringScale = if (staticMode) {
-        1f
-    } else {
-        val infinite = rememberInfiniteTransition(label = "orbAnim")
-        val animRing by infinite.animateFloat(
+    val staticOne = remember { mutableFloatStateOf(1f) }
+    val staticZero = remember { mutableFloatStateOf(0f) }
+
+    val ringScaleState: State<Float>
+    val bobOffsetDpState: State<Float>
+    if (runAnim) {
+        val infinite = rememberInfiniteTransition(label = "orbInfinite")
+        ringScaleState = infinite.animateFloat(
             initialValue = 0.96f,
             targetValue = if (isCelebration || eyeState.tapBounce) 1.24f else 1.14f,
             animationSpec = infiniteRepeatable(
@@ -162,13 +181,7 @@ fun MascotOrbFace(
             ),
             label = "ringScale"
         )
-        animRing
-    }
-    val bobOffsetDp = if (staticMode) {
-        0f
-    } else {
-        val infinite = rememberInfiniteTransition(label = "orbBob")
-        val animBob by infinite.animateFloat(
+        bobOffsetDpState = infinite.animateFloat(
             initialValue = -2f,
             targetValue = 2f,
             animationSpec = infiniteRepeatable(
@@ -177,39 +190,59 @@ fun MascotOrbFace(
             ),
             label = "bobOffset"
         )
-        animBob
+    } else {
+        ringScaleState = staticOne
+        bobOffsetDpState = staticZero
     }
-    val bobOffsetPx = with(density) { bobOffsetDp.dp.toPx() }
-    val tapScale by animateFloatAsState(
-        targetValue = if (!staticMode && eyeState.tapBounce) 1.14f else 1f,
-        animationSpec = IronPulseMotion.OrbSnapSpring,
-        label = "tapScale"
-    )
 
-    val glanceX by animateFloatAsState(
-        targetValue = if (staticMode || isClosedCalmPose || isMusicPose || isSparklePose) 0f else eyeState.glanceX,
-        animationSpec = tween(260),
-        label = "glanceX"
-    )
-    val glanceY by animateFloatAsState(
-        targetValue = if (staticMode || isClosedCalmPose || isMusicPose || isSparklePose) 0f else eyeState.glanceY,
-        animationSpec = tween(260),
-        label = "glanceY"
-    )
+    val tapScaleState = if (runAnim) {
+        animateFloatAsState(
+            targetValue = if (eyeState.tapBounce) 1.14f else 1f,
+            animationSpec = IronPulseMotion.OrbSnapSpring,
+            label = "tapScale"
+        )
+    } else {
+        staticOne
+    }
+
+    val glanceXState = if (runAnim) {
+        animateFloatAsState(
+            targetValue = if (isClosedCalmPose || isMusicPose || isSparklePose) 0f else eyeState.glanceX,
+            animationSpec = tween(260),
+            label = "glanceX"
+        )
+    } else {
+        staticZero
+    }
+    val glanceYState = if (runAnim) {
+        animateFloatAsState(
+            targetValue = if (isClosedCalmPose || isMusicPose || isSparklePose) 0f else eyeState.glanceY,
+            animationSpec = tween(260),
+            label = "glanceY"
+        )
+    } else {
+        staticZero
+    }
+
+    val pathA = remember { Path() }
+    val pathB = remember { Path() }
 
     Box(
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .graphicsLayer { },
         contentAlignment = Alignment.Center
     ) {
-        // Outer breathing pulse ring (GPU graphicsLayer)
+        // Outer breathing pulse ring (GPU graphicsLayer — reads State inside draw/layer only)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = ringScale
-                    scaleY = ringScale
+                    val s = ringScaleState.value
+                    scaleX = s
+                    scaleY = s
                 }
-                .border(2.dp, phaseColor.copy(alpha = if (staticMode) 0.45f else 0.55f), CircleShape)
+                .border(2.dp, ringBorderColor, CircleShape)
         )
 
         // Core dark circular orb (GPU graphicsLayer)
@@ -217,9 +250,10 @@ fun MascotOrbFace(
             modifier = Modifier
                 .size(size * 0.875f)
                 .graphicsLayer {
-                    translationY = bobOffsetPx
-                    scaleX = tapScale
-                    scaleY = tapScale
+                    translationY = bobOffsetDpState.value * density.density
+                    val ts = tapScaleState.value
+                    scaleX = ts
+                    scaleY = ts
                 }
                 .clip(CircleShape)
                 .background(Color(0xF2121620))
@@ -233,23 +267,21 @@ fun MascotOrbFace(
 
                 // Headphones for Music pose
                 if (isMusicPose) {
-                    val arcPath = Path().apply {
-                        moveTo(px(11f), px(31f))
-                        cubicTo(px(11f), px(18.5f), px(20.5f), px(10.5f), px(32f), px(10.5f))
-                        cubicTo(px(43.5f), px(10.5f), px(53f), px(18.5f), px(53f), px(31f))
-                    }
-                    drawPath(arcPath, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                    pathA.reset()
+                    pathA.moveTo(px(11f), px(31f))
+                    pathA.cubicTo(px(11f), px(18.5f), px(20.5f), px(10.5f), px(32f), px(10.5f))
+                    pathA.cubicTo(px(43.5f), px(10.5f), px(53f), px(18.5f), px(53f), px(31f))
+                    drawPath(pathA, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     drawRoundRect(phaseColor, pt(7.5f, 26.5f), Size(px(5.5f), px(11f)), CornerRadius(px(2.7f)))
                     drawRoundRect(phaseColor, pt(51f, 26.5f), Size(px(5.5f), px(11f)), CornerRadius(px(2.7f)))
                 }
 
                 // Cozy Blanket
                 if (isCozyPose) {
-                    val blanket = Path().apply {
-                        moveTo(px(13f), px(47.5f))
-                        cubicTo(px(20f), px(53f), px(44f), px(53f), px(51f), px(47.5f))
-                    }
-                    drawPath(blanket, phaseColor.copy(alpha = 0.85f), style = Stroke(px(4.5f), cap = StrokeCap.Round))
+                    pathA.reset()
+                    pathA.moveTo(px(13f), px(47.5f))
+                    pathA.cubicTo(px(20f), px(53f), px(44f), px(53f), px(51f), px(47.5f))
+                    drawPath(pathA, phaseColor.copy(alpha = 0.85f), style = Stroke(px(4.5f), cap = StrokeCap.Round))
                 }
 
                 // Eyebrows
@@ -264,82 +296,72 @@ fun MascotOrbFace(
                     }
                     isSmirkPose -> {
                         drawLine(Color(0xFFD1D5DB), pt(17.5f, 22.8f), pt(25.5f, 22.8f), px(2.1f), cap = StrokeCap.Round)
-                        val brow = Path().apply {
-                            moveTo(px(38.5f), px(20.6f))
-                            cubicTo(px(41f), px(18.2f), px(44.5f), px(18.4f), px(46.8f), px(20.8f))
-                        }
-                        drawPath(brow, Color(0xFFD1D5DB), style = Stroke(px(2.2f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(38.5f), px(20.6f))
+                        pathA.cubicTo(px(41f), px(18.2f), px(44.5f), px(18.4f), px(46.8f), px(20.8f))
+                        drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.2f), cap = StrokeCap.Round))
                     }
                     isCuriousPose -> {
-                        val b1 = Path().apply {
-                            moveTo(px(18f), px(22.5f))
-                            cubicTo(px(20f), px(20.5f), px(23f), px(20.5f), px(25f), px(22.5f))
-                        }
-                        val b2 = Path().apply {
-                            moveTo(px(39f), px(20f))
-                            cubicTo(px(41f), px(17.8f), px(44f), px(17.8f), px(46f), px(20f))
-                        }
-                        drawPath(b1, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
-                        drawPath(b2, Color(0xFFD1D5DB), style = Stroke(px(2.1f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(18f), px(22.5f))
+                        pathA.cubicTo(px(20f), px(20.5f), px(23f), px(20.5f), px(25f), px(22.5f))
+                        pathB.reset()
+                        pathB.moveTo(px(39f), px(20f))
+                        pathB.cubicTo(px(41f), px(17.8f), px(44f), px(17.8f), px(46f), px(20f))
+                        drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.1f), cap = StrokeCap.Round))
                     }
                     isWinkPose || isWhistlePose -> {
-                        val b1 = Path().apply {
-                            moveTo(px(18f), px(21.5f))
-                            cubicTo(px(20f), px(19.6f), px(23.5f), px(19.6f), px(25.5f), px(21.5f))
-                        }
-                        val b2 = Path().apply {
-                            moveTo(px(39f), px(22.8f))
-                            cubicTo(px(41f), px(21.5f), px(44f), px(21.5f), px(46f), px(22.8f))
-                        }
-                        drawPath(b1, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
-                        drawPath(b2, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(18f), px(21.5f))
+                        pathA.cubicTo(px(20f), px(19.6f), px(23.5f), px(19.6f), px(25.5f), px(21.5f))
+                        pathB.reset()
+                        pathB.moveTo(px(39f), px(22.8f))
+                        pathB.cubicTo(px(41f), px(21.5f), px(44f), px(21.5f), px(46f), px(22.8f))
+                        drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
                     }
                     isYawnPose || isSweatPose -> {
-                        val b1 = Path().apply {
-                            moveTo(px(18f), px(22f))
-                            cubicTo(px(20f), px(20.5f), px(23.5f), px(21f), px(25f), px(22.5f))
-                        }
-                        val b2 = Path().apply {
-                            moveTo(px(39f), px(22.5f))
-                            cubicTo(px(40.5f), px(21f), px(44f), px(20.5f), px(46f), px(22f))
-                        }
-                        drawPath(b1, Color(0xFF9CA3AF), style = Stroke(px(1.9f), cap = StrokeCap.Round))
-                        drawPath(b2, Color(0xFF9CA3AF), style = Stroke(px(1.9f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(18f), px(22f))
+                        pathA.cubicTo(px(20f), px(20.5f), px(23.5f), px(21f), px(25f), px(22.5f))
+                        pathB.reset()
+                        pathB.moveTo(px(39f), px(22.5f))
+                        pathB.cubicTo(px(40.5f), px(21f), px(44f), px(20.5f), px(46f), px(22f))
+                        drawPath(pathA, Color(0xFF9CA3AF), style = Stroke(px(1.9f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFF9CA3AF), style = Stroke(px(1.9f), cap = StrokeCap.Round))
                     }
                 }
 
-                // Eyes (with glance offset)
-                val gx = px(glanceX)
-                val gy = px(glanceY)
+                // Eyes (with glance offset read inside Canvas DrawScope only)
+                val gx = px(glanceXState.value)
+                val gy = px(glanceYState.value)
                 fun gpt(x: Float, y: Float) = Offset(px(x) + gx, px(y) + gy)
 
                 when {
                     isCelebration || isMusicPose || isSunrisePose || isSweatPose -> {
-                        val lEye = Path().apply {
-                            moveTo(px(18f) + gx, px(28f) + gy)
-                            cubicTo(px(19.8f) + gx, px(24.4f) + gy, px(24.2f) + gx, px(24.4f) + gy, px(26f) + gx, px(28f) + gy)
-                        }
-                        val rEye = Path().apply {
-                            moveTo(px(38f) + gx, px(28f) + gy)
-                            cubicTo(px(39.8f) + gx, px(24.4f) + gy, px(44.2f) + gx, px(24.4f) + gy, px(46f) + gx, px(28f) + gy)
-                        }
-                        drawPath(lEye, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
-                        drawPath(rEye, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(18f) + gx, px(28f) + gy)
+                        pathA.cubicTo(px(19.8f) + gx, px(24.4f) + gy, px(24.2f) + gx, px(24.4f) + gy, px(26f) + gx, px(28f) + gy)
+                        pathB.reset()
+                        pathB.moveTo(px(38f) + gx, px(28f) + gy)
+                        pathB.cubicTo(px(39.8f) + gx, px(24.4f) + gy, px(44.2f) + gx, px(24.4f) + gy, px(46f) + gx, px(28f) + gy)
+                        drawPath(pathA, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
                     }
                     isSparklePose -> {
-                        listOf(22f, 42f).forEach { cx ->
-                            val star = Path().apply {
-                                moveTo(px(cx), px(23.2f))
-                                lineTo(px(cx + 1.3f), px(26.2f))
-                                lineTo(px(cx + 4.3f), px(27.5f))
-                                lineTo(px(cx + 1.3f), px(28.8f))
-                                lineTo(px(cx), px(31.8f))
-                                lineTo(px(cx - 1.3f), px(28.8f))
-                                lineTo(px(cx - 4.3f), px(27.5f))
-                                lineTo(px(cx - 1.3f), px(26.2f))
-                                close()
-                            }
-                            drawPath(star, Color(0xFFF4F5F7))
+                        for (cx in listOf(22f, 42f)) {
+                            pathA.reset()
+                            pathA.moveTo(px(cx), px(23.2f))
+                            pathA.lineTo(px(cx + 1.3f), px(26.2f))
+                            pathA.lineTo(px(cx + 4.3f), px(27.5f))
+                            pathA.lineTo(px(cx + 1.3f), px(28.8f))
+                            pathA.lineTo(px(cx), px(31.8f))
+                            pathA.lineTo(px(cx - 1.3f), px(28.8f))
+                            pathA.lineTo(px(cx - 4.3f), px(27.5f))
+                            pathA.lineTo(px(cx - 1.3f), px(26.2f))
+                            pathA.close()
+                            drawPath(pathA, Color(0xFFF4F5F7))
                             drawCircle(phaseColor, px(1.1f), pt(cx, 27.5f))
                         }
                     }
@@ -358,11 +380,10 @@ fun MascotOrbFace(
                     isWinkPose || isWhistlePose -> {
                         drawCircle(Color(0xFFF4F5F7), px(3.2f), gpt(22f, 27.5f))
                         drawCircle(phaseColor, px(1.05f), gpt(21f, 26.3f))
-                        val winkEye = Path().apply {
-                            moveTo(px(38f) + gx, px(27.6f) + gy)
-                            cubicTo(px(40f) + gx, px(24.8f) + gy, px(44f) + gx, px(24.8f) + gy, px(46f) + gx, px(27.6f) + gy)
-                        }
-                        drawPath(winkEye, Color(0xFFF4F5F7), style = Stroke(px(2.7f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(38f) + gx, px(27.6f) + gy)
+                        pathA.cubicTo(px(40f) + gx, px(24.8f) + gy, px(44f) + gx, px(24.8f) + gy, px(46f) + gx, px(27.6f) + gy)
+                        drawPath(pathA, Color(0xFFF4F5F7), style = Stroke(px(2.7f), cap = StrokeCap.Round))
                     }
                     isShadesPose -> {
                         drawRoundRect(Color(0xFF0B0E14), gpt(14.5f, 23f), Size(px(14.5f), px(9.2f)), CornerRadius(px(3f)))
@@ -374,37 +395,32 @@ fun MascotOrbFace(
                         drawLine(Color.White.copy(alpha = 0.45f), gpt(38f, 25.5f), gpt(41.5f, 29.2f), px(1.5f), cap = StrokeCap.Round)
                     }
                     isSleepPose || isZenPose || isCozyPose || isDreamPose -> {
-                        val lClosed = Path().apply {
-                            moveTo(px(17.5f) + gx, px(28.2f) + gy)
-                            cubicTo(px(19.8f) + gx, px(31.2f) + gy, px(24.2f) + gx, px(31.2f) + gy, px(26.5f) + gx, px(28.2f) + gy)
-                        }
-                        val rClosed = Path().apply {
-                            moveTo(px(37.5f) + gx, px(28.2f) + gy)
-                            cubicTo(px(39.8f) + gx, px(31.2f) + gy, px(44.2f) + gx, px(31.2f) + gy, px(46.5f) + gx, px(28.2f) + gy)
-                        }
-                        drawPath(lClosed, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
-                        drawPath(rClosed, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(17.5f) + gx, px(28.2f) + gy)
+                        pathA.cubicTo(px(19.8f) + gx, px(31.2f) + gy, px(24.2f) + gx, px(31.2f) + gy, px(26.5f) + gx, px(28.2f) + gy)
+                        pathB.reset()
+                        pathB.moveTo(px(37.5f) + gx, px(28.2f) + gy)
+                        pathB.cubicTo(px(39.8f) + gx, px(31.2f) + gy, px(44.2f) + gx, px(31.2f) + gy, px(46.5f) + gx, px(28.2f) + gy)
+                        drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     isYawnPose -> {
                         drawLine(Color(0xFFD1D5DB), gpt(17.5f, 27.8f), gpt(26.5f, 27.8f), px(2.5f), cap = StrokeCap.Round)
                         drawCircle(Color(0xFFF4F5F7), px(1.8f), gpt(22f, 29.4f))
-                        val rYawn = Path().apply {
-                            moveTo(px(38f) + gx, px(28.4f) + gy)
-                            cubicTo(px(40f) + gx, px(30.8f) + gy, px(44f) + gx, px(30.8f) + gy, px(46f) + gx, px(28.4f) + gy)
-                        }
-                        drawPath(rYawn, Color(0xFFD1D5DB), style = Stroke(px(2.5f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(38f) + gx, px(28.4f) + gy)
+                        pathA.cubicTo(px(40f) + gx, px(30.8f) + gy, px(44f) + gx, px(30.8f) + gy, px(46f) + gx, px(28.4f) + gy)
+                        drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.5f), cap = StrokeCap.Round))
                     }
                     isTeaPose -> {
-                        val lTea = Path().apply {
-                            moveTo(px(18f) + gx, px(28.2f) + gy)
-                            cubicTo(px(19.8f) + gx, px(25.2f) + gy, px(24.2f) + gx, px(25.2f) + gy, px(26f) + gx, px(28.2f) + gy)
-                        }
-                        val rTea = Path().apply {
-                            moveTo(px(38f) + gx, px(28.2f) + gy)
-                            cubicTo(px(39.8f) + gx, px(25.2f) + gy, px(44.2f) + gx, px(25.2f) + gy, px(46f) + gx, px(28.2f) + gy)
-                        }
-                        drawPath(lTea, Color(0xFFF4F5F7), style = Stroke(px(2.6f), cap = StrokeCap.Round))
-                        drawPath(rTea, Color(0xFFF4F5F7), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(18f) + gx, px(28.2f) + gy)
+                        pathA.cubicTo(px(19.8f) + gx, px(25.2f) + gy, px(24.2f) + gx, px(25.2f) + gy, px(26f) + gx, px(28.2f) + gy)
+                        pathB.reset()
+                        pathB.moveTo(px(38f) + gx, px(28.2f) + gy)
+                        pathB.cubicTo(px(39.8f) + gx, px(25.2f) + gy, px(44.2f) + gx, px(25.2f) + gy, px(46f) + gx, px(28.2f) + gy)
+                        drawPath(pathA, Color(0xFFF4F5F7), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     isStargazePose || isMoonlitPose -> {
                         drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(22f, 27.2f))
@@ -421,16 +437,14 @@ fun MascotOrbFace(
                         drawCircle(phaseColor, px(1.15f), gpt(41f, 25.9f))
                     }
                     isCalmEyes || isRechargePose || eyeState.isBlinking -> {
-                        val lCalm = Path().apply {
-                            moveTo(px(18f) + gx, px(28.2f) + gy)
-                            cubicTo(px(20f) + gx, px(30.8f) + gy, px(24f) + gx, px(30.8f) + gy, px(26f) + gx, px(28.2f) + gy)
-                        }
-                        val rCalm = Path().apply {
-                            moveTo(px(38f) + gx, px(28.2f) + gy)
-                            cubicTo(px(40f) + gx, px(30.8f) + gy, px(44f) + gx, px(30.8f) + gy, px(46f) + gx, px(28.2f) + gy)
-                        }
-                        drawPath(lCalm, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
-                        drawPath(rCalm, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(18f) + gx, px(28.2f) + gy)
+                        pathA.cubicTo(px(20f) + gx, px(30.8f) + gy, px(24f) + gx, px(30.8f) + gy, px(26f) + gx, px(28.2f) + gy)
+                        pathB.reset()
+                        pathB.moveTo(px(38f) + gx, px(28.2f) + gy)
+                        pathB.cubicTo(px(40f) + gx, px(30.8f) + gy, px(44f) + gx, px(30.8f) + gy, px(46f) + gx, px(28.2f) + gy)
+                        drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     else -> {
                         val rEye = if (isPerkPose || isStretchPose || isFlexPose || isSalutePose) px(3.2f) else px(2.9f)
@@ -455,24 +469,22 @@ fun MascotOrbFace(
                 // Dynamic Mouth
                 when {
                     isCelebration || isFlexPose || isBeastPose || isSparklePose -> {
-                        val mouth = Path().apply {
-                            moveTo(px(22.5f), px(36.5f))
-                            cubicTo(px(25.5f), px(42.5f), px(38.5f), px(42.5f), px(41.5f), px(36.5f))
-                            close()
-                        }
-                        drawPath(mouth, phaseColor.copy(alpha = 0.22f))
-                        drawPath(mouth, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(22.5f), px(36.5f))
+                        pathA.cubicTo(px(25.5f), px(42.5f), px(38.5f), px(42.5f), px(41.5f), px(36.5f))
+                        pathA.close()
+                        drawPath(pathA, phaseColor.copy(alpha = 0.22f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round, join = StrokeJoin.Round))
                     }
                     isWhistlePose -> {
                         drawCircle(phaseColor.copy(alpha = 0.2f), px(2.4f), pt(34f, 38.2f))
                         drawCircle(phaseColor, px(2.4f), pt(34f, 38.2f), style = Stroke(px(2.3f)))
                     }
                     isSmirkPose -> {
-                        val mouth = Path().apply {
-                            moveTo(px(25f), px(38.6f))
-                            cubicTo(px(29.5f), px(40f), px(35.8f), px(39f), px(40.5f), px(35.4f))
-                        }
-                        drawPath(mouth, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(25f), px(38.6f))
+                        pathA.cubicTo(px(29.5f), px(40f), px(35.8f), px(39f), px(40.5f), px(35.4f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     isYawnPose -> {
                         drawOval(phaseColor.copy(alpha = 0.18f), pt(28.9f, 35.2f), Size(px(6.2f), px(8f)))
@@ -489,32 +501,28 @@ fun MascotOrbFace(
                         drawLine(phaseColor, pt(25.5f, 38.5f), pt(38.5f, 38.5f), px(2.6f), cap = StrokeCap.Round)
                     }
                     isTeaPose || isCoffeePose || isProteinPose -> {
-                        val m = Path().apply {
-                            moveTo(px(24.5f), px(36.5f))
-                            cubicTo(px(27.2f), px(39.5f), px(33.2f), px(39.5f), px(36f), px(36.5f))
-                        }
-                        drawPath(m, phaseColor, style = Stroke(px(2.5f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(24.5f), px(36.5f))
+                        pathA.cubicTo(px(27.2f), px(39.5f), px(33.2f), px(39.5f), px(36f), px(36.5f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.5f), cap = StrokeCap.Round))
                     }
                     isShadesPose || isWinkPose || isSalutePose -> {
-                        val m = Path().apply {
-                            moveTo(px(24.5f), px(37.5f))
-                            cubicTo(px(28.5f), px(40.8f), px(36f), px(40.2f), px(40f), px(36f))
-                        }
-                        drawPath(m, phaseColor, style = Stroke(px(2.7f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(24.5f), px(37.5f))
+                        pathA.cubicTo(px(28.5f), px(40.8f), px(36f), px(40.2f), px(40f), px(36f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.7f), cap = StrokeCap.Round))
                     }
                     isNightChillPose || isZenPose || isCalmEyes || isCozyPose || isDreamPose || isMoonlitPose || isRechargePose -> {
-                        val m = Path().apply {
-                            moveTo(px(26.5f), px(37.5f))
-                            cubicTo(px(29f), px(39.8f), px(35f), px(39.8f), px(37.5f), px(37.5f))
-                        }
-                        drawPath(m, phaseColor, style = Stroke(px(2.5f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(26.5f), px(37.5f))
+                        pathA.cubicTo(px(29f), px(39.8f), px(35f), px(39.8f), px(37.5f), px(37.5f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.5f), cap = StrokeCap.Round))
                     }
                     else -> {
-                        val m = Path().apply {
-                            moveTo(px(23.5f), px(36.5f))
-                            cubicTo(px(27f), px(40.8f), px(37f), px(40.8f), px(40.5f), px(36.5f))
-                        }
-                        drawPath(m, phaseColor, style = Stroke(px(2.8f), cap = StrokeCap.Round))
+                        pathA.reset()
+                        pathA.moveTo(px(23.5f), px(36.5f))
+                        pathA.cubicTo(px(27f), px(40.8f), px(37f), px(40.8f), px(40.5f), px(36.5f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.8f), cap = StrokeCap.Round))
                     }
                 }
 
@@ -539,12 +547,11 @@ fun MascotOrbFace(
                     drawLine(phaseColor, pt(12f, 16f), pt(16f, 16f), px(1.8f), cap = StrokeCap.Round)
                 }
                 if (isSunrisePose) {
-                    val sun = Path().apply {
-                        moveTo(px(24f), px(16.5f))
-                        cubicTo(px(25.5f), px(12.2f), px(38.5f), px(12.2f), px(40f), px(16.5f))
-                    }
-                    drawPath(sun, Color(0x59FBBF24))
-                    drawPath(sun, Color(0xFFFBBF24), style = Stroke(px(1.8f), cap = StrokeCap.Round))
+                    pathA.reset()
+                    pathA.moveTo(px(24f), px(16.5f))
+                    pathA.cubicTo(px(25.5f), px(12.2f), px(38.5f), px(12.2f), px(40f), px(16.5f))
+                    drawPath(pathA, Color(0x59FBBF24))
+                    drawPath(pathA, Color(0xFFFBBF24), style = Stroke(px(1.8f), cap = StrokeCap.Round))
                     drawLine(Color(0xFFFBBF24), pt(32f, 8f), pt(32f, 10.8f), px(1.8f), cap = StrokeCap.Round)
                 }
                 if (isProteinPose) {
@@ -564,16 +571,15 @@ fun MascotOrbFace(
                     drawLine(Color(0xFFFDE68A), pt(47.5f, 16f), pt(52.5f, 16f), px(1.9f), cap = StrokeCap.Round)
                 }
                 if (isBeastPose) {
-                    val flame = Path().apply {
-                        moveTo(px(32f), px(7.5f))
-                        cubicTo(px(34.8f), px(11f), px(36.2f), px(13.2f), px(35.4f), px(15.8f))
-                        cubicTo(px(34.8f), px(17.5f), px(33.4f), px(18.4f), px(32f), px(18.4f))
-                        cubicTo(px(30.6f), px(18.4f), px(29.2f), px(17.5f), px(28.6f), px(15.8f))
-                        cubicTo(px(27.8f), px(13.2f), px(29.2f), px(11f), px(32f), px(7.5f))
-                        close()
-                    }
-                    drawPath(flame, phaseColor.copy(alpha = 0.9f))
-                    drawPath(flame, Color(0xFFFDE68A), style = Stroke(px(1.2f)))
+                    pathA.reset()
+                    pathA.moveTo(px(32f), px(7.5f))
+                    pathA.cubicTo(px(34.8f), px(11f), px(36.2f), px(13.2f), px(35.4f), px(15.8f))
+                    pathA.cubicTo(px(34.8f), px(17.5f), px(33.4f), px(18.4f), px(32f), px(18.4f))
+                    pathA.cubicTo(px(30.6f), px(18.4f), px(29.2f), px(17.5f), px(28.6f), px(15.8f))
+                    pathA.cubicTo(px(27.8f), px(13.2f), px(29.2f), px(11f), px(32f), px(7.5f))
+                    pathA.close()
+                    drawPath(pathA, phaseColor.copy(alpha = 0.9f))
+                    drawPath(pathA, Color(0xFFFDE68A), style = Stroke(px(1.2f)))
                 }
                 if (isSweatPose || isHydratePose || isFocusedEyes) {
                     drawCircle(Color(0xFF38BDF8), px(3.2f), pt(50f, 20f))
@@ -634,8 +640,9 @@ fun TodayMascot(
     mascot: MascotUiState,
     eyeStateFlow: StateFlow<MascotEyeState>,
     voiceEnabled: Boolean,
-    orbVisibleAlpha: Float = 1f,
-    onHomeOrbBoundsChanged: (Rect) -> Unit = {},
+    orbVisibleAlpha: () -> Float = { 1f },
+    orbAnimActive: Boolean = true,
+    homeOrbBoundsHolder: OrbBoundsHolder? = null,
     onTapMascot: () -> Unit,
     onReplayVoice: () -> Unit,
     modifier: Modifier = Modifier
@@ -653,7 +660,7 @@ fun TodayMascot(
                 tokens = tokens,
                 subtle = true,
                 borderOverride = phaseColor.copy(alpha = 0.28f),
-                radiusOverride = 18.dp
+                radiusOverride = tokens.bubbleRadius
             )
             .clickable(onClick = onTapMascot)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -665,12 +672,20 @@ fun TodayMascot(
                 .size(62.dp)
                 .onGloballyPositioned { coords ->
                     if (coords.isAttached) {
-                        onHomeOrbBoundsChanged(coords.boundsInRoot())
+                        val rect = coords.boundsInRoot()
+                        if (rect.width > 10f) {
+                            homeOrbBoundsHolder?.rect = rect
+                        }
                     }
                 }
-                .graphicsLayer { alpha = orbVisibleAlpha }
+                .graphicsLayer { alpha = orbVisibleAlpha() }
         ) {
-            MascotOrbFace(mascot = mascot, eyeStateFlow = eyeStateFlow, size = 62.dp)
+            MascotOrbFace(
+                mascot = mascot,
+                eyeStateFlow = eyeStateFlow,
+                size = 62.dp,
+                animActive = orbAnimActive
+            )
         }
 
         Column(modifier = Modifier.weight(1f)) {
@@ -731,12 +746,17 @@ fun FloatingMascotDock(
     anchorSideRight: Boolean,
     anchorYRatio: Float,
     shouldFloat: Boolean,
-    morphProgress: Float,
-    homeOrbBoundsInRoot: Rect?,
+    morphProgressState: State<Float>,
+    homeOrbBoundsHolder: OrbBoundsHolder,
+    animActive: Boolean = true,
     onTapOrb: () -> Unit,
     onSaveAnchor: (sideRight: Boolean, yRatio: Float) -> Unit
 ) {
-    if (!shouldFloat && morphProgress <= 0.01f) return
+    val isDockActive by remember(shouldFloat) {
+        derivedStateOf { shouldFloat || morphProgressState.value > 0.01f }
+    }
+    if (!isDockActive) return
+
     val tokens = LocalIronPulseTokens.current
     val noAnim = tokens.performance.noAnimations
     val density = LocalDensity.current
@@ -745,7 +765,7 @@ fun FloatingMascotDock(
     }
 
     var bubbleOpen by remember { mutableStateOf(false) }
-    var dockOriginInRoot by remember { mutableStateOf(Offset.Zero) }
+    val dockOriginHolder = remember { DockOriginHolder() }
 
     LaunchedEffect(shouldFloat) {
         if (!shouldFloat) bubbleOpen = false
@@ -756,7 +776,7 @@ fun FloatingMascotDock(
             .fillMaxSize()
             .onGloballyPositioned { coords ->
                 if (coords.isAttached) {
-                    dockOriginInRoot = coords.positionInRoot()
+                    dockOriginHolder.origin = coords.positionInRoot()
                 }
             }
     ) {
@@ -775,42 +795,55 @@ fun FloatingMascotDock(
         var dragX by remember(targetX, dragging) { mutableFloatStateOf(targetX) }
         var dragY by remember(targetY, dragging) { mutableFloatStateOf(targetY) }
 
-        val edgeDisplayX by animateFloatAsState(
+        val edgeDisplayXState = animateFloatAsState(
             targetValue = if (dragging) dragX else targetX,
             animationSpec = if (dragging || noAnim) tween(0) else IronPulseMotion.OrbSnapSpring,
             label = "orbX"
         )
-        val edgeDisplayY by animateFloatAsState(
+        val edgeDisplayYState = animateFloatAsState(
             targetValue = if (dragging) dragY else targetY,
             animationSpec = if (dragging || noAnim) tween(0) else IronPulseMotion.OrbSnapSpring,
             label = "orbY"
         )
-        val dragScale by animateFloatAsState(
+        val dragScaleState = animateFloatAsState(
             targetValue = if (dragging && !noAnim) 1.09f else 1f,
             animationSpec = IronPulseMotion.OrbSnapSpring,
             label = "orbDragScale"
         )
 
-        val t = morphProgress.coerceIn(0f, 1f)
-        val hasHomeBounds = homeOrbBoundsInRoot != null && !homeOrbBoundsInRoot.isEmpty && homeOrbBoundsInRoot.width > 10f
-        val homeX = if (hasHomeBounds) (homeOrbBoundsInRoot!!.left - dockOriginInRoot.x) else edgeDisplayX
-        val homeY = if (hasHomeBounds) (homeOrbBoundsInRoot!!.top - dockOriginInRoot.y) else edgeDisplayY
-        val homeScale = if (hasHomeBounds) (homeOrbBoundsInRoot!!.width / orbSizePx).coerceIn(0.85f, 1.35f) else 0.72f
-
-        val orbX = if (dragging) edgeDisplayX else lerp(homeX, edgeDisplayX, t)
-        val arcOffset = if (dragging || !hasHomeBounds || noAnim) 0f else arcLiftPx * sin(t * PI).toFloat()
-        val orbY = (if (dragging) edgeDisplayY else lerp(homeY, edgeDisplayY, t)) - arcOffset
-        val orbScale = lerp(homeScale, dragScale, t)
-        val orbAlpha = if (hasHomeBounds) 1f else t
-
-        // Anchored, organic spring speech bubble next to floating orb
         val bubbleW = with(density) { 252.dp.toPx() }
         var measuredBubbleH by remember { mutableIntStateOf(with(density) { 92.dp.toPx().toInt() }) }
-        val bubbleVisible = bubbleOpen && shouldFloat && t > 0.72f && !dragging
+        val bubbleVisible by remember(shouldFloat) {
+            derivedStateOf { bubbleOpen && shouldFloat && !dragging && morphProgressState.value > 0.72f }
+        }
+        val orbInteractive by remember(shouldFloat) {
+            derivedStateOf { shouldFloat && morphProgressState.value > 0.4f }
+        }
         val bubbleOrigin = remember(anchorSideRight) {
             TransformOrigin(pivotFractionX = if (anchorSideRight) 1f else 0f, pivotFractionY = 0.5f)
         }
 
+        fun computeOrbX(): Float {
+            val edgeX = edgeDisplayXState.value
+            if (dragging) return edgeX
+            val bounds = homeOrbBoundsHolder.rect
+            val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
+            val homeX = if (hasBounds) (bounds!!.left - dockOriginHolder.origin.x) else edgeX
+            return lerp(homeX, edgeX, morphProgressState.value.coerceIn(0f, 1f))
+        }
+
+        fun computeOrbY(): Float {
+            val edgeY = edgeDisplayYState.value
+            if (dragging) return edgeY
+            val t = morphProgressState.value.coerceIn(0f, 1f)
+            val bounds = homeOrbBoundsHolder.rect
+            val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
+            val homeY = if (hasBounds) (bounds!!.top - dockOriginHolder.origin.y) else edgeY
+            val arcOffset = if (!hasBounds || noAnim) 0f else arcLiftPx * sin(t * PI).toFloat()
+            return lerp(homeY, edgeY, t) - arcOffset
+        }
+
+        // Anchored, organic spring speech bubble next to floating orb
         AnimatedVisibility(
             visible = bubbleVisible,
             enter = if (noAnim) {
@@ -828,6 +861,8 @@ fun FloatingMascotDock(
                     slideOutHorizontally(tween(150)) { if (anchorSideRight) 16 else -16 }
             },
             modifier = Modifier.graphicsLayer {
+                val orbX = computeOrbX()
+                val orbY = computeOrbY()
                 val bx = if (anchorSideRight) {
                     (orbX - bubbleW - 10f).coerceAtLeast(marginPx)
                 } else {
@@ -846,7 +881,8 @@ fun FloatingMascotDock(
                     .ironGlassSurface(
                         tokens = tokens,
                         borderOverride = phaseColor.copy(alpha = 0.45f),
-                        radiusOverride = 18.dp
+                        radiusOverride = tokens.bubbleRadius,
+                        blurOverChrome = true
                     )
                     .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.BubbleSizeSpring))
                     .padding(13.dp)
@@ -904,17 +940,22 @@ fun FloatingMascotDock(
         Box(
             modifier = Modifier
                 .graphicsLayer {
-                    translationX = orbX
-                    translationY = orbY
-                    scaleX = orbScale
-                    scaleY = orbScale
-                    alpha = orbAlpha
+                    val t = morphProgressState.value.coerceIn(0f, 1f)
+                    val bounds = homeOrbBoundsHolder.rect
+                    val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
+                    val homeScale = if (hasBounds) (bounds!!.width / orbSizePx).coerceIn(0.85f, 1.35f) else 0.72f
+                    val scale = lerp(homeScale, dragScaleState.value, t)
+                    translationX = computeOrbX()
+                    translationY = computeOrbY()
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = if (hasBounds) 1f else t
                     transformOrigin = TransformOrigin(0f, 0f)
                 }
                 .size(56.dp)
                 .tactilePress(pressedScale = 0.92f, disabledByPerf = noAnim || !shouldFloat)
                 .then(
-                    if (shouldFloat && t > 0.4f) {
+                    if (orbInteractive) {
                         Modifier
                             .pointerInput(widthPx, heightPx) {
                                 val velocityTracker = VelocityTracker()
@@ -953,7 +994,12 @@ fun FloatingMascotDock(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            MascotOrbFace(mascot = mascot, eyeStateFlow = eyeStateFlow, size = 54.dp)
+            MascotOrbFace(
+                mascot = mascot,
+                eyeStateFlow = eyeStateFlow,
+                size = 54.dp,
+                animActive = animActive
+            )
         }
     }
 }

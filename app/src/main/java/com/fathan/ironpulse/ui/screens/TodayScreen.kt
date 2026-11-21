@@ -48,16 +48,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,16 +74,20 @@ import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
+import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.TodayMascot
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
@@ -97,8 +101,9 @@ fun TodayScreen(
     clockSecondsFlow: StateFlow<Long>,
     restTimerFlow: StateFlow<RestTimerDisplayState>,
     mascotEyeFlow: StateFlow<MascotEyeState>,
-    homeOrbAlpha: Float = 1f,
-    onHomeOrbBoundsChanged: (Rect) -> Unit = {},
+    homeOrbAlphaProvider: () -> Float = { 1f },
+    homeOrbAnimActive: Boolean = true,
+    homeOrbBoundsHolder: OrbBoundsHolder? = null,
     onTapMascot: () -> Unit,
     onReplayMascotVoice: () -> Unit,
     onStartRestPreset: (Int, String?) -> Unit,
@@ -176,7 +181,7 @@ fun TodayScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         // 1. HERO BANNER CARD
-        item(key = "hero_banner") {
+        item(key = "hero_banner", contentType = "hero") {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -187,9 +192,8 @@ fun TodayScreen(
                         bitmap = heroBitmap,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .alpha(0.15f)
+                        alpha = 0.15f,
+                        modifier = Modifier.matchParentSize()
                     )
                 }
 
@@ -197,11 +201,12 @@ fun TodayScreen(
                     modifier = Modifier
                         .matchParentSize()
                         .drawWithCache {
+                            val scrimAlpha = tokens.heroScrimAlpha
                             val gradient = Brush.linearGradient(
                                 colors = listOf(
-                                    tokens.phaseTokens.heroStart,
-                                    tokens.phaseTokens.heroMid,
-                                    tokens.phaseTokens.heroEnd
+                                    tokens.phaseTokens.heroStart.copy(alpha = tokens.phaseTokens.heroStart.alpha * scrimAlpha),
+                                    tokens.phaseTokens.heroMid.copy(alpha = tokens.phaseTokens.heroMid.alpha * scrimAlpha),
+                                    tokens.phaseTokens.heroEnd.copy(alpha = tokens.phaseTokens.heroEnd.alpha * scrimAlpha)
                                 )
                             )
                             val cx = size.width * 0.84f
@@ -315,15 +320,16 @@ fun TodayScreen(
                         mascot = state.mascot,
                         eyeStateFlow = mascotEyeFlow,
                         voiceEnabled = state.appPrefs.mascotVoiceEnabled,
-                        orbVisibleAlpha = homeOrbAlpha,
-                        onHomeOrbBoundsChanged = onHomeOrbBoundsChanged,
+                        orbVisibleAlpha = homeOrbAlphaProvider,
+                        orbAnimActive = homeOrbAnimActive,
+                        homeOrbBoundsHolder = homeOrbBoundsHolder,
                         onTapMascot = onTapMascot,
                         onReplayVoice = onReplayMascotVoice
                     )
 
                     // Daily Progress Metrics + Animated Bar
                     if (activeSchedule?.isGymDay == true && activeSchedule.exercises.isNotEmpty()) {
-                        val animatedBarFraction by animateFloatAsState(
+                        val animatedBarState = animateFloatAsState(
                             targetValue = (summary.progressPct / 100f).coerceIn(0f, 1f),
                             animationSpec = if (noAnim) tween(0) else tween(320),
                             label = "todayProgressBar"
@@ -380,8 +386,12 @@ fun TodayScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth(animatedBarFraction)
+                                        .fillMaxWidth()
                                         .height(8.dp)
+                                        .graphicsLayer {
+                                            scaleX = animatedBarState.value
+                                            transformOrigin = TransformOrigin(0f, 0.5f)
+                                        }
                                         .clip(RoundedCornerShape(999.dp))
                                         .background(tokens.accentColor)
                                 )
@@ -393,7 +403,7 @@ fun TodayScreen(
         }
 
         // 2. ISOLATED STANDALONE REST TIMER CARD
-        item(key = "rest_timer_card") {
+        item(key = "rest_timer_card", contentType = "rest_timer") {
             RestTimerHeroCard(
                 restTimerFlow = restTimerFlow,
                 secUnit = secUnit,
@@ -406,10 +416,12 @@ fun TodayScreen(
 
         // 3. PRIMARY START WORKOUT CTA
         if (activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()) {
-            item(key = "start_workout_cta") {
+            item(key = "start_workout_cta", contentType = "cta") {
+                val ctaRadius = (tokens.cardRadius * 0.78f).coerceAtLeast(10.dp)
+                val ctaShape = RoundedCornerShape(ctaRadius)
                 Surface(
                     onClick = { onOpenWorkout(null) },
-                    shape = RoundedCornerShape(18.dp),
+                    shape = ctaShape,
                     color = tokens.accentColor,
                     contentColor = tokens.onAccentColor,
                     modifier = Modifier
@@ -419,6 +431,20 @@ fun TodayScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .then(
+                                if (tokens.buttonHasGloss) {
+                                    Modifier.background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color.White.copy(alpha = 0.30f),
+                                            0.47f to Color.White.copy(alpha = 0.06f),
+                                            0.50f to Color.Transparent,
+                                            1.0f to Color.Black.copy(alpha = 0.14f)
+                                        )
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -476,7 +502,7 @@ fun TodayScreen(
 
         // 4. REST DAY / EMPTY / FLATTENED RECYCLABLE EXERCISE OVERVIEW
         if (activeSchedule != null && !activeSchedule.isGymDay) {
-            item(key = "rest_day_card") {
+            item(key = "rest_day_card", contentType = "rest_day") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -526,7 +552,7 @@ fun TodayScreen(
                 }
             }
         } else if (activeSchedule != null && activeSchedule.exercises.isEmpty()) {
-            item(key = "empty_exercises_card") {
+            item(key = "empty_exercises_card", contentType = "empty") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -572,7 +598,7 @@ fun TodayScreen(
                 }
             }
         } else if (todayEntries.isNotEmpty()) {
-            item(key = "overview_header") {
+            item(key = "overview_header", contentType = "header") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -596,7 +622,11 @@ fun TodayScreen(
                 }
             }
 
-            itemsIndexed(todayEntries, key = { _, e -> e.exerciseId }) { idx, entry ->
+            itemsIndexed(
+                items = todayEntries,
+                key = { _, e -> e.exerciseId },
+                contentType = { _, _ -> "exercise_row" }
+            ) { idx, entry ->
                 val spec = specById[entry.exerciseId]
                 val mode = spec?.trackingMode ?: entry.trackingMode
                 val targetDur = GymModelHelpers.resolveTargetDurationSeconds(
@@ -615,15 +645,25 @@ fun TodayScreen(
                     "${entry.sets.size} set"
                 }
 
+                val itemOrderLabel = remember(idx) { "${(idx + 1).toString().padStart(2, '0')}." }
+                val itemSubtitle = remember(entry.muscleGroup, spec?.equipment, targetBadge, lang) {
+                    listOfNotNull(
+                        entry.muscleGroup.label(lang),
+                        spec?.equipment?.takeIf { it.isNotBlank() },
+                        targetBadge
+                    ).joinToString(" · ")
+                }
+                val itemBorderOverride = remember(allDone) { if (allDone) Color(0x6616A34A) else null }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateItem()
+                        .then(if (noAnim) Modifier else Modifier.animateItem())
                         .tactilePress(pressedScale = 0.98f, disabledByPerf = noAnim)
                         .ironGlassSurface(
                             tokens = tokens,
                             subtle = !allDone,
-                            borderOverride = if (allDone) Color(0x6616A34A) else null,
+                            borderOverride = itemBorderOverride,
                             radiusOverride = 16.dp
                         )
                         .clickable { onOpenWorkout(entry.exerciseId) }
@@ -637,7 +677,7 @@ fun TodayScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "${(idx + 1).toString().padStart(2, '0')}.",
+                                text = itemOrderLabel,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -654,11 +694,7 @@ fun TodayScreen(
                         }
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = listOfNotNull(
-                                entry.muscleGroup.label(lang),
-                                spec?.equipment?.takeIf { it.isNotBlank() },
-                                targetBadge
-                            ).joinToString(" · "),
+                            text = itemSubtitle,
                             fontSize = 12.sp,
                             color = tokens.mutedTextColor,
                             maxLines = 1,
@@ -704,8 +740,15 @@ private fun TodayLongDateLabel(
     lang: AppLanguage,
     accentColor: Color
 ) {
-    val clockSeconds by clockSecondsFlow.collectAsStateWithLifecycle()
-    val minuteBucket = clockSeconds / 60L
+    val tabActive = LocalTabActive.current
+    val minuteBucketFlow = remember(clockSecondsFlow) {
+        clockSecondsFlow.map { it / 60L }.distinctUntilChanged()
+    }
+    val minuteBucket = if (tabActive) {
+        minuteBucketFlow.collectAsStateWithLifecycle(initialValue = clockSecondsFlow.value / 60L).value
+    } else {
+        remember(clockSecondsFlow) { clockSecondsFlow.value / 60L }
+    }
     val formatted = remember(minuteBucket, lang) {
         GymModelHelpers.formatLongTodayDate(Date(minuteBucket * 60_000L), lang)
     }
@@ -726,13 +769,20 @@ private fun NextAlarmStatusBar(
     lang: AppLanguage
 ) {
     val tokens = LocalIronPulseTokens.current
-    val clockSeconds by clockSecondsFlow.collectAsStateWithLifecycle()
-    val halfMinuteBucket = clockSeconds / 30L
+    val tabActive = LocalTabActive.current
+    val halfMinuteFlow = remember(clockSecondsFlow) {
+        clockSecondsFlow.map { it / 30L }.distinctUntilChanged()
+    }
+    val halfMinuteBucket = if (tabActive) {
+        halfMinuteFlow.collectAsStateWithLifecycle(initialValue = clockSecondsFlow.value / 30L).value
+    } else {
+        remember(clockSecondsFlow) { clockSecondsFlow.value / 30L }
+    }
     val nextAlarm = remember(schedules, halfMinuteBucket, lang) {
         GymModelHelpers.computeNextAlarm(schedules, lang)
     }
     val nextCountdown = remember(nextAlarm, halfMinuteBucket, lang) {
-        nextAlarm?.let { formatNextCountdown(it.triggerAtMillis, clockSeconds * 1000L, lang) } ?: ""
+        nextAlarm?.let { formatNextCountdown(it.triggerAtMillis, halfMinuteBucket * 30_000L, lang) } ?: ""
     }
 
     Row(
@@ -825,6 +875,9 @@ private fun RestTimerHeroCard(
         else -> null
     }
 
+    val buttonShape = remember(tokens.buttonRadius) { RoundedCornerShape(tokens.buttonRadius) }
+    val presetChipShape = remember { RoundedCornerShape(10.dp) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -836,7 +889,12 @@ private fun RestTimerHeroCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(modifier = Modifier.size(90.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(90.dp)
+                    .graphicsLayer { },
+                contentAlignment = Alignment.Center
+            ) {
                 val ringColor = if (restRemaining == 0) Color(0xFF16A34A) else tokens.accentColor
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val stroke = 6.dp.toPx()
@@ -914,7 +972,7 @@ private fun RestTimerHeroCard(
                         .weight(1f)
                         .height(38.dp)
                         .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(presetChipShape)
                         .background(
                             if (activePreset) tokens.accentColor.copy(alpha = 0.16f)
                             else tokens.wellBg
@@ -922,7 +980,7 @@ private fun RestTimerHeroCard(
                         .border(
                             1.dp,
                             if (activePreset) tokens.accentColor else tokens.subtleBorderColor,
-                            RoundedCornerShape(10.dp)
+                            presetChipShape
                         )
                         .clickable { onStartRestPreset(sec, restLabel.ifBlank { null }) },
                     contentAlignment = Alignment.Center
@@ -946,7 +1004,7 @@ private fun RestTimerHeroCard(
         ) {
             OutlinedButton(
                 onClick = { onAdjustRest(-15) },
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp),
                 modifier = Modifier
@@ -958,7 +1016,7 @@ private fun RestTimerHeroCard(
 
             Button(
                 onClick = onToggleRestPauseOrStart,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = tokens.accentColor,
                     contentColor = tokens.onAccentColor
@@ -987,7 +1045,7 @@ private fun RestTimerHeroCard(
 
             OutlinedButton(
                 onClick = { onAdjustRest(15) },
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp),
                 modifier = Modifier
@@ -999,7 +1057,7 @@ private fun RestTimerHeroCard(
 
             Surface(
                 onClick = onResetRest,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = buttonShape,
                 color = tokens.controlBg,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 modifier = Modifier

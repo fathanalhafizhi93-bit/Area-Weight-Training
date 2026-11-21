@@ -42,3 +42,11 @@
     volatile <fields>;
 }
 -dontwarn kotlinx.coroutines.**
+
+# R8 Release APK optimization: strip debug/verbose logs & formatting overhead
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

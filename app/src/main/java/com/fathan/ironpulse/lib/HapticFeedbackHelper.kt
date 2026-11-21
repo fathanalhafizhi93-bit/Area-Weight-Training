@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import java.util.concurrent.Executors
 
 class HapticFeedbackHelper(context: Context) {
 
@@ -13,51 +14,80 @@ class HapticFeedbackHelper(context: Context) {
     @Volatile
     var enabled: Boolean = true
 
+    @Volatile
     private var lastRoutineTapAt: Long = 0L
 
-    private fun getVibrator(): Vibrator? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    private val executor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "ironpulse-haptics").apply { isDaemon = true }
+    }
+
+    private val vibratorCaps: VibratorCaps by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             appContext.getSystemService(VibratorManager::class.java)?.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
             appContext.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
+        val hasVib = runCatching { vib?.hasVibrator() == true }.getOrDefault(false)
+        val hasAmp = if (hasVib && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            runCatching { vib?.hasAmplitudeControl() == true }.getOrDefault(false)
+        } else {
+            false
+        }
+        VibratorCaps(vib, hasVib, hasAmp)
     }
+
+    private data class VibratorCaps(
+        val vibrator: Vibrator?,
+        val hasVibrator: Boolean,
+        val hasAmplitudeControl: Boolean
+    )
 
     private fun vibrateOneShot(durationMs: Long, amplitude: Int) {
         if (!enabled) return
-        runCatching {
-            val vib = getVibrator() ?: return
-            if (!vib.hasVibrator()) return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val safeAmp = if (vib.hasAmplitudeControl()) amplitude.coerceIn(1, 255) else VibrationEffect.DEFAULT_AMPLITUDE
-                vib.vibrate(VibrationEffect.createOneShot(durationMs, safeAmp))
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(durationMs)
+        executor.execute {
+            runCatching {
+                val caps = vibratorCaps
+                val vib = caps.vibrator ?: return@execute
+                if (!caps.hasVibrator) return@execute
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val safeAmp = if (caps.hasAmplitudeControl) {
+                        amplitude.coerceIn(1, 255)
+                    } else {
+                        VibrationEffect.DEFAULT_AMPLITUDE
+                    }
+                    vib.vibrate(VibrationEffect.createOneShot(durationMs, safeAmp))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vib.vibrate(durationMs)
+                }
             }
         }
     }
 
     private fun vibrateWaveform(timings: LongArray, amplitudes: IntArray) {
         if (!enabled) return
-        runCatching {
-            val vib = getVibrator() ?: return
-            if (!vib.hasVibrator()) return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (vib.hasAmplitudeControl()) {
-                    vib.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+        executor.execute {
+            runCatching {
+                val caps = vibratorCaps
+                val vib = caps.vibrator ?: return@execute
+                if (!caps.hasVibrator) return@execute
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if (caps.hasAmplitudeControl) {
+                        vib.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+                    } else {
+                        vib.vibrate(VibrationEffect.createWaveform(timings, -1))
+                    }
                 } else {
-                    vib.vibrate(VibrationEffect.createWaveform(timings, -1))
+                    @Suppress("DEPRECATION")
+                    vib.vibrate(timings, -1)
                 }
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(timings, -1)
             }
         }
     }
 
     fun buttonTap() {
+        if (!enabled) return
         val now = System.currentTimeMillis()
         if (now - lastRoutineTapAt < 28L) return
         lastRoutineTapAt = now

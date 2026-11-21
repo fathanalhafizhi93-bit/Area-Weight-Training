@@ -1,5 +1,6 @@
 package com.fathan.ironpulse.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -28,11 +29,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,17 +69,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -85,6 +91,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -94,7 +101,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.AppLanguage
-import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -125,34 +131,37 @@ fun LaunchIntroOverlay(
     }
 
     var started by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { started = true }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        started = true
+    }
     val noAnim = tokens.performance.noAnimations
-    val lineScale by animateFloatAsState(
+    val lineScaleState = animateFloatAsState(
         targetValue = if (started) 1f else 0.05f,
         animationSpec = if (noAnim) tween(0) else tween(480, easing = FastOutSlowInEasing),
         label = "launchRule"
     )
-    val heroScale by animateFloatAsState(
+    val heroScaleState = animateFloatAsState(
         targetValue = if (started) 1f else 0.90f,
         animationSpec = if (noAnim) tween(0) else IronPulseMotion.MorphSpring,
         label = "launchHeroScale"
     )
-    val heroAlpha by animateFloatAsState(
+    val heroAlphaState = animateFloatAsState(
         targetValue = if (started) 1f else 0f,
         animationSpec = if (noAnim) tween(0) else tween(320),
         label = "launchHeroAlpha"
     )
-    val haloScale = if (noAnim) {
-        1f
+    val staticOne = remember { mutableFloatStateOf(1f) }
+    val haloScaleState: State<Float> = if (noAnim) {
+        staticOne
     } else {
         val infinite = rememberInfiniteTransition(label = "splashHalo")
-        val s by infinite.animateFloat(
+        infinite.animateFloat(
             initialValue = 0.92f,
             targetValue = 1.12f,
             animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
             label = "haloPulse"
         )
-        s
     }
 
     Box(
@@ -168,34 +177,37 @@ fun LaunchIntroOverlay(
             .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 28.dp)
     ) {
-        // Soft radial accent glow behind emblem
-        Canvas(
+        // Cached GPU radial glow behind emblem (zero per-frame allocations)
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = haloScale
-                    scaleY = haloScale
+                    val s = haloScaleState.value
+                    scaleX = s
+                    scaleY = s
                 }
-        ) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        tokens.accentColor.copy(alpha = 0.16f),
-                        tokens.phaseTokens.glowPrimary.copy(alpha = 0.08f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.35f, size.height * 0.50f),
-                    radius = size.minDimension * 0.55f
-                )
-            )
-        }
+                .drawWithCache {
+                    val glowBrush = Brush.radialGradient(
+                        colors = listOf(
+                            tokens.accentColor.copy(alpha = 0.16f),
+                            tokens.phaseTokens.glowPrimary.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.35f, size.height * 0.50f),
+                        radius = size.minDimension * 0.55f
+                    )
+                    onDrawBehind {
+                        drawCircle(brush = glowBrush)
+                    }
+                }
+        )
 
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Top Hairline Orientation Strip
-            Column(modifier = Modifier.graphicsLayer { alpha = heroAlpha }) {
+            Column(modifier = Modifier.graphicsLayer { alpha = heroAlphaState.value }) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -224,39 +236,48 @@ fun LaunchIntroOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .graphicsLayer {
-                        scaleX = heroScale
-                        scaleY = heroScale
-                        alpha = heroAlpha
+                        val s = heroScaleState.value
+                        scaleX = s
+                        scaleY = s
+                        alpha = heroAlphaState.value
                     }
             ) {
                 Row(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Geometric "F" Mark
-                    Canvas(modifier = Modifier.size(54.dp, 60.dp)) {
-                        val sx = size.width / 88f
-                        val sy = size.height / 96f
-                        val body = Path().apply {
-                            moveTo(8f * sx, 10f * sy)
-                            cubicTo(8f * sx, 6.68f * sy, 10.68f * sx, 4f * sy, 14f * sx, 4f * sy)
-                            lineTo(80f * sx, 4f * sy)
-                            lineTo(70f * sx, 22f * sy)
-                            lineTo(28f * sx, 22f * sy)
-                            lineTo(28f * sx, 92f * sy)
-                            lineTo(8f * sx, 92f * sy)
-                            close()
-                        }
-                        val bar = Path().apply {
-                            moveTo(28f * sx, 42f * sy)
-                            lineTo(68f * sx, 42f * sy)
-                            lineTo(59f * sx, 58f * sy)
-                            lineTo(28f * sx, 58f * sy)
-                            close()
-                        }
-                        drawPath(body, tokens.palette.onSurface)
-                        drawPath(bar, tokens.accentColor)
-                    }
+                    // Geometric "F" Mark (cached Paths)
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp, 60.dp)
+                            .drawWithCache {
+                                val sx = size.width / 88f
+                                val sy = size.height / 96f
+                                val body = Path().apply {
+                                    moveTo(8f * sx, 10f * sy)
+                                    cubicTo(8f * sx, 6.68f * sy, 10.68f * sx, 4f * sy, 14f * sx, 4f * sy)
+                                    lineTo(80f * sx, 4f * sy)
+                                    lineTo(70f * sx, 22f * sy)
+                                    lineTo(28f * sx, 22f * sy)
+                                    lineTo(28f * sx, 92f * sy)
+                                    lineTo(8f * sx, 92f * sy)
+                                    close()
+                                }
+                                val bar = Path().apply {
+                                    moveTo(28f * sx, 42f * sy)
+                                    lineTo(68f * sx, 42f * sy)
+                                    lineTo(59f * sx, 58f * sy)
+                                    lineTo(28f * sx, 58f * sy)
+                                    close()
+                                }
+                                val bodyColor = tokens.palette.onSurface
+                                val barColor = tokens.accentColor
+                                onDrawBehind {
+                                    drawPath(body, bodyColor)
+                                    drawPath(bar, barColor)
+                                }
+                            }
+                    )
 
                     Column {
                         Row {
@@ -296,14 +317,17 @@ fun LaunchIntroOverlay(
                         .fillMaxWidth()
                         .height(3.dp)
                         .graphicsLayer {
-                            scaleX = lineScale
+                            scaleX = lineScaleState.value
                             transformOrigin = TransformOrigin(0f, 0.5f)
                         }
-                        .background(
-                            Brush.horizontalGradient(
+                        .drawWithCache {
+                            val ruleBrush = Brush.horizontalGradient(
                                 listOf(tokens.accentColor, tokens.accentColor.copy(alpha = 0.45f), Color.Transparent)
                             )
-                        )
+                            onDrawBehind {
+                                drawRect(ruleBrush)
+                            }
+                        }
                 )
             }
 
@@ -339,15 +363,38 @@ fun NamePromptModal(
     var nameInput by remember(initialName) { mutableStateOf(initialName) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
-    Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    BackHandler { /* Name prompt requires entry */ }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.56f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
+                .widthIn(max = 460.dp)
                 .fillMaxWidth()
                 .fluidModalEntrance(tokens.performance.noAnimations)
-                .ironGlassSurface(tokens, borderOverride = tokens.accentColor.copy(alpha = 0.35f))
+                .ironGlassSurface(
+                    tokens = tokens,
+                    borderOverride = tokens.accentColor.copy(alpha = 0.35f),
+                    blurOverChrome = true
+                )
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                )
                 .padding(22.dp)
         ) {
             Row(
@@ -565,16 +612,35 @@ fun FeatureTutorialModal(
     }
     var confirmSkip by remember { mutableStateOf(false) }
 
-    Dialog(
-        onDismissRequest = { confirmSkip = true },
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    BackHandler {
+        if (!confirmSkip) confirmSkip = true else onComplete()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.56f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { confirmSkip = true }
+            )
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 18.dp, vertical = 24.dp)
+                .widthIn(max = 500.dp)
                 .fillMaxWidth()
                 .fluidModalEntrance(tokens.performance.noAnimations)
-                .ironGlassSurface(tokens)
+                .ironGlassSurface(tokens, blurOverChrome = true)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                )
                 .then(
                     if (tokens.performance.noAnimations) Modifier
                     else Modifier.animateContentSize(IronPulseMotion.FluidCardSpring)
@@ -918,12 +984,37 @@ fun CooldownAlertModal(
     val cooldownRemaining by cooldownSecondsFlow.collectAsStateWithLifecycle()
     val progress = (cooldownRemaining.coerceIn(0, 30) / 30f)
 
-    Dialog(onDismissRequest = onDismiss) {
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.56f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            )
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Column(
             modifier = Modifier
+                .widthIn(max = 460.dp)
                 .fillMaxWidth()
                 .fluidModalEntrance(tokens.performance.noAnimations)
-                .ironGlassSurface(tokens, borderOverride = Color(0x73F59E0B))
+                .ironGlassSurface(
+                    tokens = tokens,
+                    borderOverride = Color(0x73F59E0B),
+                    blurOverChrome = true
+                )
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                )
                 .padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -1033,17 +1124,41 @@ fun CooldownAlertModal(
 fun AboutDialog(onDismiss: () -> Unit) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
+    val context = LocalContext.current
+    val appVersionLabel = remember(context) {
+        val raw = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty().ifBlank { "1.0.0-beta" }
+        "v${raw.replace('-', ' ')}"
+    }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.56f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            )
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 18.dp, vertical = 24.dp)
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .fluidModalEntrance(tokens.performance.noAnimations)
-                .ironGlassSurface(tokens)
+                .ironGlassSurface(tokens, blurOverChrome = true)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                )
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1053,12 +1168,21 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "About IronPulse",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = tokens.palette.onSurface
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "About IronPulse",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = tokens.palette.onSurface
+                    )
+                    Text(
+                        text = appVersionLabel,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.Monospace,
+                        color = tokens.accentColor
+                    )
+                }
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Rounded.Close, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant)
                 }

@@ -63,7 +63,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -94,6 +93,7 @@ fun ScheduleScreen(
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
+    val noAnim = tokens.performance.noAnimations
     val activeGymDaysCount = remember(state.schedules) {
         DayKey.entries.count { state.schedules[it]?.isGymDay == true }
     }
@@ -115,7 +115,7 @@ fun ScheduleScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         // Header
-        item(key = "schedule_header") {
+        item(key = "schedule_header", contentType = "header") {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -154,7 +154,7 @@ fun ScheduleScreen(
             }
         }
 
-        items(DayKey.entries, key = { it.key }) { day ->
+        items(DayKey.entries, key = { it.key }, contentType = { "day_card" }) { day ->
             val sched = state.schedules[day] ?: return@items
             DayScheduleCard(
                 day = day,
@@ -186,7 +186,7 @@ fun ScheduleScreen(
                 onSelectRingtone = { nextId ->
                     viewModel.updateScheduleFields(dayKey = day, ringtoneId = nextId)
                 },
-                modifier = Modifier.animateItem()
+                modifier = if (noAnim) Modifier else Modifier.animateItem()
             )
         }
     }
@@ -296,9 +296,7 @@ private fun DayScheduleCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (sched.isGymDay) 1f else 0.8f)
             .ironGlassSurface(tokens, subtle = !sched.isGymDay)
-            .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.FluidCardSpring))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -317,7 +315,7 @@ private fun DayScheduleCard(
                         text = day.label(lang),
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF4F5F7)
+                        color = if (sched.isGymDay) Color(0xFFF4F5F7) else Color(0xFFCBD5E1)
                     )
                     if (isToday) {
                         Text(

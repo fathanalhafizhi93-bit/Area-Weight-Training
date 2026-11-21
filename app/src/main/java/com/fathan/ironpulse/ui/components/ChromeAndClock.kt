@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -32,7 +31,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -40,6 +38,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
@@ -94,11 +93,14 @@ import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassBar
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -117,26 +119,58 @@ private val secSdf = object : ThreadLocal<SimpleDateFormat>() {
 @Composable
 fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
     val tokens = LocalIronPulseTokens.current
-    val suppressGlow = tokens.performance.noAmbientGlow ||
-        tokens.uiTheme == UiTheme.CARBON_FORGE ||
-        tokens.uiTheme == UiTheme.UBUNTU_YARU
+    val suppressGlow = tokens.performance.noAmbientGlow
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .drawWithCache {
                 val canvasColor = tokens.canvasBg
+                val baseGradient = when (tokens.uiTheme) {
+                    UiTheme.UBUNTU_YARU -> Brush.verticalGradient(
+                        0.0f to tokens.canvasSecondaryBg,
+                        0.45f to tokens.canvasBg,
+                        1.0f to Color(0xFF171717)
+                    )
+                    UiTheme.AEROGLASS -> Brush.verticalGradient(
+                        0.0f to tokens.canvasBg,
+                        0.55f to tokens.canvasSecondaryBg,
+                        1.0f to Color(0xFF030B14)
+                    )
+                    UiTheme.MIDNIGHT_FROSTED -> Brush.verticalGradient(
+                        0.0f to tokens.canvasBg,
+                        0.60f to tokens.canvasSecondaryBg,
+                        1.0f to Color(0xFF04060E)
+                    )
+                    UiTheme.CARBON_FORGE -> Brush.radialGradient(
+                        colors = listOf(tokens.canvasSecondaryBg, tokens.canvasBg),
+                        center = Offset(size.width * 0.5f, size.height * 0.25f),
+                        radius = size.height.coerceAtLeast(800f) * 0.85f
+                    )
+                    else -> null
+                }
                 val topGlow = when {
                     suppressGlow -> null
+                    tokens.uiTheme == UiTheme.CARBON_FORGE -> null
+                    tokens.uiTheme == UiTheme.UBUNTU_YARU -> Brush.radialGradient(
+                        colors = listOf(Color(0x28E95420), Color.Transparent),
+                        center = Offset(size.width * 0.14f, size.height * 0.06f),
+                        radius = size.width.coerceAtLeast(500f) * 0.92f
+                    )
                     tokens.uiTheme == UiTheme.MATERIAL_YOU -> Brush.radialGradient(
-                        colors = listOf(tokens.accentColor.copy(alpha = 0.08f), Color.Transparent),
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.09f), Color.Transparent),
                         center = Offset(size.width * 0.5f, 0f),
                         radius = size.width.coerceAtLeast(600f) * 0.95f
                     )
                     tokens.uiTheme == UiTheme.AEROGLASS -> Brush.radialGradient(
-                        colors = listOf(Color(0x3638BDF8), Color.Transparent),
-                        center = Offset(size.width * 0.85f, size.height * 0.08f),
+                        colors = listOf(Color(0x4C38BDF8), Color.Transparent),
+                        center = Offset(size.width * 0.86f, size.height * 0.07f),
                         radius = size.width.coerceAtLeast(500f) * 0.95f
+                    )
+                    tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED -> Brush.radialGradient(
+                        colors = listOf(Color(0x3D818CF8), Color.Transparent),
+                        center = Offset(size.width * 0.82f, size.height * 0.08f),
+                        radius = size.width.coerceAtLeast(500f) * 0.92f
                     )
                     else -> Brush.radialGradient(
                         colors = listOf(tokens.phaseTokens.glowPrimary, Color.Transparent),
@@ -145,16 +179,19 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     )
                 }
                 val bottomGlow = when {
-                    suppressGlow || tokens.uiTheme == UiTheme.MATERIAL_YOU -> null
+                    suppressGlow ||
+                        tokens.uiTheme == UiTheme.MATERIAL_YOU ||
+                        tokens.uiTheme == UiTheme.CARBON_FORGE ||
+                        tokens.uiTheme == UiTheme.UBUNTU_YARU -> null
                     tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED -> Brush.radialGradient(
-                        colors = listOf(tokens.accentColor.copy(alpha = 0.13f), Color.Transparent),
-                        center = Offset(size.width * 0.14f, size.height * 0.78f),
-                        radius = size.width.coerceAtLeast(450f) * 0.88f
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.22f), Color.Transparent),
+                        center = Offset(size.width * 0.16f, size.height * 0.80f),
+                        radius = size.width.coerceAtLeast(450f) * 0.90f
                     )
                     tokens.uiTheme == UiTheme.AEROGLASS -> Brush.radialGradient(
-                        colors = listOf(Color(0x220284C7), Color.Transparent),
-                        center = Offset(size.width * 0.12f, size.height * 0.82f),
-                        radius = size.width.coerceAtLeast(450f) * 0.85f
+                        colors = listOf(Color(0x340284C7), Color.Transparent),
+                        center = Offset(size.width * 0.14f, size.height * 0.82f),
+                        radius = size.width.coerceAtLeast(450f) * 0.88f
                     )
                     else -> Brush.radialGradient(
                         colors = listOf(tokens.phaseTokens.glowSecondary, Color.Transparent),
@@ -164,6 +201,7 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                 }
                 onDrawBehind {
                     drawRect(canvasColor)
+                    if (baseGradient != null) drawRect(baseGradient)
                     if (topGlow != null) drawRect(topGlow)
                     if (bottomGlow != null) drawRect(bottomGlow)
                 }
@@ -188,15 +226,17 @@ fun IronPulseTopBar(
     val iconShape = RoundedCornerShape(
         when {
             isFrosted || isMaterialYou -> 999.dp
-            isAero || tokens.uiTheme == UiTheme.OBSIDIAN || tokens.uiTheme == UiTheme.UBUNTU_YARU -> 10.dp
+            isAero || tokens.uiTheme == UiTheme.OBSIDIAN -> 12.dp
+            tokens.uiTheme == UiTheme.UBUNTU_YARU -> 10.dp
             else -> 8.dp
         }
     )
     val headerBorder = when (tokens.uiTheme) {
-        UiTheme.AEROGLASS -> Color(0x527DD3FC)
-        UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant
-        UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.18f)
-        UiTheme.CARBON_FORGE, UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.11f)
+        UiTheme.AEROGLASS -> Color(0x667DD3FC)
+        UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
+        UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.22f)
+        UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.14f)
+        UiTheme.UBUNTU_YARU -> Color(0xFF141414)
         UiTheme.OBSIDIAN -> tokens.phaseTokens.headerBorder
     }
 
@@ -331,8 +371,10 @@ private fun TopBarIconButton(
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active -> tokens.accentColor.copy(alpha = 0.65f)
         isMaterialYou -> tokens.palette.outlineVariant
-        isAero -> Color(0x52BAE6FD)
-        isFrosted -> Color.White.copy(alpha = 0.18f)
+        isAero -> Color(0x66BAE6FD)
+        isFrosted -> Color.White.copy(alpha = 0.24f)
+        tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+        tokens.uiTheme == UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
         else -> Color.White.copy(alpha = 0.14f)
     }
     val tint = when {
@@ -351,15 +393,20 @@ private fun TopBarIconButton(
             .tactilePress(disabledByPerf = tokens.performance.noAnimations)
     ) {
         Box(
-            modifier = if (isAero) {
-                Modifier.background(
+            modifier = when {
+                isAero -> Modifier.background(
                     Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = 0.22f),
+                        0.0f to Color.White.copy(alpha = 0.28f),
                         0.5f to Color.Transparent
                     )
                 )
-            } else {
-                Modifier
+                tokens.uiTheme == UiTheme.UBUNTU_YARU || tokens.uiTheme == UiTheme.CARBON_FORGE -> Modifier.background(
+                    Brush.verticalGradient(
+                        0.0f to Color.White.copy(alpha = 0.08f),
+                        0.45f to Color.Transparent
+                    )
+                )
+                else -> Modifier
             },
             contentAlignment = Alignment.Center
         ) {
@@ -380,12 +427,12 @@ fun IronPulseBottomNav(
     onSelectTab: (AppTab) -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
-    val restTimer by restTimerFlow.collectAsStateWithLifecycle()
     val lang = tokens.lang
     val isFrosted = tokens.uiTheme == UiTheme.MIDNIGHT_FROSTED
     val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
     val isAero = tokens.uiTheme == UiTheme.AEROGLASS
     val isCarbon = tokens.uiTheme == UiTheme.CARBON_FORGE
+    val isYaru = tokens.uiTheme == UiTheme.UBUNTU_YARU
 
     val items = remember(lang) {
         listOf(
@@ -414,18 +461,20 @@ fun IronPulseBottomNav(
     }
 
     val topBorder = when (tokens.uiTheme) {
-        UiTheme.AEROGLASS -> Color(0x59BAE6FD)
-        UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant
-        UiTheme.CARBON_FORGE, UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.12f)
+        UiTheme.AEROGLASS -> Color(0x6BB9E6FE)
+        UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
+        UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.16f)
+        UiTheme.UBUNTU_YARU -> Color(0xFF141414)
         UiTheme.OBSIDIAN -> tokens.phaseTokens.headerBorder
-        UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.24f)
+        UiTheme.MIDNIGHT_FROSTED -> Color.White.copy(alpha = 0.28f)
     }
 
+    val frostedDockShape = remember { RoundedCornerShape(28.dp) }
     val dockModifier = if (isFrosted) {
         Modifier
             .fillMaxWidth()
             .ironGlassBar(tokens, shapeRadius = 28.dp)
-            .border(1.dp, topBorder, RoundedCornerShape(28.dp))
+            .border(1.dp, topBorder, frostedDockShape)
     } else {
         Modifier
             .fillMaxWidth()
@@ -437,29 +486,32 @@ fun IronPulseBottomNav(
         BoxWithConstraints(
             modifier = dockModifier
                 .height(if (isFrosted) 62.dp else 64.dp)
-                .padding(horizontal = if (isFrosted || isAero) 6.dp else 4.dp)
+                .padding(horizontal = if (isFrosted || isAero || isYaru) 6.dp else 4.dp)
         ) {
             val slotWidth = maxWidth / items.size
+            val slotWidthPx = with(LocalDensity.current) { slotWidth.toPx() }
 
-            // Gliding GPU spring indicator behind active tab
+            // Zero-relayout gliding GPU spring indicator behind active tab
             if (activeIdx >= 0) {
-                val indicatorOffset by animateDpAsState(
-                    targetValue = slotWidth * activeIdx,
+                val indicatorIndexState = animateFloatAsState(
+                    targetValue = activeIdx.toFloat(),
                     animationSpec = if (tokens.performance.noAnimations) {
                         tween(0)
                     } else {
-                        IronPulseMotion.IndicatorDpSpring
+                        IronPulseMotion.IndicatorFloatSpring
                     },
-                    label = "navIndicatorOffset"
+                    label = "navIndicatorIndex"
                 )
 
                 Box(
                     modifier = Modifier
-                        .offset(x = indicatorOffset)
+                        .graphicsLayer {
+                            translationX = indicatorIndexState.value * slotWidthPx
+                        }
                         .width(slotWidth)
                         .fillMaxHeight()
-                        .padding(vertical = if (isFrosted || isAero) 5.dp else 0.dp, horizontal = 3.dp),
-                    contentAlignment = Alignment.TopCenter
+                        .padding(vertical = if (isFrosted || isAero || isYaru) 5.dp else 0.dp, horizontal = 3.dp),
+                    contentAlignment = if (isYaru) Alignment.BottomCenter else Alignment.TopCenter
                 ) {
                     when {
                         isFrosted -> {
@@ -467,8 +519,15 @@ fun IronPulseBottomNav(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(22.dp))
-                                    .background(Color.White.copy(alpha = 0.14f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(22.dp))
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.22f),
+                                                Color.White.copy(alpha = 0.11f)
+                                            )
+                                        )
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.34f), RoundedCornerShape(22.dp))
                             )
                         }
                         isAero -> {
@@ -476,17 +535,36 @@ fun IronPulseBottomNav(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0x2E38BDF8))
+                                    .background(Color(0x3438BDF8))
                                     .background(
                                         Brush.verticalGradient(
-                                            0.0f to Color.White.copy(alpha = 0.24f),
-                                            0.48f to Color.White.copy(alpha = 0.05f),
+                                            0.0f to Color.White.copy(alpha = 0.30f),
+                                            0.48f to Color.White.copy(alpha = 0.06f),
                                             0.5f to Color.Transparent,
-                                            1.0f to Color(0xFF0EA5E9).copy(alpha = 0.14f)
+                                            1.0f to Color(0xFF0EA5E9).copy(alpha = 0.16f)
                                         )
                                     )
-                                    .border(1.dp, Color(0x5EB8E6FE), RoundedCornerShape(12.dp))
+                                    .border(1.dp, Color(0x75B8E6FE), RoundedCornerShape(12.dp))
                             )
+                        }
+                        isYaru -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.White.copy(alpha = 0.07f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(bottom = 2.dp)
+                                        .width(24.dp)
+                                        .height(3.dp)
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(tokens.accentColor)
+                                )
+                            }
                         }
                         isMaterialYou -> {
                             Box(
@@ -501,8 +579,8 @@ fun IronPulseBottomNav(
                         else -> {
                             Box(
                                 modifier = Modifier
-                                    .width(if (isCarbon) 40.dp else 34.dp)
-                                    .height(2.5.dp)
+                                    .width(if (isCarbon) 42.dp else 34.dp)
+                                    .height(if (isCarbon) 3.dp else 2.5.dp)
                                     .background(
                                         tokens.accentColor,
                                         if (isCarbon) RoundedCornerShape(0.dp) else RoundedCornerShape(999.dp)
@@ -519,7 +597,6 @@ fun IronPulseBottomNav(
             ) {
                 items.forEachIndexed { idx, (tab, label, icon) ->
                     val isActive = idx == activeIdx
-                    val showCompactRest = tab == AppTab.TODAY && restTimer.isActive && activeTab != AppTab.WORKOUT
 
                     val itemContentColor by animateColorAsState(
                         targetValue = when {
@@ -527,10 +604,10 @@ fun IronPulseBottomNav(
                             isActive -> tokens.accentColor
                             else -> tokens.mutedTextColor
                         },
-                        animationSpec = tween(if (tokens.performance.noAnimations) 0 else 200),
+                        animationSpec = tween(if (tokens.performance.noAnimations) 0 else 180),
                         label = "navTint"
                     )
-                    val iconScale by animateFloatAsState(
+                    val iconScaleState = animateFloatAsState(
                         targetValue = if (isActive && !tokens.performance.noAnimations) 1.09f else 1f,
                         animationSpec = IronPulseMotion.PressSpring,
                         label = "navIconScale"
@@ -568,31 +645,64 @@ fun IronPulseBottomNav(
                                     modifier = Modifier
                                         .size(21.dp)
                                         .graphicsLayer {
-                                            scaleX = iconScale
-                                            scaleY = iconScale
+                                            val s = iconScaleState.value
+                                            scaleX = s
+                                            scaleY = s
                                         }
                                 )
                             }
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = if (showCompactRest) {
-                                    GymModelHelpers.formatRestDuration(restTimer.remainingSeconds)
-                                } else {
-                                    label
-                                },
-                                fontSize = 11.sp,
-                                fontFamily = if (showCompactRest) FontFamily.Monospace else FontFamily.SansSerif,
-                                fontWeight = if (showCompactRest || isActive) FontWeight.Bold else FontWeight.Medium,
-                                color = if (showCompactRest) tokens.accentColor else itemContentColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            if (tab == AppTab.TODAY && activeTab != AppTab.WORKOUT) {
+                                BottomNavTodayLabel(
+                                    defaultLabel = label,
+                                    isActive = isActive,
+                                    defaultColor = itemContentColor,
+                                    accentColor = tokens.accentColor,
+                                    restTimerFlow = restTimerFlow
+                                )
+                            } else {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                    color = itemContentColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun BottomNavTodayLabel(
+    defaultLabel: String,
+    isActive: Boolean,
+    defaultColor: Color,
+    accentColor: Color,
+    restTimerFlow: StateFlow<RestTimerDisplayState>
+) {
+    val labelFlow = remember(restTimerFlow) {
+        restTimerFlow
+            .map { if (it.isActive) GymModelHelpers.formatRestDuration(it.remainingSeconds) else null }
+            .distinctUntilChanged()
+    }
+    val compactRestText by labelFlow.collectAsStateWithLifecycle(initialValue = null)
+    val showCompactRest = compactRestText != null
+    Text(
+        text = compactRestText ?: defaultLabel,
+        fontSize = 11.sp,
+        fontFamily = if (showCompactRest) FontFamily.Monospace else FontFamily.SansSerif,
+        fontWeight = if (showCompactRest || isActive) FontWeight.Bold else FontWeight.Medium,
+        color = if (showCompactRest) accentColor else defaultColor,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable
@@ -604,7 +714,8 @@ fun PhaseLogoEmblem(
     val accent = tokens.phaseTokens.accentBright
     val cornerRadius = when (tokens.uiTheme) {
         UiTheme.MATERIAL_YOU, UiTheme.MIDNIGHT_FROSTED -> 18.dp
-        UiTheme.CARBON_FORGE -> 10.dp
+        UiTheme.CARBON_FORGE -> 9.dp
+        UiTheme.UBUNTU_YARU -> 11.dp
         else -> 14.dp
     }
 
@@ -703,7 +814,12 @@ fun LiveFluidClockSlot(
     clockFormat: ClockFormat,
     lang: AppLanguage
 ) {
-    val clockSeconds by clockSecondsFlow.collectAsStateWithLifecycle()
+    val tabActive = LocalTabActive.current
+    val clockSeconds = if (tabActive) {
+        clockSecondsFlow.collectAsStateWithLifecycle().value
+    } else {
+        remember(clockSecondsFlow) { clockSecondsFlow.value }
+    }
     val tokens = LocalIronPulseTokens.current
     val noAnim = tokens.performance.noAnimations
 
@@ -740,7 +856,19 @@ fun LiveFluidClockSlot(
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val accentBright = tokens.phaseTokens.accentBright
+    val periodPillBg = remember(tokens.phaseTokens.accent) { tokens.phaseTokens.accent.copy(alpha = 0.16f) }
+    val periodPillBorder = remember(accentBright) { BorderStroke(1.dp, accentBright.copy(alpha = 0.35f)) }
+    val colonMainColor = remember { Color(0xFFF8FAFC).copy(alpha = 0.65f) }
+    val colonSecColor = remember(accentBright) { accentBright.copy(alpha = 0.72f) }
+    val periodPillShape = remember { RoundedCornerShape(999.dp) }
+
+    // Isolated GPU RenderNode for 1Hz digit transitions so parent hero card doesn't re-record
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { }
+    ) {
         // Uniform display scale for HH, MM, and SS so seconds match hours/minutes cleanly without wrapping
         val clockFontSize = when {
             maxWidth < 192.dp -> 28.sp
@@ -749,18 +877,20 @@ fun LiveFluidClockSlot(
             else -> 38.sp
         }
         val clockLineHeight = clockFontSize * 1.08f
-        val mainDigitStyle = TextStyle(
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = clockFontSize,
-            lineHeight = clockLineHeight,
-            letterSpacing = (-0.8).sp,
-            fontFeatureSettings = "tnum",
-            color = Color(0xFFF8FAFC)
-        )
-        val secondsDigitStyle = mainDigitStyle.copy(
-            color = tokens.phaseTokens.accentBright
-        )
+        val mainDigitStyle = remember(clockFontSize) {
+            TextStyle(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = clockFontSize,
+                lineHeight = clockLineHeight,
+                letterSpacing = (-0.8).sp,
+                fontFeatureSettings = "tnum",
+                color = Color(0xFFF8FAFC)
+            )
+        }
+        val secondsDigitStyle = remember(clockFontSize, accentBright) {
+            mainDigitStyle.copy(color = accentBright)
+        }
 
         FlowRow(
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -776,7 +906,7 @@ fun LiveFluidClockSlot(
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = clockFontSize,
                             lineHeight = clockLineHeight,
-                            color = Color(0xFFF8FAFC).copy(alpha = 0.65f),
+                            color = colonMainColor,
                             modifier = Modifier.padding(bottom = 2.dp)
                         )
                     } else {
@@ -794,7 +924,7 @@ fun LiveFluidClockSlot(
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = clockFontSize,
                     lineHeight = clockLineHeight,
-                    color = tokens.phaseTokens.accentBright.copy(alpha = 0.72f),
+                    color = colonSecColor,
                     modifier = Modifier.padding(bottom = 2.dp)
                 )
 
@@ -809,16 +939,16 @@ fun LiveFluidClockSlot(
 
             if (periodLabel.isNotEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = tokens.phaseTokens.accent.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, tokens.phaseTokens.accentBright.copy(alpha = 0.35f)),
+                    shape = periodPillShape,
+                    color = periodPillBg,
+                    border = periodPillBorder,
                     modifier = Modifier.align(Alignment.CenterVertically)
                 ) {
                     Text(
                         text = periodLabel,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = tokens.phaseTokens.accentBright,
+                        color = accentBright,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }

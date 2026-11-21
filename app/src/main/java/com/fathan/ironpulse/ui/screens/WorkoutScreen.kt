@@ -69,7 +69,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,6 +92,8 @@ import com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 
@@ -132,6 +136,10 @@ fun WorkoutScreen(
     val completedSets = remember(todayEntries) { todayEntries.sumOf { e -> e.sets.count { it.completed } } }
     val progressPct = if (totalSets > 0) (completedSets * 100) / totalSets else 0
     val hasExercises = activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()
+    val workoutListHaze = remember { HazeState() }
+    val useListHaze = !tokens.performance.noBlur &&
+        tokens.uiTheme != com.fathan.ironpulse.model.UiTheme.CARBON_FORGE &&
+        tokens.uiTheme != com.fathan.ironpulse.model.UiTheme.UBUNTU_YARU
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -142,10 +150,12 @@ fun WorkoutScreen(
                 bottom = contentPadding.calculateBottomPadding() + if (hasExercises) 148.dp else 92.dp
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (useListHaze) Modifier.hazeSource(workoutListHaze) else Modifier)
         ) {
             // 1. TOP WORKOUT COCKPIT BAR
-            item(key = "workout_header") {
+            item(key = "workout_header", contentType = "header") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -251,7 +261,7 @@ fun WorkoutScreen(
             }
 
             if (activeSchedule == null || !activeSchedule.isGymDay || todayEntries.isEmpty()) {
-                item(key = "workout_empty") {
+                item(key = "workout_empty", contentType = "empty") {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -302,7 +312,7 @@ fun WorkoutScreen(
             } else {
                 // 2. EXERCISE SWITCHER RAIL (isolated timer collection inside rail)
                 if (viewModeFocus && todayEntries.size > 1) {
-                    item(key = "exercise_switcher") {
+                    item(key = "exercise_switcher", contentType = "switcher") {
                         ExerciseSwitcherRail(
                             entries = todayEntries,
                             selectedExerciseId = selectedExerciseId,
@@ -319,7 +329,11 @@ fun WorkoutScreen(
                     todayEntries.mapIndexed { i, e -> i to e }
                 }
 
-                itemsIndexed(entriesToRender, key = { _, pair -> pair.second.exerciseId }) { _, (index, entry) ->
+                itemsIndexed(
+                    items = entriesToRender,
+                    key = { _, pair -> pair.second.exerciseId },
+                    contentType = { _, _ -> "exercise_cockpit" }
+                ) { _, (index, entry) ->
                     val spec = specById[entry.exerciseId]
                     ExerciseCockpitCard(
                         index = index,
@@ -363,7 +377,7 @@ fun WorkoutScreen(
                         onAddSet = { viewModel.addSetToExercise(entry.exerciseId) },
                         onRemoveSet = { viewModel.removeSetFromExercise(entry.exerciseId) },
                         secUnit = secUnit,
-                        modifier = Modifier.animateItem()
+                        modifier = if (noAnim) Modifier else Modifier.animateItem()
                     )
                 }
             }
@@ -376,6 +390,7 @@ fun WorkoutScreen(
                 restBarDismissed = restBarDismissed,
                 bottomInset = contentPadding.calculateBottomPadding(),
                 secUnit = secUnit,
+                listHazeState = workoutListHaze,
                 onUndismiss = { restBarDismissed = false },
                 onAdjust = { viewModel.adjustRestTimer(it) },
                 onTogglePause = { viewModel.toggleRestPauseOrStart() },
@@ -474,6 +489,7 @@ private fun WorkoutFloatingRestBar(
     restBarDismissed: Boolean,
     bottomInset: androidx.compose.ui.unit.Dp,
     secUnit: String,
+    listHazeState: HazeState,
     onUndismiss: () -> Unit,
     onAdjust: (Int) -> Unit,
     onTogglePause: () -> Unit,
@@ -503,15 +519,15 @@ private fun WorkoutFloatingRestBar(
             .padding(start = 16.dp, end = 16.dp, bottom = bottomInset + 14.dp)
             .fillMaxWidth()
     ) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = tokens.palette.surfaceContainerHigh.copy(alpha = 0.96f),
-            border = BorderStroke(
-                1.dp,
-                if (restRemaining == 0) Color(0x8016A34A) else tokens.accentColor.copy(alpha = 0.55f)
-            ),
-            shadowElevation = 14.dp,
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .ironGlassSurface(
+                    tokens = tokens,
+                    borderOverride = if (restRemaining == 0) Color(0x8016A34A) else tokens.accentColor.copy(alpha = 0.55f),
+                    radiusOverride = 20.dp,
+                    hazeStateOverride = listHazeState
+                )
         ) {
         Row(
             modifier = Modifier
@@ -1061,8 +1077,12 @@ private fun ExerciseCockpitCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(timerProgress)
+                            .fillMaxWidth()
                             .height(6.dp)
+                            .graphicsLayer {
+                                scaleX = timerProgress
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                            }
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (timerDirection == TimerDirection.COUNTDOWN) Color(0xFF38BDF8) else tokens.accentColor)
                     )

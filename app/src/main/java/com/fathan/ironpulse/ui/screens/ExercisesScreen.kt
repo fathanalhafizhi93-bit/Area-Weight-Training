@@ -120,7 +120,7 @@ fun ExercisesScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         // Header Card
-        item {
+        item(key = "exercises_header", contentType = "header") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -206,11 +206,11 @@ fun ExercisesScreen(
         }
 
         // 7-Day Selector Rail
-        item {
+        item(key = "day_rail", contentType = "day_rail") {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(DayKey.entries) { day ->
+                items(DayKey.entries, key = { it.key }) { day ->
                     val daySched = state.schedules[day]
                     val count = daySched?.exercises?.size ?: 0
                     val isSelected = day == selectedDay
@@ -264,7 +264,7 @@ fun ExercisesScreen(
         }
 
         // Selected Day Summary Strip
-        item {
+        item(key = "day_summary", contentType = "summary") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -315,7 +315,7 @@ fun ExercisesScreen(
 
         // Empty State or Exercise Items
         if (exercises.isEmpty()) {
-            item {
+            item(key = "exercises_empty", contentType = "empty") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -372,7 +372,11 @@ fun ExercisesScreen(
                 }
             }
         } else {
-            itemsIndexed(exercises, key = { _, item -> item.id }) { idx, ex ->
+            itemsIndexed(
+                items = exercises,
+                key = { _, item -> item.id },
+                contentType = { _, _ -> "exercise_manage_card" }
+            ) { idx, ex ->
                 ScheduledExerciseManageCard(
                     index = idx,
                     total = exercises.size,
@@ -382,7 +386,7 @@ fun ExercisesScreen(
                     onMoveDown = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = false) },
                     onEdit = { editingExercise = ex },
                     onDelete = { pendingDeleteExercise = ex },
-                    modifier = Modifier.animateItem()
+                    modifier = if (noAnim) Modifier else Modifier.animateItem()
                 )
             }
         }
