@@ -881,8 +881,7 @@ fun FloatingMascotDock(
                     .ironGlassSurface(
                         tokens = tokens,
                         borderOverride = phaseColor.copy(alpha = 0.45f),
-                        radiusOverride = tokens.bubbleRadius,
-                        blurOverChrome = true
+                        radiusOverride = tokens.bubbleRadius
                     )
                     .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.BubbleSizeSpring))
                     .padding(13.dp)

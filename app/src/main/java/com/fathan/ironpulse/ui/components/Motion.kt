@@ -1,5 +1,6 @@
 package com.fathan.ironpulse.ui.components
 
+import android.content.Context
 import android.content.res.Resources
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
@@ -44,56 +45,56 @@ import kotlin.math.abs
 @Immutable
 object IronPulseMotion {
     val PressSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.72f,
-        stiffness = Spring.StiffnessMedium
+        dampingRatio = 0.68f,
+        stiffness = 520f
     )
 
     val MorphSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.82f,
-        stiffness = 380f
+        dampingRatio = 0.78f,
+        stiffness = 440f
     )
 
     val OrbSnapSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.74f,
-        stiffness = 340f
+        dampingRatio = 0.72f,
+        stiffness = 380f
     )
 
     val BubbleSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.80f,
-        stiffness = 440f
+        dampingRatio = 0.76f,
+        stiffness = 480f
     )
 
     val BubbleSizeSpring: SpringSpec<IntSize> = spring(
-        dampingRatio = 0.84f,
-        stiffness = 420f
+        dampingRatio = 0.80f,
+        stiffness = 460f
     )
 
     val FluidCardSpring: SpringSpec<IntSize> = spring(
-        dampingRatio = 0.86f,
-        stiffness = 400f
-    )
-
-    val TabSlideSpring: SpringSpec<IntOffset> = spring(
-        dampingRatio = 0.88f,
-        stiffness = 420f
-    )
-
-    val ModalEntranceSpring: SpringSpec<Float> = spring(
         dampingRatio = 0.82f,
         stiffness = 440f
     )
 
-    val IndicatorDpSpring: SpringSpec<Dp> = spring(
+    val TabSlideSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.86f,
+        stiffness = 520f
+    )
+
+    val ModalEntranceSpring: SpringSpec<Float> = spring(
         dampingRatio = 0.78f,
-        stiffness = Spring.StiffnessMediumLow
+        stiffness = 480f
+    )
+
+    val IndicatorDpSpring: SpringSpec<Dp> = spring(
+        dampingRatio = 0.75f,
+        stiffness = 420f
     )
 
     val IndicatorFloatSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.78f,
-        stiffness = Spring.StiffnessMediumLow
+        dampingRatio = 0.76f,
+        stiffness = 440f
     )
 
-    val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 200)
+    val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 180)
 }
 
 /**
@@ -259,13 +260,27 @@ private class TactilePressNode(
     }
 }
 
-private object ScaledBackdropCache {
+object ScaledBackdropCache {
     val bitmaps = ConcurrentHashMap<Long, ImageBitmap>()
+
+    private fun keyFor(@DrawableRes resId: Int, targetMaxDimPx: Int): Long =
+        (resId.toLong() shl 20) or targetMaxDimPx.toLong()
+
+    fun getCached(@DrawableRes resId: Int, targetMaxDimPx: Int = 1024): ImageBitmap? =
+        bitmaps[keyFor(resId, targetMaxDimPx)]
+
+    fun preload(context: Context, @DrawableRes resId: Int, targetMaxDimPx: Int = 1024) {
+        val key = keyFor(resId, targetMaxDimPx)
+        if (bitmaps.containsKey(key)) return
+        decodeSampledBitmap(context.resources, resId, targetMaxDimPx)?.let { img ->
+            bitmaps.putIfAbsent(key, img)
+        }
+    }
 }
 
 /**
  * Decodes and downsamples large drawable backdrops once on Dispatchers.IO and keeps
- * an in-memory cache so navigating between tabs / screens never stalls the UI thread.
+ * a process-wide memory cache so cold start & tab switches render on Frame 1 without pop-in.
  */
 @Composable
 fun rememberScaledResourceBitmap(

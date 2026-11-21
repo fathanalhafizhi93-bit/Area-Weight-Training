@@ -20,34 +20,40 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
 import com.fathan.ironpulse.data.GymCachedSnapshot
 import com.fathan.ironpulse.data.GymPresets
 import com.fathan.ironpulse.data.LocalGymCacheStore
+import com.fathan.ironpulse.data.PreferencesStore
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayKey
+import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.MuscleGroup
+import com.fathan.ironpulse.model.PerformancePreferences
+import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.UserProfile
 import com.fathan.ironpulse.model.WorkoutLog
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.model.WorkoutSetLog
+import com.fathan.ironpulse.timer.RestTimerService
 import com.fathan.ironpulse.ui.components.AboutDialog
+import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
-import com.fathan.ironpulse.ui.components.LaunchIntroOverlay
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.MascotOrbFace
+import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.screens.AuthScreen
+import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
-import com.fathan.ironpulse.ui.theme.LocalBackdropHazeState
-import com.fathan.ironpulse.ui.theme.LocalBlurEnabled
-import com.fathan.ironpulse.ui.theme.LocalChromeHazeState
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -55,10 +61,9 @@ import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -77,7 +82,8 @@ class StartupSmokeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun authScreen_composesWithFlowRowAndRendersSignInButton() {
+    fun authScreen_composesWithMascotGreetingAndSignInButton() {
+        val eyeFlow = MutableStateFlow(MascotEyeState())
         composeRule.setContent {
             IronPulseTheme(
                 prefs = AppPreferences(
@@ -89,30 +95,34 @@ class StartupSmokeTest {
                     authLoading = false,
                     authError = null,
                     onSelectLang = {},
-                    onSignInClick = {}
+                    onSignInClick = {},
+                    mascot = MascotUiState(),
+                    mascotEyeFlow = eyeFlow
                 )
             }
         }
 
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag("google_sign_in_button").assertIsDisplayed()
+        composeRule.onNodeWithTag("auth_mascot_greeting_card").assertIsDisplayed()
+        composeRule.onNodeWithTag("auth_mascot_orb", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Halo! Saya Pulse").assertIsDisplayed()
+        composeRule.onNodeWithTag("auth_mascot_greeting_card").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Siap Bangun Kebiasaan!").assertIsDisplayed()
+        composeRule.onNodeWithTag("google_sign_in_button")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     @OptIn(ExperimentalLayoutApi::class)
     @Test
-    fun hazeChromeAndAllThemes_composePastSplashBlurTransitionWithoutCrash() {
+    fun chromeAndAllThreeThemes_composeWithoutBlurAndRenderCleanly() {
         val restFlow = MutableStateFlow(RestTimerDisplayState())
-        var blurStateSetter: ((Boolean) -> Unit)? = null
         var themeSetter: ((UiTheme) -> Unit)? = null
 
         composeRule.setContent {
-            var blurEnabled by remember { mutableStateOf(false) }
             var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
-            blurStateSetter = { blurEnabled = it }
             themeSetter = { activeTheme = it }
-
-            val backdropHaze = remember { HazeState() }
-            val chromeHaze = remember { HazeState() }
 
             IronPulseTheme(
                 prefs = AppPreferences(
@@ -120,61 +130,42 @@ class StartupSmokeTest {
                     lang = AppLanguage.ID
                 )
             ) {
-                CompositionLocalProvider(
-                    LocalBackdropHazeState provides backdropHaze,
-                    LocalChromeHazeState provides chromeHaze,
-                    LocalBlurEnabled provides blurEnabled
-                ) {
-                    val tokens = LocalIronPulseTokens.current
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .hazeSource(chromeHaze)
+                val tokens = LocalIronPulseTokens.current
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AmbientPhaseBackdrop()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                            .ironGlassSurface(tokens)
+                            .padding(16.dp)
+                    ) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .hazeSource(backdropHaze)
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp)
-                                    .ironGlassSurface(tokens)
-                                    .padding(16.dp)
-                            ) {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text("Set 1", modifier = Modifier.testTag("smoke_chip_1"))
-                                    Text("Set 2")
-                                }
-                            }
+                            Text("Set 1", modifier = Modifier.testTag("smoke_chip_1"))
+                            Text("Set 2")
                         }
-                        IronPulseTopBar(
-                            activeTab = AppTab.TODAY,
-                            aboutOpen = false,
-                            onLogoClick = {},
-                            onOpenSettings = {},
-                            onOpenAbout = {},
-                            onTestAlarm = {}
-                        )
-                        IronPulseBottomNav(
-                            activeTab = AppTab.TODAY,
-                            restTimerFlow = restFlow,
-                            onSelectTab = {}
-                        )
                     }
+                    IronPulseTopBar(
+                        activeTab = AppTab.TODAY,
+                        aboutOpen = false,
+                        onLogoClick = {},
+                        onOpenSettings = {},
+                        onOpenAbout = {},
+                        onTestAlarm = {}
+                    )
+                    IronPulseBottomNav(
+                        activeTab = AppTab.TODAY,
+                        restTimerFlow = restFlow,
+                        onSelectTab = {}
+                    )
                 }
             }
         }
 
         composeRule.waitForIdle()
-        composeRule.runOnUiThread { blurStateSetter?.invoke(true) }
-        composeRule.waitForIdle()
-
         UiTheme.entries.forEach { theme ->
             composeRule.runOnUiThread { themeSetter?.invoke(theme) }
             composeRule.waitForIdle()
@@ -184,20 +175,40 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun launchIntroOverlay_rendersSplashLogoWithoutCrash() {
-        composeRule.mainClock.autoAdvance = false
+    fun phaseLogoEmblemAndHeroAtmosphere_composeAcrossAllDayPhases() {
+        var phaseSetter: ((DayTimePhase) -> Unit)? = null
         composeRule.setContent {
+            var phase by remember { mutableStateOf(DayTimePhase.MORNING) }
+            phaseSetter = { phase = it }
+
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.MATERIAL_YOU,
+                    uiTheme = UiTheme.CARBON_FORGE,
                     lang = AppLanguage.ID
-                )
+                ),
+                timePhase = phase
             ) {
-                LaunchIntroOverlay(onDismiss = {})
+                CompositionLocalProvider(LocalTabActive provides true) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        HeroAnimatedAtmosphereLayer(
+                            modifier = Modifier.fillMaxWidth().padding(0.dp),
+                            noAnim = false
+                        )
+                        PhaseLogoEmblem(
+                            timePhase = phase,
+                            modifier = Modifier.testTag("phase_logo_emblem_smoke")
+                        )
+                    }
+                }
             }
         }
-        composeRule.mainClock.advanceTimeBy(200L)
+
         composeRule.waitForIdle()
+        DayTimePhase.entries.forEach { phase ->
+            composeRule.runOnUiThread { phaseSetter?.invoke(phase) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("phase_logo_emblem_smoke").assertIsDisplayed()
+        }
     }
 
     @Test
@@ -241,7 +252,6 @@ class StartupSmokeTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("mascot_orb_smoke").assertIsDisplayed()
 
-        // Suspend background tab rendering
         composeRule.runOnUiThread {
             tabActiveSetter?.invoke(false)
             clockFlow.value = 1_730_000_001L
@@ -249,7 +259,6 @@ class StartupSmokeTest {
         }
         composeRule.waitForIdle()
 
-        // Resume active tab rendering
         composeRule.runOnUiThread {
             tabActiveSetter?.invoke(true)
             clockFlow.value = 1_730_000_002L
@@ -259,23 +268,26 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun aboutDialog_rendersVersionOneBetaLabel() {
+    fun aboutDialog_rendersVersionAlphaAndCleanCredits() {
         composeRule.setContent {
-            val chromeHaze = remember { HazeState() }
             IronPulseTheme(
                 prefs = AppPreferences(
                     uiTheme = UiTheme.MATERIAL_YOU,
                     lang = AppLanguage.ID
                 )
             ) {
-                CompositionLocalProvider(LocalChromeHazeState provides chromeHaze) {
-                    AboutDialog(onDismiss = {})
-                }
+                AboutDialog(onDismiss = {})
             }
         }
         composeRule.waitForIdle()
         composeRule.onNodeWithText("About IronPulse").assertIsDisplayed()
-        composeRule.onNodeWithText("v1.0.0 beta").assertIsDisplayed()
+        composeRule.onNodeWithText("v0.0.1 alpha").assertIsDisplayed()
+        composeRule.onNodeWithText("scripter").assertIsDisplayed()
+        composeRule.onNodeWithText("Fathan, and Artificial intelligence").assertIsDisplayed()
+        composeRule.onNodeWithText("concept").assertIsDisplayed()
+        composeRule.onNodeWithText("fathan.").assertIsDisplayed()
+        composeRule.onNodeWithText("Tentang Aplikasi").assertIsDisplayed()
+        composeRule.onNodeWithText("Hello world").assertDoesNotExist()
     }
 
     @Test
@@ -287,6 +299,44 @@ class StartupSmokeTest {
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("unknown-theme"))
         assertEquals(UiTheme.CARBON_FORGE, UiTheme.fromWire("carbon-forge"))
         assertEquals(UiTheme.UBUNTU_YARU, UiTheme.fromWire("ubuntu-yaru"))
+    }
+
+    @Test
+    fun preferencesStore_persistsPerformanceFlagsAndPresetsWithoutBlur() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val store = PreferencesStore(context)
+
+        store.applyPerformancePreset(PerformancePresetId.ULTRA)
+        assertEquals(
+            PerformancePreferences(noAnimations = true, noAmbientGlow = true, staticMascot = true),
+            store.state.value.performance
+        )
+
+        store.applyPerformancePreset(PerformancePresetId.BATTERY)
+        assertEquals(
+            PerformancePreferences(noAnimations = false, noAmbientGlow = true, staticMascot = false),
+            store.state.value.performance
+        )
+
+        store.applyPerformancePreset(PerformancePresetId.BALANCED)
+        assertEquals(
+            PerformancePreferences(noAnimations = false, noAmbientGlow = false, staticMascot = false),
+            store.state.value.performance
+        )
+
+        store.setPerformance(noAnimations = true, staticMascot = true)
+        assertTrue(store.state.value.performance.noAnimations)
+        assertFalse(store.state.value.performance.noAmbientGlow)
+        assertTrue(store.state.value.performance.staticMascot)
+
+        store.applyPerformancePreset(PerformancePresetId.BALANCED)
+    }
+
+    @Test
+    fun restTimerService_stopClearsActiveState() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        RestTimerService.stop(context)
+        assertFalse(RestTimerService.state.value.isActive)
     }
 
     @Test

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +33,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -48,9 +53,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fathan.ironpulse.R
 import com.fathan.ironpulse.model.AppLanguage
+import com.fathan.ironpulse.model.MascotMood
+import com.fathan.ironpulse.model.MascotSpeechLine
+import com.fathan.ironpulse.model.TimePhasePose
+import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
+import com.fathan.ironpulse.ui.viewmodel.MascotUiState
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -58,12 +71,56 @@ fun AuthScreen(
     authLoading: Boolean,
     authError: String?,
     onSelectLang: (AppLanguage) -> Unit,
-    onSignInClick: () -> Unit
+    onSignInClick: () -> Unit,
+    mascot: MascotUiState? = null,
+    mascotEyeFlow: StateFlow<MascotEyeState>? = null
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
     val backdropBitmap = rememberScaledResourceBitmap(R.drawable.gym_arena_backdrop, 1024)
+    var mascotTapCount by remember { mutableIntStateOf(0) }
+
+    val loginPoses = remember {
+        listOf(
+            TimePhasePose.SALUTE,
+            TimePhasePose.PERK,
+            TimePhasePose.WINK,
+            TimePhasePose.SPARKLE
+        )
+    }
+    val greetingPair = remember(lang, mascotTapCount) {
+        val idx = mascotTapCount % 3
+        when (idx) {
+            0 -> lang.t("Halo! Saya Pulse", "Hey! I'm Pulse") to lang.t(
+                "Masuk dengan akun Google agar jadwal latihan, ringtone, dan progresmu aman di Cloud.",
+                "Sign in with Google so your workout schedule, ringtones, and progress stay safely synced."
+            )
+            1 -> lang.t("Siap Bangun Kebiasaan!", "Ready to Build Consistency!") to lang.t(
+                "Alarm harian tepat waktu, timer istirahat otomatis, dan panduan 120+ gerakan menunggumu.",
+                "On-time workout alarms, auto rest timers, and a 120+ exercise library are ready for you."
+            )
+            else -> lang.t("Ketuk Aku Lagi Kapan Saja!", "Tap Me Anytime!") to lang.t(
+                "Aku akan menemani dan menyemangatimu setiap set latihan di tab Hari Ini.",
+                "I'll cheer you on through every set once you sign in."
+            )
+        }
+    }
+
+    val displayMascot = remember(mascot, tokens.timePhase, mascotTapCount, greetingPair) {
+        (mascot ?: MascotUiState()).copy(
+            mood = MascotMood.READY,
+            timePhase = tokens.timePhase,
+            urgentMood = null,
+            activeTimePose = loginPoses[mascotTapCount % loginPoses.size],
+            phaseColorHex = tokens.phaseTokens.accentBrightHex,
+            activeLine = MascotSpeechLine(
+                id = "auth_welcome_$mascotTapCount",
+                headline = greetingPair.first,
+                subline = greetingPair.second
+            )
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -77,7 +134,7 @@ fun AuthScreen(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(0.45f)
+                    .alpha(0.42f)
             )
         }
 
@@ -87,8 +144,8 @@ fun AuthScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            tokens.canvasBg.copy(alpha = 0.70f),
-                            tokens.canvasBg.copy(alpha = 0.80f),
+                            tokens.canvasBg.copy(alpha = 0.72f),
+                            tokens.canvasBg.copy(alpha = 0.82f),
                             tokens.canvasBg.copy(alpha = 0.96f)
                         )
                     )
@@ -169,13 +226,57 @@ fun AuthScreen(
                 }
             }
 
-            // Main Hero Content
+            // Main Hero Content + Welcoming IronPulse Mascot
             Column(
                 modifier = Modifier
+                    .widthIn(max = 560.dp)
                     .fillMaxWidth()
-                    .padding(vertical = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                    .padding(vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Interactive Mascot Welcome Strip
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("auth_mascot_greeting_card")
+                        .tactilePress(pressedScale = 0.985f, disabledByPerf = noAnim)
+                        .ironGlassSurface(
+                            tokens = tokens,
+                            subtle = true,
+                            borderOverride = tokens.phaseTokens.accent.copy(alpha = 0.36f),
+                            radiusOverride = 18.dp
+                        )
+                        .clickable { mascotTapCount += 1 }
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    MascotOrbFace(
+                        mascot = displayMascot,
+                        eyeStateFlow = mascotEyeFlow,
+                        size = 58.dp,
+                        animActive = !noAnim,
+                        modifier = Modifier.testTag("auth_mascot_orb")
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = displayMascot.activeLine.headline,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = tokens.phaseTokens.accentBright
+                        )
+                        Text(
+                            text = displayMascot.activeLine.subline,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            color = Color(0xFFD5DCE6)
+                        )
+                    }
+                }
+
                 Text(
                     text = lang.t(
                         "GYM REMINDER & PELACAK LATIHAN",
@@ -192,8 +293,8 @@ fun AuthScreen(
                         "Disiplin Jadwal Latihan, Ringtone Pilihan Sendiri, dan Catatan Progres Nyata.",
                         "Disciplined Training Schedules, Custom Ringtones, and Real Set Tracking."
                     ),
-                    fontSize = 36.sp,
-                    lineHeight = 40.sp,
+                    fontSize = 34.sp,
+                    lineHeight = 38.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.8).sp,
                     color = Color(0xFFF4F5F7)
@@ -204,8 +305,8 @@ fun AuthScreen(
                         "Atur hari gym Anda dari Senin hingga Minggu, unggah ringtone pengingat favorit Anda, pantau daftar gerakan hari ini, catat beban dan repetisi tiap set, serta jalankan timer istirahat otomatis dalam satu ruang kerja.",
                         "Configure your weekly training days Monday through Sunday, upload custom reminder ringtones, track today's exercises with weight and reps, and run automatic rest timers in one focused workspace."
                     ),
-                    fontSize = 15.sp,
-                    lineHeight = 23.sp,
+                    fontSize = 14.5.sp,
+                    lineHeight = 22.sp,
                     color = Color(0xFFB5BCC9)
                 )
 
@@ -228,7 +329,7 @@ fun AuthScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Button(
                     onClick = onSignInClick,

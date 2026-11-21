@@ -61,22 +61,22 @@ enum class UiTheme(
         wireValue = "material-you",
         titleId = "Material You (M3)",
         titleEn = "Material You (M3)",
-        subtitleId = "Lapisan tonal dinamis Android 14/15 & tombol pil ekspresif",
-        subtitleEn = "Dynamic Android 14/15 tonal surface ladder & expressive pill controls"
+        subtitleId = "Lapisan tonal dinamis M3 dengan aksen bersih & tombol pil halus",
+        subtitleEn = "Dynamic M3 tonal elevation with crisp surface framing & pill controls"
     ),
     CARBON_FORGE(
         wireValue = "carbon-forge",
         titleId = "Carbon Forge",
         titleEn = "Carbon Forge",
-        subtitleId = "Anyaman serat karbon presisi bersudut tajam",
-        subtitleEn = "Micro-weave carbon fiber texture with precision corners"
+        subtitleId = "Serat karbon 2x2 tajam dengan aksen bevel metalik",
+        subtitleEn = "Crisp 2x2 woven carbon texture with subtle metallic bevel accents"
     ),
     UBUNTU_YARU(
         wireValue = "ubuntu-yaru",
         titleId = "Ubuntu Yaru",
         titleEn = "Ubuntu Yaru",
-        subtitleId = "Matte GTK4 hangat tanpa blur · sangat ringan",
-        subtitleEn = "Warm matte GTK4 dark · zero blur & battery friendly"
+        subtitleId = "Matte gelap GTK4 hangat dengan sentuhan aubergine & jingga Yaru",
+        subtitleEn = "Authentic warm GTK4 dark matte with aubergine warmth & Yaru orange"
     );
 
     companion object {
@@ -106,7 +106,6 @@ enum class PerformancePresetId {
 
 @Immutable
 data class PerformancePreferences(
-    val noBlur: Boolean = false,
     val noAnimations: Boolean = false,
     val noAmbientGlow: Boolean = false,
     val staticMascot: Boolean = false

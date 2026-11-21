@@ -5,15 +5,11 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -68,28 +64,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -101,256 +87,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.AppLanguage
-import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.ActiveTestAlarmState
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import kotlinx.coroutines.flow.StateFlow
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-@Composable
-fun LaunchIntroOverlay(
-    onDismiss: () -> Unit
-) {
-    val tokens = LocalIronPulseTokens.current
-    val lang = tokens.lang
-    val launchMillis = remember { System.currentTimeMillis() }
-    val date = remember(launchMillis) { Date(launchMillis) }
-    val loc = if (lang == AppLanguage.EN) Locale.US else Locale.forLanguageTag("id-ID")
-    val dayDate = remember(launchMillis, lang) { SimpleDateFormat("EEE, dd MMM", loc).format(date) }
-    val timeLabel = remember(launchMillis, tokens.clockFormat, lang) {
-        GymModelHelpers.formatAlarmTime(
-            SimpleDateFormat("HH:mm", Locale.US).format(date),
-            tokens.clockFormat,
-            lang
-        )
-    }
-
-    var started by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        started = true
-    }
-    val noAnim = tokens.performance.noAnimations
-    val lineScaleState = animateFloatAsState(
-        targetValue = if (started) 1f else 0.05f,
-        animationSpec = if (noAnim) tween(0) else tween(480, easing = FastOutSlowInEasing),
-        label = "launchRule"
-    )
-    val heroScaleState = animateFloatAsState(
-        targetValue = if (started) 1f else 0.90f,
-        animationSpec = if (noAnim) tween(0) else IronPulseMotion.MorphSpring,
-        label = "launchHeroScale"
-    )
-    val heroAlphaState = animateFloatAsState(
-        targetValue = if (started) 1f else 0f,
-        animationSpec = if (noAnim) tween(0) else tween(320),
-        label = "launchHeroAlpha"
-    )
-    val staticOne = remember { mutableFloatStateOf(1f) }
-    val haloScaleState: State<Float> = if (noAnim) {
-        staticOne
-    } else {
-        val infinite = rememberInfiniteTransition(label = "splashHalo")
-        infinite.animateFloat(
-            initialValue = 0.92f,
-            targetValue = 1.12f,
-            animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-            label = "haloPulse"
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(tokens.canvasBg)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss
-            )
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 28.dp)
-    ) {
-        // Cached GPU radial glow behind emblem (zero per-frame allocations)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    val s = haloScaleState.value
-                    scaleX = s
-                    scaleY = s
-                }
-                .drawWithCache {
-                    val glowBrush = Brush.radialGradient(
-                        colors = listOf(
-                            tokens.accentColor.copy(alpha = 0.16f),
-                            tokens.phaseTokens.glowPrimary.copy(alpha = 0.08f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.35f, size.height * 0.50f),
-                        radius = size.minDimension * 0.55f
-                    )
-                    onDrawBehind {
-                        drawCircle(brush = glowBrush)
-                    }
-                }
-        )
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Top Hairline Orientation Strip
-            Column(modifier = Modifier.graphicsLayer { alpha = heroAlphaState.value }) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$dayDate · $timeLabel",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = tokens.palette.onSurfaceVariant
-                    )
-                    Text(
-                        text = tokens.timePhase.label(lang),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = tokens.phaseTokens.accentBright
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-            }
-
-            // Swiss Poster Athletic Lockup
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        val s = heroScaleState.value
-                        scaleX = s
-                        scaleY = s
-                        alpha = heroAlphaState.value
-                    }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Geometric "F" Mark (cached Paths)
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp, 60.dp)
-                            .drawWithCache {
-                                val sx = size.width / 88f
-                                val sy = size.height / 96f
-                                val body = Path().apply {
-                                    moveTo(8f * sx, 10f * sy)
-                                    cubicTo(8f * sx, 6.68f * sy, 10.68f * sx, 4f * sy, 14f * sx, 4f * sy)
-                                    lineTo(80f * sx, 4f * sy)
-                                    lineTo(70f * sx, 22f * sy)
-                                    lineTo(28f * sx, 22f * sy)
-                                    lineTo(28f * sx, 92f * sy)
-                                    lineTo(8f * sx, 92f * sy)
-                                    close()
-                                }
-                                val bar = Path().apply {
-                                    moveTo(28f * sx, 42f * sy)
-                                    lineTo(68f * sx, 42f * sy)
-                                    lineTo(59f * sx, 58f * sy)
-                                    lineTo(28f * sx, 58f * sy)
-                                    close()
-                                }
-                                val bodyColor = tokens.palette.onSurface
-                                val barColor = tokens.accentColor
-                                onDrawBehind {
-                                    drawPath(body, bodyColor)
-                                    drawPath(bar, barColor)
-                                }
-                            }
-                    )
-
-                    Column {
-                        Row {
-                            Text(
-                                text = "Iron",
-                                fontSize = 46.sp,
-                                lineHeight = 46.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = (-1.5).sp,
-                                color = tokens.palette.onSurface
-                            )
-                            Text(
-                                text = "Pulse",
-                                fontSize = 46.sp,
-                                lineHeight = 46.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = (-1.5).sp,
-                                color = tokens.accentColor
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = lang.t(
-                                "Jadwal latihan, alarm harian, dan pelacak set.",
-                                "Training schedule, daily alarm, and set tracker."
-                            ),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = tokens.palette.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .graphicsLayer {
-                            scaleX = lineScaleState.value
-                            transformOrigin = TransformOrigin(0f, 0.5f)
-                        }
-                        .drawWithCache {
-                            val ruleBrush = Brush.horizontalGradient(
-                                listOf(tokens.accentColor, tokens.accentColor.copy(alpha = 0.45f), Color.Transparent)
-                            )
-                            onDrawBehind {
-                                drawRect(ruleBrush)
-                            }
-                        }
-                )
-            }
-
-            // Quiet Footer Affordance
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = lang.t("Ketuk di mana saja untuk masuk", "Tap anywhere to continue"),
-                    fontSize = 12.sp,
-                    color = tokens.palette.onSurfaceVariant.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = "1.4s",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    color = tokens.palette.onSurfaceVariant.copy(alpha = 0.8f)
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun NamePromptModal(
@@ -387,8 +129,7 @@ fun NamePromptModal(
                 .fluidModalEntrance(tokens.performance.noAnimations)
                 .ironGlassSurface(
                     tokens = tokens,
-                    borderOverride = tokens.accentColor.copy(alpha = 0.35f),
-                    blurOverChrome = true
+                    borderOverride = tokens.accentColor.copy(alpha = 0.35f)
                 )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -635,7 +376,7 @@ fun FeatureTutorialModal(
                 .widthIn(max = 500.dp)
                 .fillMaxWidth()
                 .fluidModalEntrance(tokens.performance.noAnimations)
-                .ironGlassSurface(tokens, blurOverChrome = true)
+                .ironGlassSurface(tokens)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -1007,8 +748,7 @@ fun CooldownAlertModal(
                 .fluidModalEntrance(tokens.performance.noAnimations)
                 .ironGlassSurface(
                     tokens = tokens,
-                    borderOverride = Color(0x73F59E0B),
-                    blurOverChrome = true
+                    borderOverride = Color(0x73F59E0B)
                 )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -1128,7 +868,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
     val appVersionLabel = remember(context) {
         val raw = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrNull().orEmpty().ifBlank { "1.0.0-beta" }
+        }.getOrNull().orEmpty().ifBlank { "0.0.1-alpha" }
         "v${raw.replace('-', ' ')}"
     }
 
@@ -1153,7 +893,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .fluidModalEntrance(tokens.performance.noAnimations)
-                .ironGlassSurface(tokens, blurOverChrome = true)
+                .ironGlassSurface(tokens)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -1193,7 +933,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .ironGlassSurface(tokens, subtle = true, borderOverride = tokens.accentColor.copy(alpha = 0.3f))
-                    .padding(18.dp)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = lang.t("KREDIT & PEMBUAT", "CREDITS & CREATORS"),
@@ -1202,58 +943,18 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     letterSpacing = 1.6.sp,
                     color = tokens.accentColor
                 )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Hello ~~world~~ Artificial Intelligence
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Hello ",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tokens.palette.onSurface
-                    )
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "world",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.palette.onSurfaceVariant.copy(alpha = 0.72f),
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                        Canvas(modifier = Modifier.matchParentSize()) {
-                            drawLine(
-                                color = tokens.accentColor,
-                                start = Offset(0f, size.height * 0.62f),
-                                end = Offset(size.width, size.height * 0.42f),
-                                strokeWidth = 3.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                        }
-                    }
-                    Text(
-                        text = " ",
-                        fontSize = 22.sp
-                    )
-                }
-                Text(
-                    text = "Artificial Intelligence",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = tokens.accentColor
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AboutCreditRow(lang.t("Pembuat Aplikasi", "App Builder"), "Fathan and Gemini", tokens.palette.onSurface)
-                    AboutCreditRow("Concept, Release & Tester", "Fathan Alhafizhi", tokens.palette.onSurface)
-                    AboutCreditRow("Scripter", "fathan, some ai", tokens.accentColor, mono = true)
-                }
+                AboutCreditRow(
+                    label = "scripter",
+                    value = "Fathan, and Artificial intelligence",
+                    valueColor = tokens.palette.onSurface
+                )
+                AboutCreditRow(
+                    label = "concept",
+                    value = "fathan.",
+                    valueColor = tokens.accentColor,
+                    mono = true
+                )
             }
 
             // About the App Box
@@ -1305,16 +1006,22 @@ private fun AboutCreditRow(
     val tokens = LocalIronPulseTokens.current
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 12.sp, color = tokens.palette.onSurfaceVariant)
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = tokens.palette.onSurfaceVariant
+        )
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = if (mono) FontFamily.Monospace else FontFamily.SansSerif,
-            color = valueColor
+            color = valueColor,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
         )
     }
 }

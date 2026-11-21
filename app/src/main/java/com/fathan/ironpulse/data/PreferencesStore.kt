@@ -50,7 +50,6 @@ class PreferencesStore(context: Context) {
             hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, true),
             mascotVoiceEnabled = prefs.getBoolean(KEY_MASCOT_VOICE, true),
             performance = PerformancePreferences(
-                noBlur = prefs.getBoolean(KEY_PERF_NO_BLUR, false),
                 noAnimations = prefs.getBoolean(KEY_PERF_NO_ANIM, false),
                 noAmbientGlow = prefs.getBoolean(KEY_PERF_NO_GLOW, false),
                 staticMascot = prefs.getBoolean(KEY_PERF_STATIC_MASCOT, false)
@@ -180,14 +179,12 @@ class PreferencesStore(context: Context) {
     }
 
     fun setPerformance(
-        noBlur: Boolean? = null,
         noAnimations: Boolean? = null,
         noAmbientGlow: Boolean? = null,
         staticMascot: Boolean? = null
     ) {
         val prev = _state.value.performance
         val next = prev.copy(
-            noBlur = noBlur ?: prev.noBlur,
             noAnimations = noAnimations ?: prev.noAnimations,
             noAmbientGlow = noAmbientGlow ?: prev.noAmbientGlow,
             staticMascot = staticMascot ?: prev.staticMascot
@@ -198,13 +195,11 @@ class PreferencesStore(context: Context) {
     fun applyPerformancePreset(preset: PerformancePresetId) {
         val next = when (preset) {
             PerformancePresetId.ULTRA -> PerformancePreferences(
-                noBlur = true,
                 noAnimations = true,
                 noAmbientGlow = true,
                 staticMascot = true
             )
             PerformancePresetId.BATTERY -> PerformancePreferences(
-                noBlur = true,
                 noAnimations = false,
                 noAmbientGlow = true,
                 staticMascot = false
@@ -216,7 +211,6 @@ class PreferencesStore(context: Context) {
 
     private fun savePerformance(next: PerformancePreferences) {
         prefs.edit()
-            .putBoolean(KEY_PERF_NO_BLUR, next.noBlur)
             .putBoolean(KEY_PERF_NO_ANIM, next.noAnimations)
             .putBoolean(KEY_PERF_NO_GLOW, next.noAmbientGlow)
             .putBoolean(KEY_PERF_STATIC_MASCOT, next.staticMascot)
@@ -262,7 +256,6 @@ class PreferencesStore(context: Context) {
         private const val KEY_PRE_YARU_TINT = "pre_yaru_tint"
         private const val KEY_HAPTICS = "haptics_enabled"
         private const val KEY_MASCOT_VOICE = "mascot_voice_enabled"
-        private const val KEY_PERF_NO_BLUR = "perf_no_blur"
         private const val KEY_PERF_NO_ANIM = "perf_no_anim"
         private const val KEY_PERF_NO_GLOW = "perf_no_glow"
         private const val KEY_PERF_STATIC_MASCOT = "perf_static_mascot"

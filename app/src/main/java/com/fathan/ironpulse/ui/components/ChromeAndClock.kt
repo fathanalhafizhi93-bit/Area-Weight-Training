@@ -584,21 +584,19 @@ fun PhaseLogoEmblem(
 ) {
     val tokens = LocalIronPulseTokens.current
     val accent = tokens.phaseTokens.accentBright
+    val softAccent = tokens.phaseTokens.accent
     val cornerRadius = when (tokens.uiTheme) {
-        UiTheme.MATERIAL_YOU -> 18.dp
-        UiTheme.CARBON_FORGE -> 9.dp
-        UiTheme.UBUNTU_YARU -> 11.dp
+        UiTheme.MATERIAL_YOU -> 16.dp
+        UiTheme.CARBON_FORGE -> 10.dp
+        UiTheme.UBUNTU_YARU -> 12.dp
     }
+    val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius) }
 
     Box(
         modifier = modifier
-            .size(54.dp)
-            .ironGlassSurface(
-                tokens = tokens,
-                subtle = true,
-                borderOverride = accent.copy(alpha = 0.45f),
-                radiusOverride = cornerRadius
-            ),
+            .size(52.dp)
+            .clip(shape)
+            .background(softAccent.copy(alpha = 0.14f), shape),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(30.dp)) {
@@ -607,40 +605,51 @@ fun PhaseLogoEmblem(
             when (timePhase) {
                 DayTimePhase.MORNING -> {
                     val cx = w * 0.5f
-                    val cy = h * 0.62f
-                    drawCircle(
+                    val horizonY = h * 0.72f
+                    val r = w * 0.26f
+                    // Flat rising sun half-disc
+                    drawArc(
                         color = accent,
-                        radius = w * 0.22f,
-                        center = Offset(cx, cy),
-                        style = Stroke(width = 2.4.dp.toPx())
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = true,
+                        topLeft = Offset(cx - r, horizonY - r),
+                        size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f)
                     )
+                    // Flat horizon pill bar
                     drawLine(
-                        color = accent,
-                        start = Offset(w * 0.14f, cy + h * 0.18f),
-                        end = Offset(w * 0.86f, cy + h * 0.18f),
-                        strokeWidth = 2.dp.toPx(),
+                        color = softAccent.copy(alpha = 0.88f),
+                        start = Offset(w * 0.16f, horizonY + 2.5.dp.toPx()),
+                        end = Offset(w * 0.84f, horizonY + 2.5.dp.toPx()),
+                        strokeWidth = 2.6.dp.toPx(),
                         cap = StrokeCap.Round
                     )
+                    // 3 minimal flat ray dots above rising sun
                     listOf(
-                        Offset(cx, h * 0.14f) to Offset(cx, h * 0.28f),
-                        Offset(w * 0.22f, h * 0.28f) to Offset(w * 0.31f, h * 0.37f),
-                        Offset(w * 0.78f, h * 0.28f) to Offset(w * 0.69f, h * 0.37f)
-                    ).forEach { (s, e) ->
-                        drawLine(accent, s, e, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                        Offset(cx, h * 0.18f),
+                        Offset(w * 0.24f, h * 0.32f),
+                        Offset(w * 0.76f, h * 0.32f)
+                    ).forEach { center ->
+                        drawCircle(
+                            color = accent,
+                            radius = 2.dp.toPx(),
+                            center = center
+                        )
                     }
                 }
                 DayTimePhase.AFTERNOON -> {
                     val cx = w * 0.5f
                     val cy = h * 0.5f
+                    // Flat core solar disc
                     drawCircle(
                         color = accent,
-                        radius = w * 0.21f,
-                        center = Offset(cx, cy),
-                        style = Stroke(width = 2.4.dp.toPx())
+                        radius = w * 0.23f,
+                        center = Offset(cx, cy)
                     )
+                    // 8 crisp flat short capsule rays around disc
                     for (i in 0 until 8) {
                         val angle = Math.toRadians((i * 45).toDouble())
-                        val r1 = w * 0.31f
+                        val r1 = w * 0.34f
                         val r2 = w * 0.43f
                         drawLine(
                             color = accent,
@@ -652,22 +661,38 @@ fun PhaseLogoEmblem(
                                 (cx + r2 * kotlin.math.cos(angle)).toFloat(),
                                 (cy + r2 * kotlin.math.sin(angle)).toFloat()
                             ),
-                            strokeWidth = 2.dp.toPx(),
+                            strokeWidth = 2.5.dp.toPx(),
                             cap = StrokeCap.Round
                         )
                     }
                 }
                 DayTimePhase.NIGHT -> {
-                    val p = Path().apply {
-                        moveTo(w * 0.62f, h * 0.18f)
-                        cubicTo(w * 0.35f, h * 0.20f, w * 0.24f, h * 0.52f, w * 0.40f, h * 0.74f)
-                        cubicTo(w * 0.52f, h * 0.88f, w * 0.74f, h * 0.82f, w * 0.82f, h * 0.68f)
-                        cubicTo(w * 0.60f, h * 0.74f, w * 0.44f, h * 0.56f, w * 0.48f, h * 0.36f)
-                        cubicTo(w * 0.50f, h * 0.27f, w * 0.56f, h * 0.22f, w * 0.62f, h * 0.18f)
+                    // Clean flat crescent moon silhouette
+                    val moonPath = Path().apply {
+                        moveTo(w * 0.58f, h * 0.16f)
+                        cubicTo(w * 0.31f, h * 0.18f, w * 0.20f, h * 0.52f, w * 0.38f, h * 0.75f)
+                        cubicTo(w * 0.52f, h * 0.90f, w * 0.77f, h * 0.84f, w * 0.84f, h * 0.67f)
+                        cubicTo(w * 0.61f, h * 0.73f, w * 0.45f, h * 0.55f, w * 0.49f, h * 0.35f)
+                        cubicTo(w * 0.51f, h * 0.26f, w * 0.55f, h * 0.20f, w * 0.58f, h * 0.16f)
                         close()
                     }
-                    drawPath(p, color = accent)
-                    drawCircle(accent, radius = 2.dp.toPx(), center = Offset(w * 0.74f, h * 0.28f))
+                    drawPath(moonPath, color = accent)
+                    // Minimal flat diamond star
+                    val sx = w * 0.74f
+                    val sy = h * 0.28f
+                    val sr = 3.2.dp.toPx()
+                    val starPath = Path().apply {
+                        moveTo(sx, sy - sr)
+                        lineTo(sx + sr * 0.36f, sy - sr * 0.36f)
+                        lineTo(sx + sr, sy)
+                        lineTo(sx + sr * 0.36f, sy + sr * 0.36f)
+                        lineTo(sx, sy + sr)
+                        lineTo(sx - sr * 0.36f, sy + sr * 0.36f)
+                        lineTo(sx - sr, sy)
+                        lineTo(sx - sr * 0.36f, sy - sr * 0.36f)
+                        close()
+                    }
+                    drawPath(starPath, color = accent.copy(alpha = 0.9f))
                 }
             }
         }

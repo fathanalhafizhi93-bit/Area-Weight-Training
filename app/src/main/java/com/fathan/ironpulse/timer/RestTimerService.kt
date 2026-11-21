@@ -262,11 +262,15 @@ class RestTimerService : Service() {
         }
 
         fun stop(context: Context) {
-            if (!_state.value.isActive) return
+            val wasActive = _state.value.isActive
+            val tick = _state.value.completedEventTick
+            if (wasActive) {
+                _state.value = RestTimerState(completedEventTick = tick)
+            }
             val intent = Intent(context, RestTimerService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.startService(intent)
+            runCatching { context.startService(intent) }
         }
     }
 }

@@ -1,6 +1,12 @@
 package com.fathan.ironpulse.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -52,12 +58,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -204,43 +212,9 @@ fun TodayScreen(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .drawWithCache {
-                            val scrimAlpha = tokens.heroScrimAlpha
-                            val gradient = Brush.linearGradient(
-                                colors = listOf(
-                                    tokens.phaseTokens.heroStart.copy(alpha = tokens.phaseTokens.heroStart.alpha * scrimAlpha),
-                                    tokens.phaseTokens.heroMid.copy(alpha = tokens.phaseTokens.heroMid.alpha * scrimAlpha),
-                                    tokens.phaseTokens.heroEnd.copy(alpha = tokens.phaseTokens.heroEnd.alpha * scrimAlpha)
-                                )
-                            )
-                            val cx = size.width * 0.84f
-                            val cy = size.height * 0.14f
-                            val outerStroke = Stroke(
-                                width = 1.5.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f))
-                            )
-                            val innerStroke = Stroke(width = 1.dp.toPx())
-                            val outerR = 110.dp.toPx()
-                            val innerR = 74.dp.toPx()
-                            onDrawBehind {
-                                drawRect(gradient)
-                                drawCircle(
-                                    color = tokens.phaseTokens.accent.copy(alpha = 0.22f),
-                                    radius = outerR,
-                                    center = Offset(cx, cy),
-                                    style = outerStroke
-                                )
-                                drawCircle(
-                                    color = tokens.phaseTokens.accentBright.copy(alpha = 0.2f),
-                                    radius = innerR,
-                                    center = Offset(cx, cy),
-                                    style = innerStroke
-                                )
-                            }
-                        }
+                HeroAnimatedAtmosphereLayer(
+                    modifier = Modifier.matchParentSize(),
+                    noAnim = noAnim
                 )
 
                 Column(
@@ -1112,3 +1086,152 @@ private fun formatNextCountdown(targetMillis: Long, nowMillis: Long, lang: AppLa
         }
     }
 }
+
+@Composable
+internal fun HeroAnimatedAtmosphereLayer(
+    modifier: Modifier = Modifier,
+    noAnim: Boolean
+) {
+    val tokens = LocalIronPulseTokens.current
+    val tabActive = LocalTabActive.current
+    val animate = !noAnim && tabActive
+
+    val outerOrbit = if (animate) {
+        val inf = rememberInfiniteTransition(label = "heroOrbit")
+        inf.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 24000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "outerOrbit"
+        ).value
+    } else {
+        0f
+    }
+
+    val breathe = if (animate) {
+        val inf = rememberInfiniteTransition(label = "heroBreathe")
+        inf.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 3600, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breathe"
+        ).value
+    } else {
+        0.5f
+    }
+
+    val sheenProgress = if (animate) {
+        val inf = rememberInfiniteTransition(label = "heroSheen")
+        inf.animateFloat(
+            initialValue = -0.35f,
+            targetValue = 1.35f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 5200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "sheen"
+        ).value
+    } else {
+        -1f
+    }
+
+    val scrimAlpha = tokens.heroScrimAlpha
+    val heroStart = tokens.phaseTokens.heroStart.copy(alpha = tokens.phaseTokens.heroStart.alpha * scrimAlpha)
+    val heroMid = tokens.phaseTokens.heroMid.copy(alpha = tokens.phaseTokens.heroMid.alpha * scrimAlpha)
+    val heroEnd = tokens.phaseTokens.heroEnd.copy(alpha = tokens.phaseTokens.heroEnd.alpha * scrimAlpha)
+    val glowColor = tokens.phaseTokens.glowPrimary
+    val accentColor = tokens.phaseTokens.accent
+    val accentBright = tokens.phaseTokens.accentBright
+
+    Canvas(modifier = modifier) {
+        val gradient = Brush.linearGradient(colors = listOf(heroStart, heroMid, heroEnd))
+        drawRect(gradient)
+
+        val cx = size.width * 0.84f
+        val cy = size.height * 0.16f
+        val pulseRadius = (88.dp.toPx()) * (0.92f + 0.16f * breathe)
+        val auraBrush = Brush.radialGradient(
+            colors = listOf(
+                glowColor.copy(alpha = 0.22f + 0.12f * breathe),
+                accentBright.copy(alpha = 0.08f + 0.06f * breathe),
+                Color.Transparent
+            ),
+            center = Offset(cx, cy),
+            radius = pulseRadius * 1.45f
+        )
+        drawCircle(brush = auraBrush, radius = pulseRadius * 1.45f, center = Offset(cx, cy))
+
+        val outerR = 110.dp.toPx()
+        val innerR = 72.dp.toPx()
+        val outerStroke = Stroke(
+            width = 1.5.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f))
+        )
+        val innerStroke = Stroke(width = 1.25.dp.toPx(), cap = StrokeCap.Round)
+
+        rotate(degrees = outerOrbit, pivot = Offset(cx, cy)) {
+            drawCircle(
+                color = accentColor.copy(alpha = 0.24f),
+                radius = outerR,
+                center = Offset(cx, cy),
+                style = outerStroke
+            )
+            // Orbiting beacon dot on outer ring
+            drawCircle(
+                color = accentBright.copy(alpha = 0.55f),
+                radius = 3.dp.toPx(),
+                center = Offset(cx + outerR, cy)
+            )
+        }
+
+        rotate(degrees = -outerOrbit * 1.35f, pivot = Offset(cx, cy)) {
+            drawCircle(
+                color = accentBright.copy(alpha = 0.16f),
+                radius = innerR,
+                center = Offset(cx, cy),
+                style = Stroke(width = 1.dp.toPx())
+            )
+            drawArc(
+                color = accentBright.copy(alpha = 0.45f),
+                startAngle = -30f,
+                sweepAngle = 78f,
+                useCenter = false,
+                topLeft = Offset(cx - innerR, cy - innerR),
+                size = Size(innerR * 2f, innerR * 2f),
+                style = innerStroke
+            )
+            drawArc(
+                color = accentColor.copy(alpha = 0.35f),
+                startAngle = 150f,
+                sweepAngle = 62f,
+                useCenter = false,
+                topLeft = Offset(cx - innerR, cy - innerR),
+                size = Size(innerR * 2f, innerR * 2f),
+                style = innerStroke
+            )
+        }
+
+        if (animate && sheenProgress in -0.35f..1.35f) {
+            val sheenW = size.width * 0.42f
+            val left = size.width * sheenProgress - sheenW * 0.5f
+            val sheenBrush = Brush.linearGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.045f),
+                    accentBright.copy(alpha = 0.055f),
+                    Color.Transparent
+                ),
+                start = Offset(left, 0f),
+                end = Offset(left + sheenW, size.height)
+            )
+            drawRect(brush = sheenBrush)
+        }
+    }
+}
+

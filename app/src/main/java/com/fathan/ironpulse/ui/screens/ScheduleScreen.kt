@@ -27,7 +27,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -90,7 +92,8 @@ fun ScheduleScreen(
     state: IronPulseUiState,
     viewModel: GymViewModel,
     contentPadding: PaddingValues,
-    onOpenExercisesForDay: (DayKey) -> Unit
+    onOpenExercisesForDay: (DayKey) -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -110,6 +113,7 @@ fun ScheduleScreen(
         contentAlignment = Alignment.TopCenter
     ) {
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,

@@ -168,7 +168,6 @@ data class IronPulseUiState(
     val activeTab: AppTab = AppTab.TODAY,
     val focusedWorkoutExerciseId: String? = null,
     val selectedExerciseDayKey: DayKey = GymModelHelpers.getTodayDayKey(),
-    val showLaunchIntro: Boolean = true,
     val showNamePrompt: Boolean = false,
     val tutorialOpen: Boolean = false,
     val tutorialStartWithLang: Boolean = true,
@@ -224,7 +223,6 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeTab = MutableStateFlow(AppTab.TODAY)
     private val _focusedWorkoutExerciseId = MutableStateFlow<String?>(null)
     private val _selectedExerciseDayKey = MutableStateFlow(GymModelHelpers.getTodayDayKey())
-    private val _showLaunchIntro = MutableStateFlow(!prefsStore.state.value.performance.noAnimations)
     private val _showNamePrompt = MutableStateFlow(false)
     private val _tutorialOpen = MutableStateFlow(false)
     private val _tutorialStartWithLang = MutableStateFlow(true)
@@ -287,6 +285,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private var userSyncJob: Job? = null
     private var cacheSaveJob: Job? = null
     private var lastRestCompletionTick: Long = 0L
+    private var preHydratedUid: String? = null
+    private var preHydratedCached: GymCachedSnapshot? = null
 
     // Mascot internal timers & pools
     private var mascotPhasePoseIdx: Int = 0
@@ -328,7 +328,6 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val activeTab: AppTab,
         val focusedExerciseId: String?,
         val selectedExerciseDayKey: DayKey,
-        val showLaunchIntro: Boolean,
         val showNamePrompt: Boolean,
         val tutorialOpen: Boolean,
         val tutorialStartWithLang: Boolean,
@@ -388,8 +387,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private val shellFlow = combine(
-        combine(prefsStore.state, _activeTab, _focusedWorkoutExerciseId, _selectedExerciseDayKey, _showLaunchIntro) { pr, tab, foc, eday, intro ->
-            listOf(pr, tab, foc, eday, intro)
+        combine(prefsStore.state, _activeTab, _focusedWorkoutExerciseId, _selectedExerciseDayKey) { pr, tab, foc, eday ->
+            listOf(pr, tab, foc, eday)
         },
         combine(_showNamePrompt, _tutorialOpen, _tutorialStartWithLang, _showAboutDialog, _activeTestAlarm) { np, to, tl, ab, ta ->
             listOf(np, to, tl, ab, ta)
@@ -407,7 +406,6 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             activeTab = g1[1] as AppTab,
             focusedExerciseId = g1[2] as String?,
             selectedExerciseDayKey = g1[3] as DayKey,
-            showLaunchIntro = g1[4] as Boolean,
             showNamePrompt = g2[0] as Boolean,
             tutorialOpen = g2[1] as Boolean,
             tutorialStartWithLang = g2[2] as Boolean,
@@ -419,6 +417,105 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             hasNotifPerm = g4.first,
             canExactAlarm = g4.second,
             mascot = g4.third
+        )
+    }
+
+    init {
+        haptics.enabled = prefsStore.state.value.hapticsEnabled
+        initializeInitialPose()
+        hydrateSyncAtLaunch()
+    }
+
+    private fun hydrateSyncAtLaunch() {
+        val syncUser = runCatching { repo.auth.currentUser }.getOrNull()
+        _user.value = syncUser
+        _authReady.value = true
+        if (syncUser == null) {
+            _dataLoading.value = false
+            _historyLoading.value = false
+            return
+        }
+        val uid = syncUser.uid
+        val nameConfirmed = prefsStore.isNameConfirmed(uid)
+        val tutorialSeen = prefsStore.isTutorialSeen(uid)
+        _showNamePrompt.value = !nameConfirmed
+        if (nameConfirmed && !tutorialSeen) {
+            _tutorialStartWithLang.value = true
+            _tutorialOpen.value = true
+        }
+        val cached = runCatching { localCacheStore.loadSnapshot(uid) }.getOrNull()
+        preHydratedUid = uid
+        preHydratedCached = cached
+        val hasWarmCache = cached != null && (
+            cached.schedules.isNotEmpty() ||
+                cached.profile != null ||
+                cached.workoutHistory.isNotEmpty()
+            )
+        if (hasWarmCache && cached != null) {
+            if (cached.profile != null) _profile.value = cached.profile
+            _schedules.value = if (cached.schedules.size == DayKey.entries.size) {
+                cached.schedules
+            } else {
+                GymPresets.createDefaultSchedules(uid) + cached.schedules
+            }
+            _customRingtones.value = cached.customRingtones
+            _workoutHistory.value = cached.workoutHistory
+            _weeklyStreak.value = cached.weeklyStreak
+            if (cached.todayDateKey == _todayDateKey.value) {
+                _todayLog.value = cached.todayLog
+            }
+            _dataLoading.value = false
+            _historyLoading.value = false
+            syncNativeAlarmsIfReady()
+            refreshMascotDialogueOnly()
+            if (cached.profile != null && !_showNamePrompt.value && !_tutorialOpen.value) {
+                initialGreetingFired = true
+                updateMascotSpeech(playChirp = false, speakTts = false, lockDialogue = false)
+            }
+        } else {
+            _schedules.value = GymPresets.createDefaultSchedules(uid)
+            _dataLoading.value = false
+            _historyLoading.value = true
+            refreshMascotDialogueOnly()
+        }
+    }
+
+    private fun buildInitialUiState(): IronPulseUiState {
+        val u = _user.value
+        val scheds = _schedules.value
+        val todaySched = scheds[_todayDayKey.value]
+        val entries = if (todaySched != null) {
+            GymModelHelpers.buildEntriesFromSchedule(
+                exercises = todaySched.exercises,
+                existingEntries = _todayLog.value?.entries ?: emptyList()
+            )
+        } else {
+            emptyList()
+        }
+        return IronPulseUiState(
+            authReady = _authReady.value,
+            userUid = u?.uid,
+            userEmail = u?.email,
+            userDisplayName = u?.displayName,
+            dataLoading = _dataLoading.value,
+            historyLoading = _historyLoading.value,
+            profile = _profile.value,
+            schedules = scheds,
+            customRingtones = _customRingtones.value,
+            todayDayKey = _todayDayKey.value,
+            todayDateKey = _todayDateKey.value,
+            timePhase = _timePhase.value,
+            todayLog = _todayLog.value,
+            effectiveTodayEntries = entries,
+            workoutHistory = _workoutHistory.value,
+            weeklyStreak = _weeklyStreak.value,
+            appPrefs = prefsStore.state.value,
+            activeTab = AppTab.TODAY,
+            selectedExerciseDayKey = _selectedExerciseDayKey.value,
+            showNamePrompt = _showNamePrompt.value,
+            tutorialOpen = _tutorialOpen.value,
+            tutorialStartWithLang = _tutorialStartWithLang.value,
+            mascot = _mascotState.value
         )
     }
 
@@ -459,7 +556,6 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             activeTab = shell.activeTab,
             focusedWorkoutExerciseId = shell.focusedExerciseId,
             selectedExerciseDayKey = shell.selectedExerciseDayKey,
-            showLaunchIntro = shell.showLaunchIntro,
             showNamePrompt = shell.showNamePrompt,
             tutorialOpen = shell.tutorialOpen,
             tutorialStartWithLang = shell.tutorialStartWithLang,
@@ -475,30 +571,15 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = IronPulseUiState(
-            appPrefs = prefsStore.state.value,
-            timePhase = _timePhase.value,
-            showLaunchIntro = !prefsStore.state.value.performance.noAnimations
-        )
+        initialValue = buildInitialUiState()
     )
 
     init {
-        haptics.enabled = prefsStore.state.value.hapticsEnabled
-        initializeInitialPose()
         observeConnectivity()
         observeAuthAndData()
         observeRestCompletionHaptics()
         startClockAndExerciseLoop()
         startMascotLifeLoops()
-        scheduleLaunchIntroAutoDismiss()
-    }
-
-    private fun scheduleLaunchIntroAutoDismiss() {
-        if (!_showLaunchIntro.value) return
-        viewModelScope.launch {
-            delay(1450L)
-            dismissLaunchIntro()
-        }
     }
 
     private fun observeConnectivity() {
@@ -557,7 +638,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 if (rest.completedEventTick > lastRestCompletionTick) {
                     lastRestCompletionTick = rest.completedEventTick
                     _restIdleRemaining.value = _restIdleTotal.value
-                    updateMascotSpeech(forceMood = null, playChirp = false)
+                    returnMascotToTimePhaseImmediately()
                 }
             }
         }
@@ -597,18 +678,28 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         _syncError.value = null
         val uid = firebaseUser.uid
 
-        // Onboarding check (after splash settles)
-        val nameConfirmed = prefsStore.isNameConfirmed(uid)
-        val tutorialSeen = prefsStore.isTutorialSeen(uid)
-        _showNamePrompt.value = !nameConfirmed
-        if (nameConfirmed && !tutorialSeen) {
-            _tutorialStartWithLang.value = true
-            _tutorialOpen.value = true
+        val consumedPreHydration = preHydratedUid == uid
+        val preCachedSnapshot = if (consumedPreHydration) preHydratedCached else null
+        preHydratedUid = null
+        preHydratedCached = null
+
+        if (!consumedPreHydration) {
+            val nameConfirmed = prefsStore.isNameConfirmed(uid)
+            val tutorialSeen = prefsStore.isTutorialSeen(uid)
+            _showNamePrompt.value = !nameConfirmed
+            if (nameConfirmed && !tutorialSeen) {
+                _tutorialStartWithLang.value = true
+                _tutorialOpen.value = true
+            }
         }
 
         userSyncJob = viewModelScope.launch {
-            val cached = withContext(Dispatchers.IO) {
-                localCacheStore.loadSnapshot(uid)
+            val cached = if (consumedPreHydration) {
+                preCachedSnapshot
+            } else {
+                withContext(Dispatchers.IO) {
+                    localCacheStore.loadSnapshot(uid)
+                }
             }
             val hasWarmCache = cached != null && (
                 cached.schedules.isNotEmpty() ||
@@ -616,32 +707,34 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     cached.workoutHistory.isNotEmpty()
                 )
 
-            if (hasWarmCache && cached != null) {
-                if (cached.profile != null) _profile.value = cached.profile
-                _schedules.value = if (cached.schedules.size == DayKey.entries.size) {
-                    cached.schedules
+            if (!consumedPreHydration) {
+                if (hasWarmCache && cached != null) {
+                    if (cached.profile != null) _profile.value = cached.profile
+                    _schedules.value = if (cached.schedules.size == DayKey.entries.size) {
+                        cached.schedules
+                    } else {
+                        GymPresets.createDefaultSchedules(uid) + cached.schedules
+                    }
+                    _customRingtones.value = cached.customRingtones
+                    _workoutHistory.value = cached.workoutHistory
+                    _weeklyStreak.value = cached.weeklyStreak
+                    if (cached.todayDateKey == _todayDateKey.value) {
+                        _todayLog.value = cached.todayLog
+                    }
+                    _dataLoading.value = false
+                    _historyLoading.value = false
+                    syncNativeAlarmsIfReady()
+                    refreshMascotDialogueOnly()
+                    if (!initialGreetingFired && cached.profile != null && !_showNamePrompt.value && !_tutorialOpen.value) {
+                        initialGreetingFired = true
+                        updateMascotSpeech(playChirp = true, speakTts = false)
+                    }
                 } else {
-                    GymPresets.createDefaultSchedules(uid) + cached.schedules
+                    // Render default schedule immediately instead of blocking behind network initialization
+                    _schedules.value = GymPresets.createDefaultSchedules(uid)
+                    _dataLoading.value = false
+                    _historyLoading.value = true
                 }
-                _customRingtones.value = cached.customRingtones
-                _workoutHistory.value = cached.workoutHistory
-                _weeklyStreak.value = cached.weeklyStreak
-                if (cached.todayDateKey == _todayDateKey.value) {
-                    _todayLog.value = cached.todayLog
-                }
-                _dataLoading.value = false
-                _historyLoading.value = false
-                syncNativeAlarmsIfReady()
-                refreshMascotDialogueOnly()
-                if (!initialGreetingFired && cached.profile != null && !_showLaunchIntro.value && !_showNamePrompt.value && !_tutorialOpen.value) {
-                    initialGreetingFired = true
-                    updateMascotSpeech(playChirp = true, speakTts = false)
-                }
-            } else {
-                // Render default schedule immediately instead of blocking behind network initialization
-                _schedules.value = GymPresets.createDefaultSchedules(uid)
-                _dataLoading.value = false
-                _historyLoading.value = true
             }
 
             // Start all Firestore listeners immediately; disk cache + network stream will keep UI synchronized
@@ -652,7 +745,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     _profile.value = prof
                     syncNativeAlarmsIfReady()
                     scheduleCachePersist(uid)
-                    if (!initialGreetingFired && prof != null && !_showLaunchIntro.value && !_showNamePrompt.value && !_tutorialOpen.value) {
+                    if (!initialGreetingFired && prof != null && !_showNamePrompt.value && !_tutorialOpen.value) {
                         initialGreetingFired = true
                         updateMascotSpeech(playChirp = true, speakTts = true)
                     }
@@ -761,7 +854,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     val hour = cal.get(Calendar.HOUR_OF_DAY)
                     mascotPhasePoseIdx = initialPhasePoseIndex(phase, hour)
                     pushRecentPose(mascotPhasePoseIdx)
-                    updateMascotSpeech(playChirp = !_showLaunchIntro.value, speakTts = false)
+                    updateMascotSpeech(playChirp = true, speakTts = false)
                 }
 
                 // Cooldown countdown updates ONLY its isolated StateFlow while active
@@ -882,16 +975,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     fun closeTutorial() {
         _tutorialOpen.value = false
         _user.value?.uid?.let { uid -> prefsStore.setTutorialSeen(uid, true) }
-        if (!initialGreetingFired && _profile.value != null && !_showLaunchIntro.value && !_showNamePrompt.value) {
-            initialGreetingFired = true
-            updateMascotSpeech(playChirp = true, speakTts = true)
-        }
-    }
-
-    fun dismissLaunchIntro() {
-        if (!_showLaunchIntro.value) return
-        _showLaunchIntro.value = false
-        if (!initialGreetingFired && _profile.value != null && !_showNamePrompt.value && !_tutorialOpen.value) {
+        if (!initialGreetingFired && _profile.value != null && !_showNamePrompt.value) {
             initialGreetingFired = true
             updateMascotSpeech(playChirp = true, speakTts = true)
         }
@@ -969,13 +1053,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setPerformance(
-        noBlur: Boolean? = null,
         noAnimations: Boolean? = null,
         noAmbientGlow: Boolean? = null,
         staticMascot: Boolean? = null
     ) {
         haptics.toggle()
-        prefsStore.setPerformance(noBlur, noAnimations, noAmbientGlow, staticMascot)
+        prefsStore.setPerformance(noAnimations, noAmbientGlow, staticMascot)
     }
 
     fun applyPerformancePreset(preset: PerformancePresetId) {
@@ -1424,12 +1507,13 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             _restIdleTotal.value = rest.totalSeconds.coerceAtLeast(1)
             _restIdleExercise.value = rest.exerciseName
             RestTimerService.stop(getApplication())
+            returnMascotToTimePhaseImmediately()
         } else {
             val sec = if (_restIdleRemaining.value > 0) _restIdleRemaining.value else _restIdleTotal.value.coerceAtLeast(45)
             haptics.timerStart()
             _restIdleRemaining.value = sec
             RestTimerService.start(getApplication(), sec, _restIdleExercise.value)
-            updateMascotSpeech(forceMood = MascotMood.REST, playChirp = true, speakTts = false)
+            updateMascotSpeech(forceMood = MascotMood.REST, playChirp = true, speakTts = false, bypassLock = true)
         }
     }
 
@@ -1455,6 +1539,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         haptics.timerReset()
         RestTimerService.stop(getApplication())
         _restIdleRemaining.value = _restIdleTotal.value.coerceIn(15, 600)
+        returnMascotToTimePhaseImmediately()
     }
 
     fun add15SecondsRest() {
@@ -1465,6 +1550,22 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         haptics.timerPause()
         RestTimerService.stop(getApplication())
         _restIdleRemaining.value = _restIdleTotal.value
+        returnMascotToTimePhaseImmediately()
+    }
+
+    private fun returnMascotToTimePhaseImmediately() {
+        dialogueLockedUntilMs = 0L
+        _mascotState.value = _mascotState.value.copy(
+            urgentMood = null,
+            isDialogueLocked = false
+        )
+        updateMascotSpeech(
+            forceMood = null,
+            playChirp = false,
+            speakTts = false,
+            bypassLock = true,
+            lockDialogue = false
+        )
     }
 
     // --- Schedules & Exercise CRUD ---
@@ -1907,7 +2008,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
                 // Autonomous calm chat (~68s day, ~120s night) when dialogue lock is free
                 val chatGap = if (current.timePhase == DayTimePhase.NIGHT) 120_000L else 68_000L
-                if (!lockActive && initialGreetingFired && !_showLaunchIntro.value &&
+                if (!lockActive && initialGreetingFired &&
                     now - lastAutoChatAtMs >= chatGap
                 ) {
                     lastAutoChatAtMs = now
@@ -2011,7 +2112,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         dayJustChanged: Boolean = false,
         playChirp: Boolean = true,
         speakTts: Boolean = false,
-        bypassLock: Boolean = false
+        bypassLock: Boolean = false,
+        lockDialogue: Boolean = true
     ) {
         val now = System.currentTimeMillis()
         if (!bypassLock && now < dialogueLockedUntilMs && forceMood == null) {
@@ -2042,7 +2144,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val urgent = if (ctx.mood in URGENT_MOODS) ctx.mood else null
         val colorHex = resolveMascotColorHex(ctx.mood, phase, prefs)
 
-        dialogueLockedUntilMs = now + 14_000L
+        dialogueLockedUntilMs = if (lockDialogue) now + 14_000L else 0L
         lastAutoChatAtMs = now
 
         _mascotState.value = _mascotState.value.copy(
@@ -2053,7 +2155,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             phaseColorHex = colorHex,
             activeLine = picked,
             speechEventId = _mascotState.value.speechEventId + 1,
-            isDialogueLocked = true
+            isDialogueLocked = lockDialogue
         )
 
         if (playChirp) {
@@ -2061,7 +2163,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             val variant = if (phase == DayTimePhase.NIGHT && urgent == null) "night" else ctx.mood.wireValue
             audioEngine.playMascotChirp(variant, vol)
         }
-        if (speakTts && prefs.mascotVoiceEnabled && !_showLaunchIntro.value) {
+        if (speakTts && prefs.mascotVoiceEnabled) {
             ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
         }
     }

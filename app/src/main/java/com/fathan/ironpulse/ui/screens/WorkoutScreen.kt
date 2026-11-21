@@ -34,8 +34,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,7 +86,6 @@ import com.fathan.ironpulse.model.ExerciseItem
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.TimerDirection
-import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.ui.components.TactileStepperControl
 import com.fathan.ironpulse.ui.components.tactilePress
@@ -94,8 +95,6 @@ import com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 
@@ -106,7 +105,8 @@ fun WorkoutScreen(
     contentPadding: PaddingValues,
     onBackToToday: () -> Unit,
     onOpenSchedule: () -> Unit,
-    onOpenExercisesForDay: (DayKey) -> Unit
+    onOpenExercisesForDay: (DayKey) -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -138,12 +138,10 @@ fun WorkoutScreen(
     val completedSets = remember(todayEntries) { todayEntries.sumOf { e -> e.sets.count { it.completed } } }
     val progressPct = if (totalSets > 0) (completedSets * 100) / totalSets else 0
     val hasExercises = activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()
-    val workoutListHaze = remember { HazeState() }
-    val useListHaze = !tokens.performance.noBlur &&
-        tokens.uiTheme == UiTheme.MATERIAL_YOU
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
@@ -155,7 +153,6 @@ fun WorkoutScreen(
                 .align(Alignment.TopCenter)
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
-                .then(if (useListHaze) Modifier.hazeSource(workoutListHaze) else Modifier)
         ) {
             // 1. TOP WORKOUT COCKPIT BAR
             item(key = "workout_header", contentType = "header") {
@@ -393,7 +390,6 @@ fun WorkoutScreen(
                 restBarDismissed = restBarDismissed,
                 bottomInset = contentPadding.calculateBottomPadding(),
                 secUnit = secUnit,
-                listHazeState = workoutListHaze,
                 onUndismiss = { restBarDismissed = false },
                 onAdjust = { viewModel.adjustRestTimer(it) },
                 onTogglePause = { viewModel.toggleRestPauseOrStart() },
@@ -494,7 +490,6 @@ private fun WorkoutFloatingRestBar(
     restBarDismissed: Boolean,
     bottomInset: androidx.compose.ui.unit.Dp,
     secUnit: String,
-    listHazeState: HazeState,
     onUndismiss: () -> Unit,
     onAdjust: (Int) -> Unit,
     onTogglePause: () -> Unit,
@@ -530,8 +525,7 @@ private fun WorkoutFloatingRestBar(
                 .ironGlassSurface(
                     tokens = tokens,
                     borderOverride = if (restRemaining == 0) Color(0x8016A34A) else tokens.accentColor.copy(alpha = 0.55f),
-                    radiusOverride = 20.dp,
-                    hazeStateOverride = listHazeState
+                    radiusOverride = 20.dp
                 )
         ) {
         Row(

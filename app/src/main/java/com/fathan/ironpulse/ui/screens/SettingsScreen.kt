@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -69,7 +70,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -112,8 +112,6 @@ import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -141,7 +139,10 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
-    onPickCustomRingtone: () -> Unit
+    onPickCustomRingtone: () -> Unit,
+    subTabListStates: Map<String, LazyListState> = remember {
+        SettingsSubTab.entries.associate { it.name to LazyListState() }
+    }
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -152,20 +153,13 @@ fun SettingsScreen(
     var showCustomHexDialog by remember { mutableStateOf(false) }
     var pendingDeleteTone by remember { mutableStateOf<CustomRingtone?>(null) }
 
-    val settingsListHaze = remember { HazeState() }
-    val listState = rememberLazyListState()
+    val fallbackListState = rememberLazyListState()
+    val listState = subTabListStates[activeSubTab.name] ?: fallbackListState
     var headerHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val headerHeightDp = with(density) { headerHeightPx.toDp() }
 
-    LaunchedEffect(activeSubTab) {
-        listState.scrollToItem(0)
-    }
-
     val itemAnimMod: Modifier = Modifier
-
-    val useListHaze = !tokens.performance.noBlur &&
-        tokens.uiTheme == UiTheme.MATERIAL_YOU
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -181,7 +175,6 @@ fun SettingsScreen(
                 .align(Alignment.TopCenter)
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
-                .then(if (useListHaze) Modifier.hazeSource(settingsListHaze) else Modifier)
         ) {
             when (activeSubTab) {
                 SettingsSubTab.PROFILE -> {
@@ -245,9 +238,8 @@ fun SettingsScreen(
                             PerformanceSettingsCard(
                                 perf = state.appPrefs.performance,
                                 onApplyPreset = { viewModel.applyPerformancePreset(it) },
-                                onUpdatePerf = { noBlur, noAnimations, noAmbientGlow, staticMascot ->
+                                onUpdatePerf = { noAnimations, noAmbientGlow, staticMascot ->
                                     viewModel.setPerformance(
-                                        noBlur = noBlur,
                                         noAnimations = noAnimations,
                                         noAmbientGlow = noAmbientGlow,
                                         staticMascot = staticMascot
@@ -379,12 +371,11 @@ fun SettingsScreen(
             }
         }
 
-        // Pinned Frosted/Blurred Settings Header & Sub-Tab Switcher
+        // Pinned Settings Header & Sub-Tab Switcher
         SettingsPinnedHeader(
             activeSubTab = activeSubTab,
             onSelectSubTab = { activeSubTab = it },
             onBack = onBack,
-            hazeState = settingsListHaze,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .widthIn(max = 640.dp)
@@ -450,7 +441,6 @@ private fun SettingsPinnedHeader(
     activeSubTab: SettingsSubTab,
     onSelectSubTab: (SettingsSubTab) -> Unit,
     onBack: () -> Unit,
-    hazeState: HazeState,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -460,11 +450,7 @@ private fun SettingsPinnedHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .ironGlassSurface(
-                tokens = tokens,
-                blurOverChrome = true,
-                hazeStateOverride = hazeState
-            )
+            .ironGlassSurface(tokens = tokens)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -1193,7 +1179,7 @@ private fun TodayPhaseMoodCard(
 private fun PerformanceSettingsCard(
     perf: PerformancePreferences,
     onApplyPreset: (PerformancePresetId) -> Unit,
-    onUpdatePerf: (Boolean?, Boolean?, Boolean?, Boolean?) -> Unit,
+    onUpdatePerf: (Boolean?, Boolean?, Boolean?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -1202,8 +1188,8 @@ private fun PerformanceSettingsCard(
 
     val activePreset: PerformancePresetId? = when (perf) {
         PerformancePreferences() -> PerformancePresetId.BALANCED
-        PerformancePreferences(noBlur = true, noAnimations = false, noAmbientGlow = true, staticMascot = false) -> PerformancePresetId.BATTERY
-        PerformancePreferences(noBlur = true, noAnimations = true, noAmbientGlow = true, staticMascot = true) -> PerformancePresetId.ULTRA
+        PerformancePreferences(noAnimations = false, noAmbientGlow = true, staticMascot = false) -> PerformancePresetId.BATTERY
+        PerformancePreferences(noAnimations = true, noAmbientGlow = true, staticMascot = true) -> PerformancePresetId.ULTRA
         else -> null
     }
 
@@ -1293,28 +1279,22 @@ private fun PerformanceSettingsCard(
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
         PerformanceSwitchRow(
-            title = lang.t("Tanpa Efek Blur", "Disable Blur"),
-            subtitle = lang.t("Mengurangi beban GPU di perangkat hemat daya.", "Reduces GPU cost on battery-saver devices."),
-            checked = perf.noBlur,
-            onCheckedChange = { onUpdatePerf(it, null, null, null) }
-        )
-        PerformanceSwitchRow(
             title = lang.t("Tanpa Animasi Gerak", "Disable Animations"),
             subtitle = lang.t("Transisi layar instan tanpa efek denyut.", "Instant screen transitions without pulse animations."),
             checked = perf.noAnimations,
-            onCheckedChange = { onUpdatePerf(null, it, null, null) }
+            onCheckedChange = { onUpdatePerf(it, null, null) }
         )
         PerformanceSwitchRow(
             title = lang.t("Tanpa Cahaya Ambient", "Disable Ambient Glow"),
             subtitle = lang.t("Latar belakang solid bersih tanpa sorot radial.", "Clean solid background without radial glows."),
             checked = perf.noAmbientGlow,
-            onCheckedChange = { onUpdatePerf(null, null, it, null) }
+            onCheckedChange = { onUpdatePerf(null, it, null) }
         )
         PerformanceSwitchRow(
             title = lang.t("Maskot Statis", "Static Mascot"),
             subtitle = lang.t("Hentikan gerakan mengambang & kedipan maskot Pulse.", "Pause Pulse mascot floating & blinking motion."),
             checked = perf.staticMascot,
-            onCheckedChange = { onUpdatePerf(null, null, null, it) }
+            onCheckedChange = { onUpdatePerf(null, null, it) }
         )
     }
 }

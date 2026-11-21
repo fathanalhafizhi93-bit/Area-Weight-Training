@@ -6,9 +6,16 @@ import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
+import com.fathan.ironpulse.ui.components.ScaledBackdropCache
 import com.google.firebase.FirebaseApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class IronPulseApp : Application() {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -16,6 +23,11 @@ class IronPulseApp : Application() {
             FirebaseApp.initializeApp(this)
         }
         runCatching { createNotificationChannels() }
+        appScope.launch {
+            runCatching {
+                ScaledBackdropCache.preload(applicationContext, R.drawable.gym_arena_backdrop, 1024)
+            }
+        }
     }
 
     private fun createNotificationChannels() {

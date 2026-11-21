@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -79,7 +81,8 @@ private data class CalendarDayCell(
 fun HistoryScreen(
     state: IronPulseUiState,
     contentPadding: PaddingValues,
-    onStartTodayWorkout: () -> Unit
+    onStartTodayWorkout: () -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -145,6 +148,7 @@ fun HistoryScreen(
         contentAlignment = Alignment.TopCenter
     ) {
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,

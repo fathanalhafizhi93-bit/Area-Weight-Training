@@ -21,9 +21,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -96,7 +98,8 @@ import java.util.Locale
 fun ExercisesScreen(
     state: IronPulseUiState,
     viewModel: GymViewModel,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -115,6 +118,7 @@ fun ExercisesScreen(
         contentAlignment = Alignment.TopCenter
     ) {
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,

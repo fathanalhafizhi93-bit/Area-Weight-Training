@@ -40,12 +40,6 @@ import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.UiTheme
-import dev.chrisbanes.haze.ExperimentalHazeApi
-import dev.chrisbanes.haze.HazeInputScale
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 
 @Immutable
 data class PhaseThemeTokens(
@@ -172,9 +166,6 @@ val LocalIronPulseTokens = staticCompositionLocalOf {
     )
 }
 
-val LocalBackdropHazeState = staticCompositionLocalOf<HazeState?> { null }
-val LocalChromeHazeState = staticCompositionLocalOf<HazeState?> { null }
-val LocalBlurEnabled = compositionLocalOf { true }
 val LocalTabActive = compositionLocalOf { true }
 
 /**
@@ -268,79 +259,41 @@ object ThemeMaterialShaderCache {
     }
 }
 
-@OptIn(ExperimentalHazeApi::class)
-@Composable
-private fun Modifier.applyBackdropHaze(
-    targetHazeState: HazeState?,
-    tint: Color,
-    permNoBlur: Boolean,
-    blurEnabledNow: Boolean,
-    blurRadius: Dp,
-    noiseFactor: Float,
-    fallbackAlpha: Float
-): Modifier {
-    if (permNoBlur || targetHazeState == null) return this
-    val style = remember(tint, blurRadius, noiseFactor, fallbackAlpha) {
-        HazeStyle(
-            backgroundColor = Color.Transparent,
-            tints = emptyList(),
-            blurRadius = blurRadius,
-            noiseFactor = noiseFactor,
-            fallbackTint = HazeTint(tint.copy(alpha = fallbackAlpha))
-        )
-    }
-    return this.hazeEffect(state = targetHazeState, style = style) {
-        blurEnabled = blurEnabledNow
-        inputScale = HazeInputScale.Auto
-    }
-}
-
 @Composable
 fun Modifier.ironGlassSurface(
     tokens: IronPulseThemeTokens,
     subtle: Boolean = false,
     borderOverride: Color? = null,
-    radiusOverride: Dp? = null,
-    blurOverChrome: Boolean = false,
-    hazeStateOverride: HazeState? = null
+    radiusOverride: Dp? = null
 ): Modifier {
     val radius = radiusOverride ?: tokens.cardRadius
     val shape = remember(radius) { RoundedCornerShape(radius) }
     val tint = tokens.effectiveTintColor
     val borderColor = borderOverride ?: if (subtle) tokens.subtleBorderColor else tokens.surfaceBorderColor
-    val globalBlurAllowed = LocalBlurEnabled.current
-    val permNoBlur = tokens.performance.noBlur
-    val noBlur = permNoBlur || !globalBlurAllowed
-    val targetHazeState = hazeStateOverride ?: if (blurOverChrome) {
-        LocalChromeHazeState.current ?: LocalBackdropHazeState.current
-    } else {
-        LocalBackdropHazeState.current
-    }
-    val useChromeLiveBlur = blurOverChrome && !permNoBlur && targetHazeState != null
 
     return when (tokens.uiTheme) {
         UiTheme.MATERIAL_YOU -> {
             val baseBg = if (subtle) tokens.palette.surfaceContainerLow else tokens.palette.surfaceContainer
-            val useChromeBlur = blurOverChrome && !noBlur && targetHazeState != null
-            val bg = if (useChromeBlur) baseBg.copy(alpha = 0.78f) else baseBg
             this
                 .clip(shape)
-                .then(
-                    if (useChromeLiveBlur) {
-                        Modifier.applyBackdropHaze(
-                            targetHazeState = targetHazeState,
-                            tint = tint,
-                            permNoBlur = false,
-                            blurEnabledNow = globalBlurAllowed,
-                            blurRadius = 16.dp,
-                            noiseFactor = 0f,
-                            fallbackAlpha = 0.35f
+                .drawWithCache {
+                    val strokePx = 1.dp.toPx()
+                    val topSheen = Brush.verticalGradient(
+                        0.0f to tokens.palette.primary.copy(alpha = if (subtle) 0.025f else 0.055f),
+                        0.32f to Color.Transparent
+                    )
+                    val topHighlight = Color.White.copy(alpha = if (subtle) 0.03f else 0.06f)
+                    onDrawBehind {
+                        drawRect(baseBg)
+                        drawRect(topSheen)
+                        drawLine(
+                            color = topHighlight,
+                            start = Offset(0f, strokePx * 0.5f),
+                            end = Offset(size.width, strokePx * 0.5f),
+                            strokeWidth = strokePx
                         )
-                    } else {
-                        Modifier
                     }
-                )
-                .background(bg, shape)
+                }
                 .border(1.dp, borderColor, shape)
         }
         UiTheme.UBUNTU_YARU -> {
@@ -356,14 +309,14 @@ fun Modifier.ironGlassSurface(
                         subtle = subtle
                     )
                     val topBevel = Color.White.copy(alpha = if (subtle) 0.05f else 0.09f)
-                    val bottomShade = Color.Black.copy(alpha = 0.22f)
+                    val bottomShade = Color.Black.copy(alpha = 0.24f)
                     onDrawBehind {
                         drawRect(bg)
                         drawRect(matteGrain)
                         drawLine(
                             color = topBevel,
-                            start = Offset(0f, strokePx * 1.2f),
-                            end = Offset(size.width, strokePx * 1.2f),
+                            start = Offset(0f, strokePx * 1.1f),
+                            end = Offset(size.width, strokePx * 1.1f),
                             strokeWidth = strokePx
                         )
                         drawLine(
@@ -377,7 +330,7 @@ fun Modifier.ironGlassSurface(
                 .border(1.dp, outerBorder, shape)
         }
         UiTheme.CARBON_FORGE -> {
-            val baseBg = tint.copy(alpha = if (subtle) 0.95f else 0.99f)
+            val baseBg = tint.copy(alpha = if (subtle) 0.96f else 1f)
             this
                 .clip(shape)
                 .drawWithCache {
@@ -385,12 +338,13 @@ fun Modifier.ironGlassSurface(
                     val cellPx = (2.2.dp.toPx()).roundToInt().coerceIn(4, 10)
                     val twillBrush = ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = subtle)
                     val sheenBrush = Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = if (subtle) 0.03f else 0.065f),
-                        0.36f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = if (subtle) 0.16f else 0.28f)
+                        0.0f to Color.White.copy(alpha = if (subtle) 0.045f else 0.085f),
+                        0.28f to Color.Transparent,
+                        0.76f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = if (subtle) 0.20f else 0.34f)
                     )
-                    val rimColor = Color.White.copy(alpha = if (subtle) 0.10f else 0.18f)
-                    val recessedBottom = Color.Black.copy(alpha = 0.42f)
+                    val rimColor = Color.White.copy(alpha = if (subtle) 0.13f else 0.24f)
+                    val recessedBottom = Color.Black.copy(alpha = 0.48f)
                     onDrawBehind {
                         drawRect(baseBg)
                         drawRect(twillBrush)
@@ -414,69 +368,43 @@ fun Modifier.ironGlassSurface(
     }
 }
 
-@OptIn(ExperimentalHazeApi::class)
 @Composable
 fun Modifier.ironGlassBar(
     tokens: IronPulseThemeTokens,
     shapeRadius: Dp = 0.dp,
     topHairlineColor: Color? = null,
-    bottomHairlineColor: Color? = null,
-    hazeStateOverride: HazeState? = null
+    bottomHairlineColor: Color? = null
 ): Modifier {
     val shape = remember(shapeRadius) { RoundedCornerShape(shapeRadius) }
     val tint = tokens.effectiveTintColor
-    val globalBlurAllowed = LocalBlurEnabled.current
-    val permNoBlur = tokens.performance.noBlur
-    val noBlur = permNoBlur || !globalBlurAllowed
-    val chromeHazeState = hazeStateOverride ?: LocalChromeHazeState.current
-    val supportsBarBlur = tokens.uiTheme == UiTheme.MATERIAL_YOU
-    val canGpuBlur = !noBlur && !permNoBlur && supportsBarBlur && chromeHazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-
-    val barHazeModifier = if (!permNoBlur && supportsBarBlur && chromeHazeState != null) {
-        val barHazeStyle = remember(tokens.uiTheme, tint) {
-            HazeStyle(
-                backgroundColor = Color.Transparent,
-                tints = emptyList(),
-                blurRadius = 16.dp,
-                noiseFactor = 0f,
-                fallbackTint = HazeTint(tint.copy(alpha = 0.30f))
-            )
-        }
-        Modifier.hazeEffect(
-            state = chromeHazeState,
-            style = barHazeStyle
-        ) {
-            blurEnabled = globalBlurAllowed
-            inputScale = HazeInputScale.Auto
-        }
-    } else {
-        Modifier
-    }
 
     return this
         .clip(shape)
-        .then(barHazeModifier)
         .drawWithCache {
             val strokePx = 1.dp.toPx()
             val cellPx = (2.2.dp.toPx()).roundToInt().coerceIn(4, 10)
             val grainScale = density.roundToInt().coerceIn(1, 3)
             val primaryBrush = when (tokens.uiTheme) {
-                UiTheme.MATERIAL_YOU -> null
+                UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
+                    0.0f to tokens.palette.primary.copy(alpha = 0.03f),
+                    1.0f to Color.Transparent
+                )
                 UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(grainScale, subtle = true)
                 UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
             }
             val solidBg = when (tokens.uiTheme) {
-                UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerLow.copy(
-                    alpha = if (noBlur) 1f else if (canGpuBlur) 0.72f else 0.94f
-                )
+                UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerLow
                 UiTheme.UBUNTU_YARU -> Color(0xFF242424)
-                UiTheme.CARBON_FORGE -> tint.copy(alpha = 0.98f)
+                UiTheme.CARBON_FORGE -> tint
+            }
+            val barAccentHighlight = if (tokens.uiTheme == UiTheme.CARBON_FORGE) {
+                Color.White.copy(alpha = 0.14f)
+            } else {
+                null
             }
             onDrawBehind {
                 drawRect(solidBg)
-                if (primaryBrush != null) {
-                    drawRect(primaryBrush)
-                }
+                drawRect(primaryBrush)
                 if (topHairlineColor != null) {
                     drawLine(
                         color = topHairlineColor,
@@ -490,6 +418,14 @@ fun Modifier.ironGlassBar(
                         color = bottomHairlineColor,
                         start = Offset(0f, size.height - strokePx * 0.5f),
                         end = Offset(size.width, size.height - strokePx * 0.5f),
+                        strokeWidth = strokePx
+                    )
+                }
+                if (barAccentHighlight != null && topHairlineColor == null) {
+                    drawLine(
+                        color = barAccentHighlight,
+                        start = Offset(0f, strokePx * 0.5f),
+                        end = Offset(size.width, strokePx * 0.5f),
                         strokeWidth = strokePx
                     )
                 }
