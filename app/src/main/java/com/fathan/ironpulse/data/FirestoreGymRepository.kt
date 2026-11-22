@@ -461,6 +461,74 @@ class FirestoreGymRepository(
         }
     }
 
+    suspend fun replaceAllSchedules(
+        uid: String,
+        schedules: Map<DayKey, DaySchedule>
+    ) {
+        val schedulesCol = db.collection("users").document(uid).collection("schedules")
+        val path = "users/$uid/schedules (batch)"
+        val timeRegex = Regex("^([01]\\d|2[0-3]):([0-5]\\d)$")
+        try {
+            val existingIds = schedulesCol
+                .whereEqualTo("userId", uid)
+                .get()
+                .await()
+                .documents
+                .map { it.id }
+                .toSet()
+
+            val batch = db.batch()
+            DayKey.entries.forEach { day ->
+                val sched = schedules[day] ?: return@forEach
+                val safeTime = if (timeRegex.matches(sched.alarmTime)) sched.alarmTime else "06:30"
+                val safeFocus = sched.focusTitle.trim().take(80).ifEmpty {
+                    if (sched.isGymDay) "Sesi Latihan" else "Rest Day"
+                }
+                val safeRingtone = sched.ringtoneId.trim().take(128).ifEmpty { "default" }
+                val safeExercises = sched.exercises.take(30).map {
+                    exerciseToMap(GymModelHelpers.sanitizeExerciseItem(it))
+                }
+                val docRef = schedulesCol.document(day.key)
+                if (day.key in existingIds) {
+                    batch.update(
+                        docRef,
+                        mapOf(
+                            "isGymDay" to sched.isGymDay,
+                            "alarmEnabled" to (sched.isGymDay && sched.alarmEnabled),
+                            "alarmTime" to safeTime,
+                            "focusTitle" to safeFocus,
+                            "ringtoneId" to safeRingtone,
+                            "exercises" to safeExercises,
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                } else {
+                    batch.set(
+                        docRef,
+                        mapOf(
+                            "userId" to uid,
+                            "dayKey" to day.key,
+                            "isGymDay" to sched.isGymDay,
+                            "alarmEnabled" to (sched.isGymDay && sched.alarmEnabled),
+                            "alarmTime" to safeTime,
+                            "focusTitle" to safeFocus,
+                            "ringtoneId" to safeRingtone,
+                            "exercises" to safeExercises,
+                            "createdAt" to FieldValue.serverTimestamp(),
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                }
+            }
+            batch.commit().await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OP_UPDATE, path)
+            throw e
+        }
+    }
+
     suspend fun saveWorkoutLog(
         uid: String,
         log: WorkoutLog,

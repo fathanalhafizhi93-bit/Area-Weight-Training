@@ -74,11 +74,17 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fathan.ironpulse.data.ProgramTemplatePresets
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.SavedCustomSchedule
+import com.fathan.ironpulse.ui.components.SaveCustomScheduleDialog
+import com.fathan.ironpulse.ui.components.SchedulePreviewTarget
+import com.fathan.ironpulse.ui.components.ScheduleProgramPreviewSheet
+import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -107,6 +113,9 @@ fun ScheduleScreen(
 
     var timePickerDay by remember { mutableStateOf<DayKey?>(null) }
     var editingFocusDay by remember { mutableStateOf<DayKey?>(null) }
+    var showSaveScheduleDialog by remember { mutableStateOf(false) }
+    var renamingCustomSchedule by remember { mutableStateOf<SavedCustomSchedule?>(null) }
+    var previewTarget by remember { mutableStateOf<SchedulePreviewTarget?>(null) }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -125,7 +134,24 @@ fun ScheduleScreen(
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
         ) {
-            // Header
+            // TOPMOST SECTION: Saved Custom Schedules & Official Program Switcher
+            item(key = "schedule_program_strip", contentType = "program_strip") {
+                ScheduleTopProgramStrip(
+                    savedSchedules = state.savedCustomSchedules,
+                    officialTemplates = ProgramTemplatePresets.OFFICIAL_TEMPLATES,
+                    activeProfileId = state.activeScheduleProfileId,
+                    applyingSchedule = state.applyingScheduleProfile,
+                    onOpenSaveDialog = { showSaveScheduleDialog = true },
+                    onSelectSaved = { saved ->
+                        previewTarget = SchedulePreviewTarget.Saved(saved)
+                    },
+                    onSelectOfficial = { template ->
+                        previewTarget = SchedulePreviewTarget.Official(template)
+                    }
+                )
+            }
+
+            // Weekly Overview Header
             item(key = "schedule_header", contentType = "header") {
                 Column(
                     modifier = Modifier
@@ -157,19 +183,41 @@ fun ScheduleScreen(
                         color = tokens.palette.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = tokens.accentColor.copy(alpha = 0.14f),
-                        border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm Aktif", "Active Alarms")}",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.accentColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = tokens.accentColor.copy(alpha = 0.14f),
+                            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f))
+                        ) {
+                            Text(
+                                text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm Aktif", "Active Alarms")}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = tokens.accentColor,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (!state.activeScheduleProfileName.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = tokens.wellBg,
+                                border = BorderStroke(1.dp, tokens.surfaceBorderColor)
+                            ) {
+                                Text(
+                                    text = state.activeScheduleProfileName,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -277,6 +325,70 @@ fun ScheduleScreen(
                 ) {
                     Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
                 }
+            }
+        )
+    }
+
+    if (showSaveScheduleDialog) {
+        SaveCustomScheduleDialog(
+            initialName = "",
+            isRename = false,
+            onDismiss = { showSaveScheduleDialog = false },
+            onConfirm = { name ->
+                viewModel.saveCurrentScheduleAsCustom(name)
+                showSaveScheduleDialog = false
+            }
+        )
+    }
+
+    val targetToRename = renamingCustomSchedule
+    if (targetToRename != null) {
+        SaveCustomScheduleDialog(
+            initialName = targetToRename.name,
+            isRename = true,
+            onDismiss = { renamingCustomSchedule = null },
+            onConfirm = { newName ->
+                viewModel.renameCustomSchedule(targetToRename.id, newName)
+                renamingCustomSchedule = null
+            }
+        )
+    }
+
+    val activePreview = previewTarget
+    if (activePreview != null) {
+        val targetId = when (activePreview) {
+            is SchedulePreviewTarget.Official -> activePreview.template.id
+            is SchedulePreviewTarget.Saved -> activePreview.profile.id
+        }
+        ScheduleProgramPreviewSheet(
+            target = activePreview,
+            isCurrentlyActive = state.activeScheduleProfileId == targetId,
+            applying = state.applyingScheduleProfile,
+            onDismiss = { previewTarget = null },
+            onApply = { preserveAlarms ->
+                when (activePreview) {
+                    is SchedulePreviewTarget.Official -> {
+                        viewModel.applyOfficialProgramTemplate(
+                            templateId = activePreview.template.id,
+                            preserveAlarmsAndRingtones = preserveAlarms
+                        )
+                    }
+                    is SchedulePreviewTarget.Saved -> {
+                        viewModel.applySavedCustomSchedule(
+                            profileId = activePreview.profile.id,
+                            preserveAlarmsAndRingtones = preserveAlarms
+                        )
+                    }
+                }
+                previewTarget = null
+            },
+            onRequestRename = { saved ->
+                previewTarget = null
+                renamingCustomSchedule = saved
+            },
+            onDeleteSaved = { saved ->
+                viewModel.deleteCustomSchedule(saved.id)
+                previewTarget = null
             }
         )
     }

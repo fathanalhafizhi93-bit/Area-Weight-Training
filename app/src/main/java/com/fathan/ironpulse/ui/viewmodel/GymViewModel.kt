@@ -24,6 +24,8 @@ import com.fathan.ironpulse.data.MascotDialogueContext
 import com.fathan.ironpulse.data.MascotDialogues
 import com.fathan.ironpulse.data.PreferencesStore
 import com.fathan.ironpulse.data.PresetExerciseTemplate
+import com.fathan.ironpulse.data.ProgramTemplatePresets
+import com.fathan.ironpulse.data.ScheduleProfileStore
 import com.fathan.ironpulse.lib.HapticFeedbackHelper
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
@@ -38,6 +40,9 @@ import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MascotSpeechLine
 import com.fathan.ironpulse.model.PerformancePresetId
+import com.fathan.ironpulse.model.SavedCustomSchedule
+import com.fathan.ironpulse.model.ScheduleLibraryState
+import com.fathan.ironpulse.model.ScheduleProgramMerger
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.model.UiTheme
@@ -178,7 +183,11 @@ data class IronPulseUiState(
     val uploadingRingtone: Boolean = false,
     val hasNotificationPermission: Boolean = true,
     val canScheduleExactAlarms: Boolean = true,
-    val mascot: MascotUiState = MascotUiState()
+    val mascot: MascotUiState = MascotUiState(),
+    val savedCustomSchedules: List<SavedCustomSchedule> = emptyList(),
+    val activeScheduleProfileId: String? = null,
+    val activeScheduleProfileName: String? = null,
+    val applyingScheduleProfile: Boolean = false
 ) {
     val isSignedIn: Boolean get() = userUid != null
 }
@@ -188,6 +197,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = FirestoreGymRepository(application)
     private val prefsStore = PreferencesStore(application)
     private val localCacheStore = LocalGymCacheStore(application)
+    private val scheduleProfileStore = ScheduleProfileStore(application)
     private val audioEngine = NativeAudioEngine(application)
     private val ttsSpeaker = MascotTtsSpeaker(application)
     val haptics = HapticFeedbackHelper(application)
@@ -238,6 +248,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _mascotState = MutableStateFlow(MascotUiState())
     private val _mascotEyeState = MutableStateFlow(MascotEyeState())
+    private val _scheduleLibrary = MutableStateFlow(ScheduleLibraryState())
+    private val _applyingScheduleProfile = MutableStateFlow(false)
 
     val clockSecondsFlow: StateFlow<Long> = _clockSeconds.asStateFlow()
     val exerciseTimersFlow: StateFlow<Map<String, ExerciseTimerUiState>> = _exerciseTimers.asStateFlow()
@@ -446,6 +458,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             _tutorialOpen.value = true
         }
         val cached = runCatching { localCacheStore.loadSnapshot(uid) }.getOrNull()
+        _scheduleLibrary.value = runCatching { scheduleProfileStore.load(uid) }
+            .getOrDefault(ScheduleLibraryState())
         preHydratedUid = uid
         preHydratedCached = cached
         val hasWarmCache = cached != null && (
@@ -517,11 +531,21 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             showNamePrompt = _showNamePrompt.value,
             tutorialOpen = _tutorialOpen.value,
             tutorialStartWithLang = _tutorialStartWithLang.value,
-            mascot = _mascotState.value
+            mascot = _mascotState.value,
+            savedCustomSchedules = _scheduleLibrary.value.savedSchedules,
+            activeScheduleProfileId = _scheduleLibrary.value.activeProfileId,
+            activeScheduleProfileName = _scheduleLibrary.value.activeProfileName,
+            applyingScheduleProfile = _applyingScheduleProfile.value
         )
     }
 
-    val uiState: StateFlow<IronPulseUiState> = combine(cloudFlow, runtimeFlow, shellFlow) { cloud, run, shell ->
+    val uiState: StateFlow<IronPulseUiState> = combine(
+        cloudFlow,
+        runtimeFlow,
+        shellFlow,
+        _scheduleLibrary,
+        _applyingScheduleProfile
+    ) { cloud, run, shell, schedLib, applyingSched ->
         haptics.enabled = shell.appPrefs.hapticsEnabled
         val todaySched = cloud.schedules[run.todayDayKey]
         val entries = if (todaySched != null) {
@@ -568,7 +592,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             uploadingRingtone = shell.uploadingRingtone,
             hasNotificationPermission = shell.hasNotifPerm,
             canScheduleExactAlarms = shell.canExactAlarm,
-            mascot = shell.mascot
+            mascot = shell.mascot,
+            savedCustomSchedules = schedLib.savedSchedules,
+            activeScheduleProfileId = schedLib.activeProfileId,
+            activeScheduleProfileName = schedLib.activeProfileName,
+            applyingScheduleProfile = applyingSched
         )
     }.stateIn(
         scope = viewModelScope,
@@ -627,6 +655,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     _historyLoading.value = false
                     _showNamePrompt.value = false
                     _tutorialOpen.value = false
+                    _scheduleLibrary.value = ScheduleLibraryState()
+                    _applyingScheduleProfile.value = false
                     initialGreetingFired = false
                 } else if (activeSyncedUid != firebaseUser.uid || userSyncJob?.isActive != true) {
                     userSyncJob?.cancel()
@@ -700,6 +730,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         userSyncJob = viewModelScope.launch {
+            val loadedLib = withContext(Dispatchers.IO) {
+                scheduleProfileStore.load(uid)
+            }
+            _scheduleLibrary.value = loadedLib
+
             val cached = if (consumedPreHydration) {
                 preCachedSnapshot
             } else {
@@ -767,6 +802,9 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     syncNativeAlarmsIfReady()
                     refreshMascotDialogueOnly()
                     scheduleCachePersist(uid)
+                    if (!_applyingScheduleProfile.value) {
+                        syncActiveCustomScheduleSnapshot(uid, scheds)
+                    }
                 }
             }
             launch {
@@ -1149,6 +1187,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         _todayLog.value = null
         _workoutHistory.value = emptyList()
         _weeklyStreak.value = 0
+        _scheduleLibrary.value = ScheduleLibraryState()
+        _applyingScheduleProfile.value = false
         viewModelScope.launch {
             withContext(NonCancellable) {
                 if (!signedOutUid.isNullOrBlank()) {
@@ -1747,6 +1787,285 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 repo.updateSchedule(uid = uid, dayKey = dayKey, exercises = list)
             } catch (_: Exception) {
                 _snackbarEvents.tryEmit("Gagal mengurutkan gerakan.")
+            }
+        }
+    }
+
+    // --- Saved Custom Schedules & Official Program Templates ---
+
+    private fun persistScheduleLibrary(uid: String, updated: ScheduleLibraryState) {
+        _scheduleLibrary.value = updated
+        viewModelScope.launch(Dispatchers.IO) {
+            scheduleProfileStore.save(uid, updated)
+        }
+    }
+
+    private fun syncActiveCustomScheduleSnapshot(
+        uid: String,
+        latestSchedules: Map<DayKey, DaySchedule>
+    ) {
+        if (latestSchedules.size < DayKey.entries.size) return
+        val lib = _scheduleLibrary.value
+        val activeId = lib.activeProfileId ?: return
+        val idx = lib.savedSchedules.indexOfFirst { it.id == activeId }
+        if (idx == -1) return
+        val existingProfile = lib.savedSchedules[idx]
+        if (ScheduleProgramMerger.schedulesStructurallyEqual(existingProfile.schedules, latestSchedules)) {
+            return
+        }
+        val updatedList = lib.savedSchedules.toMutableList()
+        updatedList[idx] = existingProfile.copy(
+            updatedAtMs = System.currentTimeMillis(),
+            schedules = latestSchedules
+        )
+        persistScheduleLibrary(uid, lib.copy(savedSchedules = updatedList))
+    }
+
+    private fun buildLibraryWithPreviousBackup(
+        lib: ScheduleLibraryState,
+        currentSchedules: Map<DayKey, DaySchedule>,
+        targetProfileId: String,
+        targetProfileName: String,
+        lang: AppLanguage
+    ): Pair<ScheduleLibraryState, Boolean> {
+        if (currentSchedules.size < DayKey.entries.size) {
+            return lib.copy(
+                activeProfileId = targetProfileId,
+                activeProfileName = targetProfileName
+            ) to false
+        }
+
+        val currentActiveId = lib.activeProfileId
+        val updatedList = lib.savedSchedules.toMutableList()
+        var createdBackup = false
+
+        // 1) If currently on a saved custom schedule, refresh its snapshot before leaving
+        val activeSavedIdx = updatedList.indexOfFirst { it.id == currentActiveId }
+        if (activeSavedIdx != -1) {
+            updatedList[activeSavedIdx] = updatedList[activeSavedIdx].copy(
+                updatedAtMs = System.currentTimeMillis(),
+                schedules = currentSchedules
+            )
+            return lib.copy(
+                savedSchedules = updatedList,
+                activeProfileId = targetProfileId,
+                activeProfileName = targetProfileName
+            ) to false
+        }
+
+        // 2) Check if current schedule already matches any existing saved slot
+        val alreadySaved = updatedList.any { saved ->
+            ScheduleProgramMerger.schedulesStructurallyEqual(saved.schedules, currentSchedules)
+        }
+        // 3) Check if current schedule is an unmodified official template (no need to overwrite previous backup)
+        val matchesOfficialTemplate = ProgramTemplatePresets.OFFICIAL_TEMPLATES.any { tmpl ->
+            ScheduleProgramMerger.schedulesStructurallyEqual(
+                tmpl.buildSchedules("cmp"),
+                currentSchedules,
+                ignoreAlarms = true
+            )
+        }
+
+        if (!alreadySaved && !matchesOfficialTemplate) {
+            val backupIdx = updatedList.indexOfFirst { it.id == ScheduleProfileStore.AUTO_BACKUP_ID }
+            val backupProfile = SavedCustomSchedule(
+                id = ScheduleProfileStore.AUTO_BACKUP_ID,
+                name = lang.t("Jadwal Sebelumnya", "Previous Schedule"),
+                isAutoBackup = true,
+                updatedAtMs = System.currentTimeMillis(),
+                schedules = currentSchedules
+            )
+            if (backupIdx != -1) {
+                updatedList[backupIdx] = backupProfile
+            } else {
+                updatedList.add(0, backupProfile)
+            }
+            createdBackup = true
+        }
+
+        return lib.copy(
+            savedSchedules = updatedList.take(ScheduleProfileStore.MAX_SAVED_PROFILES),
+            activeProfileId = targetProfileId,
+            activeProfileName = targetProfileName
+        ) to createdBackup
+    }
+
+    fun saveCurrentScheduleAsCustom(rawName: String) {
+        val uid = _user.value?.uid ?: return
+        val current = _schedules.value
+        if (current.isEmpty()) return
+        val lang = prefsStore.state.value.lang
+        val cleanedName = rawName.trim().take(48).ifEmpty {
+            lang.t("Jadwal Kustom", "Custom Schedule")
+        }
+        val lib = _scheduleLibrary.value
+        val newProfile = SavedCustomSchedule(
+            id = "custom_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(4)}",
+            name = cleanedName,
+            isAutoBackup = false,
+            updatedAtMs = System.currentTimeMillis(),
+            schedules = current
+        )
+        val nextList = (listOf(newProfile) + lib.savedSchedules)
+            .take(ScheduleProfileStore.MAX_SAVED_PROFILES)
+        haptics.setComplete()
+        persistScheduleLibrary(
+            uid,
+            lib.copy(
+                savedSchedules = nextList,
+                activeProfileId = newProfile.id,
+                activeProfileName = newProfile.name
+            )
+        )
+        _snackbarEvents.tryEmit(
+            lang.t(
+                "\"$cleanedName\" tersimpan di bagian atas tab Jadwal.",
+                "\"$cleanedName\" saved at the top of the Schedule tab."
+            )
+        )
+    }
+
+    fun renameCustomSchedule(profileId: String, rawNewName: String) {
+        val uid = _user.value?.uid ?: return
+        val lang = prefsStore.state.value.lang
+        val cleaned = rawNewName.trim().take(48)
+        if (cleaned.isEmpty()) return
+        val lib = _scheduleLibrary.value
+        val idx = lib.savedSchedules.indexOfFirst { it.id == profileId }
+        if (idx == -1) return
+        val updatedList = lib.savedSchedules.toMutableList()
+        updatedList[idx] = updatedList[idx].copy(
+            name = cleaned,
+            isAutoBackup = false,
+            updatedAtMs = System.currentTimeMillis()
+        )
+        val nextActiveName = if (lib.activeProfileId == profileId) cleaned else lib.activeProfileName
+        haptics.buttonTap()
+        persistScheduleLibrary(
+            uid,
+            lib.copy(
+                savedSchedules = updatedList,
+                activeProfileName = nextActiveName
+            )
+        )
+        _snackbarEvents.tryEmit(
+            lang.t("Nama jadwal diubah menjadi \"$cleaned\".", "Renamed schedule to \"$cleaned\".")
+        )
+    }
+
+    fun deleteCustomSchedule(profileId: String) {
+        val uid = _user.value?.uid ?: return
+        val lang = prefsStore.state.value.lang
+        val lib = _scheduleLibrary.value
+        val target = lib.savedSchedules.firstOrNull { it.id == profileId } ?: return
+        val nextList = lib.savedSchedules.filterNot { it.id == profileId }
+        val clearActive = lib.activeProfileId == profileId
+        haptics.destructive()
+        persistScheduleLibrary(
+            uid,
+            lib.copy(
+                savedSchedules = nextList,
+                activeProfileId = if (clearActive) null else lib.activeProfileId,
+                activeProfileName = if (clearActive) null else lib.activeProfileName
+            )
+        )
+        _snackbarEvents.tryEmit(
+            lang.t("\"${target.name}\" dihapus dari daftar tersimpan.", "Removed \"${target.name}\" from saved schedules.")
+        )
+    }
+
+    fun applyOfficialProgramTemplate(
+        templateId: String,
+        preserveAlarmsAndRingtones: Boolean
+    ) {
+        val template = ProgramTemplatePresets.findById(templateId) ?: return
+        val uid = _user.value?.uid ?: return
+        val lang = prefsStore.state.value.lang
+        applyScheduleProfileInternal(
+            uid = uid,
+            targetProfileId = template.id,
+            targetProfileName = template.title(lang),
+            targetSchedules = template.buildSchedules(uid),
+            preserveAlarmsAndRingtones = preserveAlarmsAndRingtones
+        )
+    }
+
+    fun applySavedCustomSchedule(
+        profileId: String,
+        preserveAlarmsAndRingtones: Boolean
+    ) {
+        val uid = _user.value?.uid ?: return
+        val saved = _scheduleLibrary.value.savedSchedules.firstOrNull { it.id == profileId } ?: return
+        applyScheduleProfileInternal(
+            uid = uid,
+            targetProfileId = saved.id,
+            targetProfileName = saved.name,
+            targetSchedules = saved.schedules,
+            preserveAlarmsAndRingtones = preserveAlarmsAndRingtones
+        )
+    }
+
+    private fun applyScheduleProfileInternal(
+        uid: String,
+        targetProfileId: String,
+        targetProfileName: String,
+        targetSchedules: Map<DayKey, DaySchedule>,
+        preserveAlarmsAndRingtones: Boolean
+    ) {
+        if (_applyingScheduleProfile.value) return
+        val lang = prefsStore.state.value.lang
+        val currentSchedules = _schedules.value
+        val merged = ScheduleProgramMerger.mergeWithExistingAlarms(
+            target = targetSchedules,
+            existing = currentSchedules,
+            preserveAlarmsAndRingtones = preserveAlarmsAndRingtones,
+            userId = uid
+        )
+
+        val (nextLib, createdBackup) = buildLibraryWithPreviousBackup(
+            lib = _scheduleLibrary.value,
+            currentSchedules = currentSchedules,
+            targetProfileId = targetProfileId,
+            targetProfileName = targetProfileName,
+            lang = lang
+        )
+
+        viewModelScope.launch {
+            _applyingScheduleProfile.value = true
+            try {
+                writeMutex.withLock {
+                    haptics.workoutComplete()
+                    _schedules.value = merged
+                    persistScheduleLibrary(uid, nextLib)
+                    syncNativeAlarmsIfReady()
+                    refreshMascotDialogueOnly()
+                    scheduleCachePersist(uid)
+                    repo.replaceAllSchedules(uid, merged)
+                }
+                val msg = if (createdBackup) {
+                    lang.t(
+                        "Jadwal \"$targetProfileName\" aktif! Jadwal lama diamankan di \"Jadwal Sebelumnya\".",
+                        "\"$targetProfileName\" active! Old schedule saved under \"Previous Schedule\"."
+                    )
+                } else {
+                    lang.t(
+                        "Jadwal \"$targetProfileName\" diterapkan.",
+                        "\"$targetProfileName\" schedule applied."
+                    )
+                }
+                _snackbarEvents.tryEmit(msg)
+                updateMascotSpeech(playChirp = true, speakTts = false, lockDialogue = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _snackbarEvents.tryEmit(
+                    lang.t(
+                        "Jadwal diterapkan di perangkat, sinkronisasi cloud tertunda: ${e.localizedMessage ?: "Coba lagi"}",
+                        "Applied locally; cloud sync pending: ${e.localizedMessage ?: "Retry"}"
+                    )
+                )
+            } finally {
+                _applyingScheduleProfile.value = false
             }
         }
     }

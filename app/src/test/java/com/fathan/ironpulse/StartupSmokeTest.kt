@@ -30,6 +30,8 @@ import com.fathan.ironpulse.data.GymCachedSnapshot
 import com.fathan.ironpulse.data.GymPresets
 import com.fathan.ironpulse.data.LocalGymCacheStore
 import com.fathan.ironpulse.data.PreferencesStore
+import com.fathan.ironpulse.data.ProgramTemplatePresets
+import com.fathan.ironpulse.data.ScheduleProfileStore
 import com.google.firebase.firestore.MemoryCacheSettings
 import com.google.firebase.firestore.MemoryEagerGcSettings
 import com.google.firebase.firestore.PersistentCacheSettings
@@ -42,6 +44,9 @@ import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
+import com.fathan.ironpulse.model.SavedCustomSchedule
+import com.fathan.ironpulse.model.ScheduleLibraryState
+import com.fathan.ironpulse.model.ScheduleProgramMerger
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.UserProfile
 import com.fathan.ironpulse.model.WorkoutLog
@@ -55,6 +60,7 @@ import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
+import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
@@ -458,5 +464,143 @@ class StartupSmokeTest {
             "Expected eager memory GC to minimize Firestore RAM footprint",
             memorySettings.garbageCollectorSettings is MemoryEagerGcSettings
         )
+    }
+
+    @Test
+    fun officialProgramTemplates_areValidAndRespectFirestoreRules() {
+        val templates = ProgramTemplatePresets.OFFICIAL_TEMPLATES
+        assertEquals(3, templates.size)
+        val libraryNames = GymPresets.EXERCISE_LIBRARY.map { it.name }.toSet()
+        val timeRegex = Regex("^([01]\\d|2[0-3]):([0-5]\\d)$")
+
+        templates.forEach { tmpl ->
+            val map = tmpl.buildSchedules("test_uid")
+            assertEquals("Template ${tmpl.id} must define all 7 days", 7, map.size)
+            val gymDays = map.values.count { it.isGymDay }
+            assertEquals("Template ${tmpl.id} gym day count mismatch", tmpl.daysPerWeek, gymDays)
+            map.values.forEach { sched ->
+                assertTrue(sched.focusTitle.length in 1..80)
+                assertTrue(timeRegex.matches(sched.alarmTime))
+                assertTrue(sched.exercises.size <= 30)
+                if (!sched.isGymDay) {
+                    assertFalse("Rest day alarm must be disabled", sched.alarmEnabled)
+                }
+                sched.exercises.forEach { ex ->
+                    assertTrue(
+                        "Exercise '${ex.name}' in ${tmpl.id} must exist in EXERCISE_LIBRARY",
+                        ex.name in libraryNames
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun scheduleProgramMerger_preservesUserAlarmsOnGymDaysAndDisablesOnRestDays() {
+        val uid = "merge_uid"
+        val existing = GymPresets.createDefaultSchedules(uid).mapValues { (_, sched) ->
+            sched.copy(alarmTime = "18:15", ringtoneId = "custom_tone_99", alarmEnabled = true)
+        }
+        val pplUl = ProgramTemplatePresets.findById(ProgramTemplatePresets.ID_PPL_UPPER_LOWER)!!
+            .buildSchedules(uid)
+
+        val merged = ScheduleProgramMerger.mergeWithExistingAlarms(
+            target = pplUl,
+            existing = existing,
+            preserveAlarmsAndRingtones = true,
+            userId = uid
+        )
+
+        assertEquals("18:15", merged[DayKey.MON]?.alarmTime)
+        assertEquals("custom_tone_99", merged[DayKey.MON]?.ringtoneId)
+        assertTrue(merged[DayKey.MON]?.alarmEnabled == true)
+        // Thursday is a rest day in PPL x Upper-Lower -> alarm must be auto-disabled
+        assertFalse(merged[DayKey.THU]?.isGymDay == true)
+        assertFalse(merged[DayKey.THU]?.alarmEnabled == true)
+    }
+
+    @Test
+    fun scheduleProfileStore_persistsSavedSchedulesAndActiveSelectionPerUid() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val store = ScheduleProfileStore(context)
+        val uid = "profile_store_test_uid"
+        store.clearUser(uid)
+
+        val customSchedules = GymPresets.createDefaultSchedules(uid)
+        val saved = SavedCustomSchedule(
+            id = "custom_1",
+            name = "Jadwal Pribadi",
+            isAutoBackup = false,
+            updatedAtMs = 1_730_000_000_000L,
+            schedules = customSchedules
+        )
+        store.save(
+            uid,
+            ScheduleLibraryState(
+                savedSchedules = listOf(saved),
+                activeProfileId = "custom_1",
+                activeProfileName = "Jadwal Pribadi"
+            )
+        )
+
+        val loaded = store.load(uid)
+        assertEquals(1, loaded.savedSchedules.size)
+        assertEquals("Jadwal Pribadi", loaded.savedSchedules.first().name)
+        assertEquals(7, loaded.savedSchedules.first().schedules.size)
+        assertEquals("custom_1", loaded.activeProfileId)
+        assertEquals("Jadwal Pribadi", loaded.activeProfileName)
+
+        store.clearUser(uid)
+        assertTrue(store.load(uid).savedSchedules.isEmpty())
+    }
+
+    @Test
+    fun scheduleTopProgramStrip_displaysSavedAndOfficialTemplatesAndHandlesClicks() {
+        var clickedOfficialId: String? = null
+        var clickedSavedId: String? = null
+        var saveDialogOpened = false
+
+        val savedBackup = SavedCustomSchedule(
+            id = ScheduleProfileStore.AUTO_BACKUP_ID,
+            name = "Jadwal Sebelumnya",
+            isAutoBackup = true,
+            schedules = GymPresets.createDefaultSchedules("u1")
+        )
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    lang = AppLanguage.ID
+                )
+            ) {
+                ScheduleTopProgramStrip(
+                    savedSchedules = listOf(savedBackup),
+                    officialTemplates = ProgramTemplatePresets.OFFICIAL_TEMPLATES,
+                    activeProfileId = ProgramTemplatePresets.ID_PPL_UPPER_LOWER,
+                    applyingSchedule = false,
+                    onOpenSaveDialog = { saveDialogOpened = true },
+                    onSelectSaved = { clickedSavedId = it.id },
+                    onSelectOfficial = { clickedOfficialId = it.id }
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("schedule_top_program_strip").assertIsDisplayed()
+        composeRule.onNodeWithTag("schedule_card_${ScheduleProfileStore.AUTO_BACKUP_ID}")
+            .assertIsDisplayed()
+            .performClick()
+        assertEquals(ScheduleProfileStore.AUTO_BACKUP_ID, clickedSavedId)
+
+        composeRule.onNodeWithTag("schedule_card_${ProgramTemplatePresets.ID_PPL_UPPER_LOWER}")
+            .assertIsDisplayed()
+            .performClick()
+        assertEquals(ProgramTemplatePresets.ID_PPL_UPPER_LOWER, clickedOfficialId)
+
+        composeRule.onNodeWithTag("save_custom_schedule_button")
+            .assertIsDisplayed()
+            .performClick()
+        assertTrue(saveDialogOpened)
     }
 }
