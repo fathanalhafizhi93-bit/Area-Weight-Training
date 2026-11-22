@@ -17,9 +17,15 @@ import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.GetCredentialInterruptedException
+import androidx.credentials.exceptions.GetCredentialProviderConfigurationException
+import androidx.credentials.exceptions.GetCredentialUnsupportedException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.fathan.ironpulse.alarm.AlarmScheduler
@@ -27,14 +33,17 @@ import com.fathan.ironpulse.ui.IronPulseRoot
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: GymViewModel by viewModels()
+    private var googleSignInInFlight: Boolean = false
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -117,33 +126,94 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launchGoogleSignIn() {
+        if (googleSignInInFlight) return
+        val serverClientId = runCatching { getString(R.string.default_web_client_id) }
+            .getOrNull()
+            ?.trim()
+            .orEmpty()
+        if (serverClientId.isEmpty()) {
+            viewModel.setAuthError(
+                "Konfigurasi Google Sign-In tidak ditemukan (default_web_client_id kosong)."
+            )
+            return
+        }
+
         val credentialManager = CredentialManager.create(this)
-        val serverClientId = getString(R.string.default_web_client_id)
+        googleSignInInFlight = true
 
         lifecycleScope.launch {
             viewModel.setAuthLoading(true)
             viewModel.setAuthError(null)
             try {
-                val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId)
-                    .build()
-
-                val request = GetCredentialRequest.Builder()
-                    .addCredentialOption(signInWithGoogleOption)
-                    .build()
-
-                val response = credentialManager.getCredential(this@MainActivity, request)
-                val googleCred = GoogleIdTokenCredential.createFrom(response.credential.data)
-                viewModel.signInWithGoogleToken(googleCred.idToken)
+                val response = requestGoogleCredential(credentialManager, serverClientId)
+                val cred = response.credential
+                if (cred is CustomCredential &&
+                    cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                ) {
+                    val googleCred = GoogleIdTokenCredential.createFrom(cred.data)
+                    viewModel.signInWithGoogleToken(googleCred.idToken)
+                } else {
+                    Log.e(TAG, "Unexpected credential type: ${cred.type}")
+                    viewModel.setAuthLoading(false)
+                    viewModel.setAuthError(
+                        "Tipe kredensial tidak dikenali (${cred.type}). Silakan coba akun Google lain."
+                    )
+                }
             } catch (e: CancellationException) {
+                viewModel.setAuthLoading(false)
                 throw e
             } catch (e: GetCredentialCancellationException) {
-                Log.w(TAG, "User cancelled Google Sign-In", e)
+                val msg = e.errorMessage?.toString().orEmpty()
+                Log.w(TAG, "Google Sign-In cancelled/dismissed: $msg", e)
                 viewModel.setAuthLoading(false)
-            } catch (e: GetCredentialException) {
-                Log.e(TAG, "Google Sign-In credential error: ${e.message}", e)
+                val lower = msg.lowercase()
+                val isProviderOrSystemFailure = msg.isNotBlank() &&
+                    !lower.contains("cancelled by the user") &&
+                    !lower.contains("canceled by user") &&
+                    !lower.contains("user canceled") &&
+                    !lower.contains("user cancelled")
+                if (isProviderOrSystemFailure) {
+                    viewModel.setAuthError(
+                        "Pemilihan akun Google terhenti ($msg). Pastikan koneksi & Google Play Services aktif, lalu coba lagi."
+                    )
+                }
+            } catch (e: NoCredentialException) {
+                Log.e(TAG, "No Google credential available: ${e.message}", e)
                 viewModel.setAuthLoading(false)
                 viewModel.setAuthError(
-                    e.localizedMessage ?: "Gagal masuk dengan Google. Pastikan akun Google aktif di perangkat."
+                    "Akun Google tidak tersedia atau ditolak oleh Play Services. Periksa akun Google di perangkat & koneksi internet."
+                )
+            } catch (e: GetCredentialProviderConfigurationException) {
+                Log.e(TAG, "Credential provider configuration error: ${e.message}", e)
+                viewModel.setAuthLoading(false)
+                viewModel.setAuthError(
+                    "Layanan Credential Manager / Play Services tidak siap pada perangkat ini."
+                )
+            } catch (e: GetCredentialUnsupportedException) {
+                Log.e(TAG, "Credential Manager unsupported: ${e.message}", e)
+                viewModel.setAuthLoading(false)
+                viewModel.setAuthError(
+                    "Perangkat tidak mendukung Credential Manager Google."
+                )
+            } catch (e: GetCredentialInterruptedException) {
+                Log.w(TAG, "Google Sign-In interrupted: ${e.message}", e)
+                viewModel.setAuthLoading(false)
+                viewModel.setAuthError(
+                    "Proses login Google terputus. Silakan ketuk Masuk lagi."
+                )
+            } catch (e: GoogleIdTokenParsingException) {
+                Log.e(TAG, "Invalid Google ID token payload: ${e.message}", e)
+                viewModel.setAuthLoading(false)
+                viewModel.setAuthError(
+                    "Token akun Google gagal diproses (${e.localizedMessage ?: "parsing error"})."
+                )
+            } catch (e: GetCredentialException) {
+                Log.e(TAG, "Google Sign-In credential error (${e.type}): ${e.errorMessage}", e)
+                viewModel.setAuthLoading(false)
+                viewModel.setAuthError(
+                    e.errorMessage?.toString()?.takeIf { it.isNotBlank() }
+                        ?: e.localizedMessage
+                        ?: "Gagal masuk dengan Google. Pastikan akun Google aktif di perangkat."
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected Google Sign-In failure: ${e.message}", e)
@@ -151,7 +221,32 @@ class MainActivity : ComponentActivity() {
                 viewModel.setAuthError(
                     e.localizedMessage ?: "Gagal masuk dengan Google. Pastikan akun Google aktif di perangkat."
                 )
+            } finally {
+                googleSignInInFlight = false
             }
+        }
+    }
+
+    private suspend fun requestGoogleCredential(
+        credentialManager: CredentialManager,
+        serverClientId: String
+    ): GetCredentialResponse {
+        val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId).build()
+        val primaryRequest = GetCredentialRequest.Builder()
+            .addCredentialOption(signInWithGoogleOption)
+            .build()
+        return try {
+            credentialManager.getCredential(this, primaryRequest)
+        } catch (_: NoCredentialException) {
+            val fallbackOption = GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setServerClientId(serverClientId)
+                .setAutoSelectEnabled(false)
+                .build()
+            val fallbackRequest = GetCredentialRequest.Builder()
+                .addCredentialOption(fallbackOption)
+                .build()
+            credentialManager.getCredential(this, fallbackRequest)
         }
     }
 

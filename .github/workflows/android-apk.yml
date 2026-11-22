@@ -150,6 +150,12 @@ jobs:
           fi
           test -s app/src/main/res/values/firebase_applet_config.xml
 
+          KEYSTORE_SHA1=$(keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey 2>/dev/null | awk '/SHA1:/ {gsub(":", "", $2); print tolower($2); exit}')
+          echo "Signing keystore SHA1: ${KEYSTORE_SHA1:-unknown}"
+          if [ -n "$KEYSTORE_SHA1" ] && ! grep -qi "$KEYSTORE_SHA1" app/google-services.json; then
+            echo "::warning::Signing keystore SHA1 ($KEYSTORE_SHA1) does not match any certificate_hash in app/google-services.json! Google Sign-In will fail on device unless matching keystore/SHA1 is configured."
+          fi
+
       - name: Run unit & Robolectric tests
         run: gradle :app:testDebugUnitTest --no-daemon --console=plain --stacktrace
 

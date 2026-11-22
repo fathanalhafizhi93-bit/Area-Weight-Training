@@ -3,13 +3,16 @@
 # Preserve line numbers and source file names for crash diagnostics
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
--keepattributes Signature,InnerClasses,EnclosingMethod,RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations
+-keepattributes Signature,InnerClasses,EnclosingMethod,Exceptions,RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations
 
 # Application & Manifest Components
 -keep class com.fathan.ironpulse.IronPulseApp { *; }
 -keep class com.fathan.ironpulse.MainActivity { *; }
 -keep class com.fathan.ironpulse.alarm.** { *; }
 -keep class com.fathan.ironpulse.timer.RestTimerService { *; }
+-keepclassmembers class * extends androidx.lifecycle.ViewModel {
+    <init>(...);
+}
 
 # Keep domain models and enums intact
 -keep class com.fathan.ironpulse.model.** { *; }
@@ -18,14 +21,18 @@
     public static ** valueOf(java.lang.String);
 }
 
-# Credential Manager & Google Identity
+# Credential Manager, ServiceLoader providers & Google Identity (Release R8 Full Mode safety)
 -keep class androidx.credentials.** { *; }
+-keep class androidx.credentials.playservices.** { *; }
+-keep class * implements androidx.credentials.CredentialProvider { *; }
 -keep class com.google.android.libraries.identity.googleid.** { *; }
 -dontwarn androidx.credentials.**
 
-# Firebase & Google Play Services
+# Firebase, Auth, Firestore, reCAPTCHA & Google Play Services
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
+-keep class com.google.android.recaptcha.** { *; }
+-keep class com.google.android.play.core.** { *; }
 -keepclassmembers class * {
     @com.google.firebase.firestore.PropertyName <fields>;
     @com.google.firebase.firestore.PropertyName <methods>;
@@ -34,10 +41,12 @@
 -dontwarn javax.annotation.**
 -dontwarn org.codehaus.mojo.animal_sniffer.**
 -dontwarn sun.misc.Unsafe
+-dontwarn com.google.android.play.core.**
 
-# Kotlin Coroutines
+# Kotlin Coroutines & Play Services Tasks bridge
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keep class kotlinx.coroutines.tasks.** { *; }
 -keepclassmembers class kotlinx.coroutines.** {
     volatile <fields>;
 }

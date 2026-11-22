@@ -25,10 +25,15 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
+import com.fathan.ironpulse.data.FirestoreGymRepository
 import com.fathan.ironpulse.data.GymCachedSnapshot
 import com.fathan.ironpulse.data.GymPresets
 import com.fathan.ironpulse.data.LocalGymCacheStore
 import com.fathan.ironpulse.data.PreferencesStore
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.firestore.MemoryCacheSettings
+import com.google.firebase.firestore.PersistentCacheSettings
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.CustomRingtone
@@ -410,5 +415,57 @@ class StartupSmokeTest {
 
         cacheStore.clearUser(uid)
         assertNull(cacheStore.loadSnapshot(uid))
+    }
+
+    @Test
+    fun authScreen_displaysSignInErrorMessageWhenAuthErrorProvided() {
+        val eyeFlow = MutableStateFlow(MascotEyeState())
+        val errorMessage = "Pemilihan akun Google terhenti. Pastikan koneksi & Google Play Services aktif."
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    lang = AppLanguage.ID
+                )
+            ) {
+                AuthScreen(
+                    authLoading = false,
+                    authError = errorMessage,
+                    onSelectLang = {},
+                    onSignInClick = {},
+                    mascot = MascotUiState(),
+                    mascotEyeFlow = eyeFlow
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(errorMessage)
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun firestoreRepository_usesMemoryOnlyCacheWithoutDiskPersistence() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (FirebaseApp.getApps(context).isEmpty()) {
+            FirebaseApp.initializeApp(
+                context,
+                FirebaseOptions.Builder()
+                    .setApplicationId("1:1234567890:android:abcdef123456")
+                    .setApiKey("AIzaSyTestKeyForUnitTestOnly1234567890")
+                    .setProjectId("ironpulse-test-project")
+                    .build()
+            )
+        }
+
+        val repo = FirestoreGymRepository(context)
+        assertTrue(
+            "Expected FirestoreGymRepository to use MemoryCacheSettings",
+            repo.isMemoryOnlyCache
+        )
+        val cacheSettings = repo.db.firestoreSettings.cacheSettings
+        assertTrue(cacheSettings is MemoryCacheSettings)
+        assertFalse(cacheSettings is PersistentCacheSettings)
     }
 }

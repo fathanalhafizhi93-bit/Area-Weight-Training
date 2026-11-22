@@ -284,6 +284,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     private var userSyncJob: Job? = null
     private var cacheSaveJob: Job? = null
+    private var signInJob: Job? = null
+    private var activeSyncedUid: String? = null
     private var lastRestCompletionTick: Long = 0L
     private var preHydratedUid: String? = null
     private var preHydratedCached: GymCachedSnapshot? = null
@@ -612,8 +614,9 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             repo.observeAuthUser().collect { firebaseUser ->
                 _user.value = firebaseUser
                 _authReady.value = true
-                userSyncJob?.cancel()
                 if (firebaseUser == null) {
+                    activeSyncedUid = null
+                    userSyncJob?.cancel()
                     _profile.value = null
                     _schedules.value = emptyMap()
                     _customRingtones.value = emptyList()
@@ -625,7 +628,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     _showNamePrompt.value = false
                     _tutorialOpen.value = false
                     initialGreetingFired = false
-                } else {
+                } else if (activeSyncedUid != firebaseUser.uid || userSyncJob?.isActive != true) {
+                    userSyncJob?.cancel()
                     startUserFirestoreSync(firebaseUser)
                 }
             }
@@ -646,6 +650,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retrySync() {
         val current = _user.value ?: return
+        activeSyncedUid = null
         userSyncJob?.cancel()
         startUserFirestoreSync(current)
     }
@@ -677,6 +682,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private fun startUserFirestoreSync(firebaseUser: FirebaseUser) {
         _syncError.value = null
         val uid = firebaseUser.uid
+        activeSyncedUid = uid
 
         val consumedPreHydration = preHydratedUid == uid
         val preCachedSnapshot = if (consumedPreHydration) preHydratedCached else null
@@ -1090,15 +1096,27 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     // --- Auth ---
 
     fun signInWithGoogleToken(idToken: String) {
-        viewModelScope.launch {
+        if (signInJob?.isActive == true) return
+        signInJob = viewModelScope.launch {
             _authLoading.value = true
             _authError.value = null
             try {
-                repo.signInWithGoogleIdToken(idToken)
+                val signedInUser = repo.signInWithGoogleIdToken(idToken)
+                _authReady.value = true
+                _user.value = signedInUser
+                if (activeSyncedUid != signedInUser.uid || userSyncJob?.isActive != true) {
+                    userSyncJob?.cancel()
+                    startUserFirestoreSync(signedInUser)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _authError.value = e.localizedMessage ?: "Gagal masuk dengan akun Google."
+                val lang = prefsStore.state.value.lang
+                _authError.value = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: lang.t(
+                        "Gagal masuk dengan akun Google (${e.javaClass.simpleName}). Coba lagi.",
+                        "Failed to sign in with Google (${e.javaClass.simpleName}). Please try again."
+                    )
             } finally {
                 _authLoading.value = false
             }
@@ -1119,8 +1137,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         audioEngine.stop()
         ttsSpeaker.stop()
         RestTimerService.stop(getApplication())
+        signInJob?.cancel()
         cacheSaveJob?.cancel()
         userSyncJob?.cancel()
+        activeSyncedUid = null
+        preHydratedUid = null
+        preHydratedCached = null
         _profile.value = null
         _schedules.value = emptyMap()
         _customRingtones.value = emptyList()

@@ -25,9 +25,10 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.MemoryCacheSettings
 import com.google.firebase.firestore.firestoreSettings
-import com.google.firebase.firestore.persistentCacheSettings
+import com.google.firebase.firestore.memoryCacheSettings
+import com.google.firebase.firestore.memoryEagerGcSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,7 +47,9 @@ class FirestoreGymRepository(
 ) {
 
     constructor(context: Context) : this(
-        db = Firebase.firestore(context.getString(R.string.firestore_database_id)),
+        db = FirebaseFirestore.getInstance(
+            context.applicationContext.getString(R.string.firestore_database_id)
+        ),
         auth = Firebase.auth
     )
 
@@ -54,14 +57,16 @@ class FirestoreGymRepository(
         runCatching {
             db.firestoreSettings = firestoreSettings {
                 setLocalCacheSettings(
-                    persistentCacheSettings {
-                        setSizeBytes(100L * 1024L * 1024L)
+                    memoryCacheSettings {
+                        setGcSettings(memoryEagerGcSettings {})
                     }
                 )
             }
-            db.persistentCacheIndexManager?.enableIndexAutoCreation()
         }
     }
+
+    val isMemoryOnlyCache: Boolean
+        get() = db.firestoreSettings.cacheSettings is MemoryCacheSettings
 
     fun observeAuthUser(): Flow<FirebaseUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -76,6 +81,7 @@ class FirestoreGymRepository(
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val result = auth.signInWithCredential(credential).await()
         return result.user
+            ?: auth.currentUser
             ?: throw IllegalStateException("Autentikasi Google berhasil tetapi user tidak tersedia.")
     }
 
