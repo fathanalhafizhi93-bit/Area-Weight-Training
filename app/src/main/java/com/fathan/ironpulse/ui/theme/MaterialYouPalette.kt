@@ -63,11 +63,13 @@ object MaterialYouColorEngine {
 
     const val DEFAULT_ACCENT_COLOR = "#C8FF2E"
     const val YARU_ORANGE_ACCENT = "#E95420"
+    const val AMOLED_STEALTH_CYAN_ACCENT = "#00E5FF"
 
     fun defaultTintForTheme(theme: UiTheme): String = when (theme) {
         UiTheme.MATERIAL_YOU -> "#1C1B22"
         UiTheme.CARBON_FORGE -> "#12151B"
         UiTheme.UBUNTU_YARU -> "#2C2C2C"
+        UiTheme.AMOLED_STEALTH -> "#07080B"
     }
 
     fun normalizeHexColor(hex: String?, fallback: String = DEFAULT_ACCENT_COLOR): String {

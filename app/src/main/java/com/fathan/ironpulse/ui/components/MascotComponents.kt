@@ -642,6 +642,7 @@ fun TodayMascot(
     voiceEnabled: Boolean,
     orbVisibleAlpha: () -> Float = { 1f },
     orbAnimActive: Boolean = true,
+    hideForTutorial: Boolean = false,
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     onTapMascot: () -> Unit,
     onReplayVoice: () -> Unit,
@@ -655,14 +656,15 @@ fun TodayMascot(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .tactilePress(pressedScale = 0.98f, disabledByPerf = tokens.performance.noAnimations)
+            .graphicsLayer { alpha = if (hideForTutorial) 0f else 1f }
+            .tactilePress(pressedScale = 0.98f, disabledByPerf = tokens.performance.noAnimations || hideForTutorial)
             .ironGlassSurface(
                 tokens = tokens,
                 subtle = true,
                 borderOverride = phaseColor.copy(alpha = 0.28f),
                 radiusOverride = tokens.bubbleRadius
             )
-            .clickable(onClick = onTapMascot)
+            .clickable(enabled = !hideForTutorial, onClick = onTapMascot)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

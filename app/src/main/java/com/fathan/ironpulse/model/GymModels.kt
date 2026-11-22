@@ -77,6 +77,13 @@ enum class UiTheme(
         titleEn = "Ubuntu Yaru",
         subtitleId = "Matte gelap GTK4 hangat dengan sentuhan aubergine & jingga Yaru",
         subtitleEn = "Authentic warm GTK4 dark matte with aubergine warmth & Yaru orange"
+    ),
+    AMOLED_STEALTH(
+        wireValue = "amoled-stealth",
+        titleId = "AMOLED Stealth",
+        titleEn = "AMOLED Stealth",
+        subtitleId = "Hitam pekat OLED sejati hemat baterai dengan shader mikro-dot 120 FPS",
+        subtitleEn = "True pitch-black OLED battery saver with crisp 120 FPS micro-dot texture"
     );
 
     companion object {
@@ -84,6 +91,7 @@ enum class UiTheme(
             MATERIAL_YOU.wireValue -> MATERIAL_YOU
             CARBON_FORGE.wireValue -> CARBON_FORGE
             UBUNTU_YARU.wireValue -> UBUNTU_YARU
+            AMOLED_STEALTH.wireValue -> AMOLED_STEALTH
             // Legacy removed heavy glass themes map seamlessly to lightweight Material You
             else -> MATERIAL_YOU
         }

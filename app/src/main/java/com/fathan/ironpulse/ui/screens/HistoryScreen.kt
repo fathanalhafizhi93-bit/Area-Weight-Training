@@ -62,7 +62,9 @@ import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.WorkoutLog
+import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
@@ -250,6 +252,7 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .tutorialSpotlightTarget(TutorialSpotlightTarget.HISTORY_CALENDAR)
                         .ironGlassSurface(tokens)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)

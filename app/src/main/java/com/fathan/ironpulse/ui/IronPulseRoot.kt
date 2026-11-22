@@ -55,6 +55,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -73,13 +74,15 @@ import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.CooldownAlertModal
-import com.fathan.ironpulse.ui.components.FeatureTutorialModal
 import com.fathan.ironpulse.ui.components.FloatingMascotDock
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
+import com.fathan.ironpulse.ui.components.LocalTutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.components.NamePromptModal
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
+import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
+import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.ExercisesScreen
 import com.fathan.ironpulse.ui.screens.HistoryScreen
@@ -93,6 +96,7 @@ import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun IronPulseRoot(
@@ -186,6 +190,9 @@ fun IronPulseRoot(
                         )
                     }
                     val homeOrbBoundsHolder = remember { OrbBoundsHolder() }
+                    val spotlightRegistry = remember { TutorialSpotlightRegistry() }
+                    spotlightRegistry.active = state.tutorialOpen
+                    val tourScrollScope = rememberCoroutineScope()
 
                     val modalBlocking = state.showNamePrompt ||
                         state.tutorialOpen ||
@@ -229,6 +236,7 @@ fun IronPulseRoot(
                         bottom = navBarBottom + bottomBarContentHeight
                     )
 
+                    CompositionLocalProvider(LocalTutorialSpotlightRegistry provides spotlightRegistry) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         // LAYER 1: Ambient gradient backdrop + cached multi-tab stage
                         Box(modifier = Modifier.fillMaxSize()) {
@@ -250,7 +258,7 @@ fun IronPulseRoot(
                                             restTimerFlow = viewModel.restTimerDisplayFlow,
                                             mascotEyeFlow = viewModel.mascotEyeFlow,
                                             homeOrbAlphaProvider = {
-                                                if (showFloatingMascot || morphProgressState.value > 0.02f) 0f else 1f
+                                                if (state.tutorialOpen || showFloatingMascot || morphProgressState.value > 0.02f) 0f else 1f
                                             },
                                             homeOrbAnimActive = state.activeTab == AppTab.TODAY &&
                                                 !showFloatingMascot &&
@@ -478,11 +486,32 @@ fun IronPulseRoot(
                         }
 
                         if (!state.showNamePrompt && state.tutorialOpen) {
-                            FeatureTutorialModal(
-                                startAtLanguageStep = state.tutorialStartWithLang,
+                            PulseMascotTutorialOverlay(
+                                userName = state.profile?.displayName?.takeIf { it.isNotBlank() }
+                                    ?: state.userDisplayName
+                                    ?: "",
+                                baseMascot = state.mascot,
+                                mascotEyeFlow = viewModel.mascotEyeFlow,
+                                startAtWelcomeLanguageStep = state.tutorialStartWithLang,
+                                homeOrbBoundsHolder = homeOrbBoundsHolder,
+                                spotlightRegistry = spotlightRegistry,
                                 onSelectLanguage = { viewModel.setLang(it) },
-                                onComplete = { viewModel.closeTutorial() },
-                                onJumpToTab = { navigateToTab(it) }
+                                onNavigateToStepTab = { tab ->
+                                    navigateToTab(tab)
+                                    tourScrollScope.launch {
+                                        when (tab) {
+                                            AppTab.TODAY -> todayListState.scrollToItem(0)
+                                            AppTab.SCHEDULE -> scheduleListState.scrollToItem(0)
+                                            AppTab.EXERCISES -> exercisesListState.scrollToItem(0)
+                                            AppTab.HISTORY -> historyListState.scrollToItem(0)
+                                            AppTab.SETTINGS -> settingsSubTabListStates["PROFILE"]?.scrollToItem(0)
+                                            AppTab.WORKOUT -> workoutListState.scrollToItem(0)
+                                        }
+                                    }
+                                },
+                                onPlayChirp = { variant -> viewModel.playTutorialChirp(variant) },
+                                onTapMascotFeedback = { viewModel.tapTutorialMascot() },
+                                onComplete = { viewModel.closeTutorial() }
                             )
                         }
 
@@ -512,6 +541,7 @@ fun IronPulseRoot(
                                 onDismiss = { viewModel.dismissInAppTestAlarm(openWorkoutAfter = false) }
                             )
                         }
+                    }
                     }
                 }
             }

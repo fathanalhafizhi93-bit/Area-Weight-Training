@@ -15,13 +15,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
@@ -58,9 +62,11 @@ import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
+import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
+import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
@@ -301,14 +307,48 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun uiTheme_hasThreeLightweightThemesAndLegacyWireFallback() {
-        assertEquals(3, UiTheme.entries.size)
+    fun uiTheme_hasFourLightweightThemesAndLegacyWireFallback() {
+        assertEquals(4, UiTheme.entries.size)
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("midnight-frosted"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("aeroglass"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("obsidian"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("unknown-theme"))
         assertEquals(UiTheme.CARBON_FORGE, UiTheme.fromWire("carbon-forge"))
         assertEquals(UiTheme.UBUNTU_YARU, UiTheme.fromWire("ubuntu-yaru"))
+        assertEquals(UiTheme.AMOLED_STEALTH, UiTheme.fromWire("amoled-stealth"))
+    }
+
+    @Test
+    fun amoledStealthTheme_usesPitchBlackCanvasStealthCyanDefaultAndSupportsCustomAccent() {
+        var defaultCanvasBg: Color? = null
+        var defaultAccent: Color? = null
+        var customAccent: Color? = null
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.AMOLED_STEALTH,
+                    accentColorHex = "#C8FF2E"
+                )
+            ) {
+                val t = LocalIronPulseTokens.current
+                defaultCanvasBg = t.canvasBg
+                defaultAccent = t.accentColor
+            }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.AMOLED_STEALTH,
+                    accentColorHex = "#FF4D8D"
+                )
+            ) {
+                customAccent = LocalIronPulseTokens.current.accentColor
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertEquals(Color(0xFF000000), defaultCanvasBg)
+        assertEquals(Color(0xFF00E5FF), defaultAccent)
+        assertEquals(Color(0xFFFF4D8D), customAccent)
     }
 
     @Test
@@ -602,5 +642,149 @@ class StartupSmokeTest {
             .assertIsDisplayed()
             .performClick()
         assertTrue(saveDialogOpened)
+    }
+
+    @Test
+    fun pulseMascotTutorial_greetsUserSelectsLanguageAndToursAllFiveTabs() {
+        val visitedTabs = mutableListOf<AppTab>()
+        val chirpsPlayed = mutableListOf<String>()
+        var mascotTappedCount = 0
+        var completed = false
+        val spotlightRegistry = TutorialSpotlightRegistry().apply { active = true }
+
+        composeRule.setContent {
+            var activeLang by remember { mutableStateOf(AppLanguage.ID) }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.AMOLED_STEALTH,
+                    lang = activeLang,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                PulseMascotTutorialOverlay(
+                    userName = "Fathan Pratama",
+                    baseMascot = MascotUiState(),
+                    mascotEyeFlow = null,
+                    startAtWelcomeLanguageStep = true,
+                    spotlightRegistry = spotlightRegistry,
+                    onSelectLanguage = { activeLang = it },
+                    onNavigateToStepTab = { visitedTabs.add(it) },
+                    onPlayChirp = { chirpsPlayed.add(it) },
+                    onTapMascotFeedback = { mascotTappedCount += 1 },
+                    onComplete = { completed = true }
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        // Welcome bubble stage greets by first name and allows selecting language
+        composeRule.onNodeWithTag("pulse_tutorial_welcome_card").assertIsDisplayed()
+        composeRule.onNodeWithText("Hai, Fathan! Aku Pulse").assertIsDisplayed()
+        composeRule.onNodeWithTag("pulse_tutorial_start_hint").assertIsDisplayed()
+
+        // Tap Pulse mascot on welcome stage
+        composeRule.onNodeWithTag("pulse_tutorial_mascot").performClick()
+        assertEquals(1, mascotTappedCount)
+
+        // Switch language to English and back to Indonesian without advancing step
+        composeRule.onNodeWithTag("pulse_tutorial_lang_en").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Hi, Fathan! I'm Pulse").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("pulse_tutorial_lang_id").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Hai, Fathan! Aku Pulse").assertIsDisplayed()
+
+        val tapScreen = {
+            composeRule.onNodeWithTag("pulse_tutorial_tap_area")
+                .performTouchInput { click(Offset(14f, 14f)) }
+            composeRule.waitForIdle()
+        }
+
+        // Tap anywhere on screen -> Step 1: Today tab Rest Timer spotlight
+        tapScreen()
+        assertEquals(AppTab.TODAY, visitedTabs.last())
+        composeRule.onNodeWithTag("pulse_tutorial_bubble_dock").assertIsDisplayed()
+        composeRule.onNodeWithText("Tab Hari Ini · Timer Istirahat").assertIsDisplayed()
+
+        // Step 2: Schedule tab (Template Program PPL Upper-Lower + Saved)
+        tapScreen()
+        assertEquals(AppTab.SCHEDULE, visitedTabs.last())
+        composeRule.onNodeWithText("Tab Jadwal · Template & Tersimpan").assertIsDisplayed()
+
+        // Step 3: Exercises tab
+        tapScreen()
+        assertEquals(AppTab.EXERCISES, visitedTabs.last())
+
+        // Step 4: History tab
+        tapScreen()
+        assertEquals(AppTab.HISTORY, visitedTabs.last())
+
+        // Step 5: Settings finale
+        tapScreen()
+        assertEquals(AppTab.SETTINGS, visitedTabs.last())
+
+        // Final tap returns Pulse back to Today tab and finishes tutorial
+        tapScreen()
+        assertEquals("Expected tutorial to return to Today tab on finish", AppTab.TODAY, visitedTabs.last())
+        assertTrue("Expected tutorial onComplete to fire after final tap", completed)
+        assertTrue("Expected soft chirps to play during tour", chirpsPlayed.contains("celebrate"))
+    }
+
+    @Test
+    fun pulseMascotTutorial_skipShowsPulseConfirmationAndSupportsResumeOrSkip() {
+        val visitedTabs = mutableListOf<AppTab>()
+        var completed = false
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                PulseMascotTutorialOverlay(
+                    userName = "Raka",
+                    baseMascot = MascotUiState(),
+                    mascotEyeFlow = null,
+                    startAtWelcomeLanguageStep = false,
+                    onSelectLanguage = {},
+                    onNavigateToStepTab = { visitedTabs.add(it) },
+                    onPlayChirp = {},
+                    onTapMascotFeedback = {},
+                    onComplete = { completed = true }
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("pulse_tutorial_bubble_dock").assertIsDisplayed()
+
+        // Advance to Schedule tab before testing skip return-to-Today
+        composeRule.onNodeWithTag("pulse_tutorial_tap_area")
+            .performTouchInput { click(Offset(14f, 14f)) }
+        composeRule.waitForIdle()
+        assertEquals(AppTab.SCHEDULE, visitedTabs.last())
+
+        // Tap Skip -> Pulse shows confirmation bubble card
+        composeRule.onNodeWithTag("pulse_tutorial_skip_button").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("pulse_tutorial_skip_confirm_card").assertIsDisplayed()
+        assertFalse(completed)
+
+        // Resume tour returns to bubble dock
+        composeRule.onNodeWithTag("pulse_tutorial_resume_button").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("pulse_tutorial_bubble_dock").assertIsDisplayed()
+        assertFalse(completed)
+
+        // Confirm skip returns to Today tab and finishes tutorial
+        composeRule.onNodeWithTag("pulse_tutorial_skip_button").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("pulse_tutorial_confirm_skip_button").performClick()
+        composeRule.waitForIdle()
+        assertEquals(AppTab.TODAY, visitedTabs.last())
+        assertTrue(completed)
     }
 }

@@ -85,6 +85,8 @@ import com.fathan.ironpulse.ui.components.SaveCustomScheduleDialog
 import com.fathan.ironpulse.ui.components.SchedulePreviewTarget
 import com.fathan.ironpulse.ui.components.ScheduleProgramPreviewSheet
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
+import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
+import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -147,7 +149,8 @@ fun ScheduleScreen(
                     },
                     onSelectOfficial = { template ->
                         previewTarget = SchedulePreviewTarget.Official(template)
-                    }
+                    },
+                    modifier = Modifier.tutorialSpotlightTarget(TutorialSpotlightTarget.SCHEDULE_PROGRAM_STRIP)
                 )
             }
 

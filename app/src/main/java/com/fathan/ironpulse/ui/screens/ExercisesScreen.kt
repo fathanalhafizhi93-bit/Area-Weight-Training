@@ -87,6 +87,8 @@ import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
+import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
@@ -135,6 +137,7 @@ fun ExercisesScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .tutorialSpotlightTarget(TutorialSpotlightTarget.EXERCISES_HEADER)
                         .ironGlassSurface(tokens)
                         .padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)

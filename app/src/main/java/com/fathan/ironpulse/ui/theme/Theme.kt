@@ -176,6 +176,7 @@ val LocalTabActive = compositionLocalOf { true }
 object ThemeMaterialShaderCache {
     private val carbonCache = ConcurrentHashMap<Long, ShaderBrush>()
     private val yaruCache = ConcurrentHashMap<Long, ShaderBrush>()
+    private val stealthCache = ConcurrentHashMap<Long, ShaderBrush>()
 
     fun getCarbonTwillBrush(cellPx: Int, subtle: Boolean = false): ShaderBrush {
         val safeCell = cellPx.coerceIn(3, 12)
@@ -190,6 +191,14 @@ object ThemeMaterialShaderCache {
         val key = (safeScale.toLong() shl 1) or (if (subtle) 1L else 0L)
         return yaruCache[key] ?: synchronized(yaruCache) {
             yaruCache[key] ?: buildYaruMatteGrainBrush(safeScale, subtle).also { yaruCache[key] = it }
+        }
+    }
+
+    fun getAmoledStealthMatrixBrush(cellPx: Int = 6, subtle: Boolean = false): ShaderBrush {
+        val safeCell = cellPx.coerceIn(4, 14)
+        val key = (safeCell.toLong() shl 1) or (if (subtle) 1L else 0L)
+        return stealthCache[key] ?: synchronized(stealthCache) {
+            stealthCache[key] ?: buildAmoledStealthMatrixBrush(safeCell, subtle).also { stealthCache[key] = it }
         }
     }
 
@@ -254,6 +263,26 @@ object ThemeMaterialShaderCache {
                 )
             }
         }
+        val imageShader = ImageShader(bitmap.asImageBitmap(), TileMode.Repeated, TileMode.Repeated)
+        return ShaderBrush(imageShader)
+    }
+
+    private fun buildAmoledStealthMatrixBrush(cell: Int, subtle: Boolean): ShaderBrush {
+        val tileSize = cell * 2
+        val bitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888)
+        val canvas = AndroidCanvas(bitmap)
+        val dotSize = (cell / 4f).coerceAtLeast(1.2f)
+        val dotPaint = Paint().apply {
+            color = android.graphics.Color.argb(if (subtle) 10 else 16, 224, 242, 255)
+            isAntiAlias = false
+        }
+        val faintDotPaint = Paint().apply {
+            color = android.graphics.Color.argb(if (subtle) 5 else 9, 255, 255, 255)
+            isAntiAlias = false
+        }
+        // Staggered micro-dot stealth matrix: crisp OLED feel, near-zero pixel luminance
+        canvas.drawRect(0f, 0f, dotSize, dotSize, dotPaint)
+        canvas.drawRect(cell.toFloat(), cell.toFloat(), cell + dotSize, cell + dotSize, faintDotPaint)
         val imageShader = ImageShader(bitmap.asImageBitmap(), TileMode.Repeated, TileMode.Repeated)
         return ShaderBrush(imageShader)
     }
@@ -365,6 +394,36 @@ fun Modifier.ironGlassSurface(
                 }
                 .border(1.dp, borderColor, shape)
         }
+        UiTheme.AMOLED_STEALTH -> {
+            val baseBg = if (subtle) Color(0xFF040507) else Color(0xFF07080B)
+            this
+                .clip(shape)
+                .drawWithCache {
+                    val strokePx = 1.dp.toPx()
+                    val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 12)
+                    val stealthMatrix = ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(
+                        cellPx = matrixCellPx,
+                        subtle = subtle
+                    )
+                    val accentEdgeRim = tokens.accentColor.copy(alpha = if (subtle) 0.16f else 0.30f)
+                    val topAccentFade = Brush.verticalGradient(
+                        0.0f to tokens.accentColor.copy(alpha = if (subtle) 0.025f else 0.055f),
+                        0.24f to Color.Transparent
+                    )
+                    onDrawBehind {
+                        drawRect(baseBg)
+                        drawRect(stealthMatrix)
+                        drawRect(topAccentFade)
+                        drawLine(
+                            color = accentEdgeRim,
+                            start = Offset(0f, strokePx * 0.5f),
+                            end = Offset(size.width, strokePx * 0.5f),
+                            strokeWidth = strokePx
+                        )
+                    }
+                }
+                .border(1.dp, borderColor, shape)
+        }
     }
 }
 
@@ -384,6 +443,7 @@ fun Modifier.ironGlassBar(
             val strokePx = 1.dp.toPx()
             val cellPx = (2.2.dp.toPx()).roundToInt().coerceIn(4, 10)
             val grainScale = density.roundToInt().coerceIn(1, 3)
+            val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 12)
             val primaryBrush = when (tokens.uiTheme) {
                 UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
                     0.0f to tokens.palette.primary.copy(alpha = 0.03f),
@@ -391,16 +451,18 @@ fun Modifier.ironGlassBar(
                 )
                 UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(grainScale, subtle = true)
                 UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
+                UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
             }
             val solidBg = when (tokens.uiTheme) {
                 UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerLow
                 UiTheme.UBUNTU_YARU -> Color(0xFF242424)
                 UiTheme.CARBON_FORGE -> tint
+                UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
             }
-            val barAccentHighlight = if (tokens.uiTheme == UiTheme.CARBON_FORGE) {
-                Color.White.copy(alpha = 0.14f)
-            } else {
-                null
+            val barAccentHighlight = when (tokens.uiTheme) {
+                UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.14f)
+                UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.22f)
+                else -> null
             }
             onDrawBehind {
                 drawRect(solidBg)
@@ -501,12 +563,14 @@ fun IronPulseTheme(
     content: @Composable () -> Unit
 ) {
     val uiTheme = prefs.uiTheme
-    val effectiveAccentHex = if (uiTheme == UiTheme.UBUNTU_YARU &&
-        prefs.accentColorHex.equals(MaterialYouColorEngine.DEFAULT_ACCENT_COLOR, ignoreCase = true)
-    ) {
-        MaterialYouColorEngine.YARU_ORANGE_ACCENT
-    } else {
-        prefs.accentColorHex
+    val isDefaultAccent = prefs.accentColorHex.equals(
+        MaterialYouColorEngine.DEFAULT_ACCENT_COLOR,
+        ignoreCase = true
+    )
+    val effectiveAccentHex = when {
+        uiTheme == UiTheme.UBUNTU_YARU && isDefaultAccent -> MaterialYouColorEngine.YARU_ORANGE_ACCENT
+        uiTheme == UiTheme.AMOLED_STEALTH && isDefaultAccent -> MaterialYouColorEngine.AMOLED_STEALTH_CYAN_ACCENT
+        else -> prefs.accentColorHex
     }
 
     val effectiveTintHex = prefs.materialTintColorHex
@@ -526,69 +590,83 @@ fun IronPulseTheme(
             UiTheme.MATERIAL_YOU -> palette.surface
             UiTheme.UBUNTU_YARU -> Color(0xFF1C1C1C)
             UiTheme.CARBON_FORGE -> Color(0xFF060709)
+            UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
         }
         val canvasSecondaryBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
             UiTheme.UBUNTU_YARU -> Color(0xFF261722) // subtle Ubuntu aubergine warmth at top
             UiTheme.CARBON_FORGE -> Color(0xFF0B0D11)
+            UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
         }
         val borderColor = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
             UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+            UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.13f)
         }
         val subtleBorder = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant.copy(alpha = 0.65f)
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.12f)
             UiTheme.UBUNTU_YARU -> Color(0xFF181818)
+            UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.08f)
         }
         val cardRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 24.dp
             UiTheme.CARBON_FORGE -> 10.dp
             UiTheme.UBUNTU_YARU -> 12.dp
+            UiTheme.AMOLED_STEALTH -> 16.dp
         }
         val buttonRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 999.dp
             UiTheme.CARBON_FORGE -> 8.dp
             UiTheme.UBUNTU_YARU -> 10.dp
+            UiTheme.AMOLED_STEALTH -> 12.dp
         }
         val inputRadius = when (uiTheme) {
             UiTheme.CARBON_FORGE -> 8.dp
             UiTheme.UBUNTU_YARU -> 10.dp
+            UiTheme.AMOLED_STEALTH -> 12.dp
             UiTheme.MATERIAL_YOU -> 12.dp
         }
         val bubbleRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 20.dp
             UiTheme.CARBON_FORGE -> 10.dp
             UiTheme.UBUNTU_YARU -> 12.dp
+            UiTheme.AMOLED_STEALTH -> 16.dp
         }
         val heroScrimAlpha = when (uiTheme) {
             UiTheme.CARBON_FORGE -> 0.42f
             UiTheme.UBUNTU_YARU -> 0.52f
+            UiTheme.AMOLED_STEALTH -> 0.78f
             UiTheme.MATERIAL_YOU -> 0.62f
         }
         val wellBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
             UiTheme.UBUNTU_YARU -> Color(0xFF212121)
             UiTheme.CARBON_FORGE -> Color(0xFF090B0E)
+            UiTheme.AMOLED_STEALTH -> Color(0xFF030406)
         }
         val controlBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh
             UiTheme.UBUNTU_YARU -> Color(0xFF353535)
             UiTheme.CARBON_FORGE -> Color(0xFF161A22)
+            UiTheme.AMOLED_STEALTH -> Color(0xFF0E1015)
         }
         val subtleChipBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh.copy(alpha = 0.75f)
             UiTheme.UBUNTU_YARU -> Color(0xFF303030)
             UiTheme.CARBON_FORGE -> Color(0xFF131720)
+            UiTheme.AMOLED_STEALTH -> Color(0xFF0A0C10)
         }
         val mutedTextColor = when (uiTheme) {
             UiTheme.UBUNTU_YARU -> Color(0xFFB5B4B0)
+            UiTheme.AMOLED_STEALTH -> Color(0xFF9CA3AF)
             else -> palette.onSurfaceVariant
         }
         val cardTopHighlight = when (uiTheme) {
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
             UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.08f)
+            UiTheme.AMOLED_STEALTH -> palette.primary.copy(alpha = 0.28f)
             UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.03f)
         }
         IronPulseThemeTokens(

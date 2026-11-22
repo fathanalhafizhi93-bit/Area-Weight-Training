@@ -138,11 +138,11 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         center = Offset(size.width * 0.5f, size.height * 0.25f),
                         radius = size.height.coerceAtLeast(800f) * 0.85f
                     )
-                    UiTheme.MATERIAL_YOU -> null
+                    UiTheme.MATERIAL_YOU, UiTheme.AMOLED_STEALTH -> null
                 }
                 val topGlow = when {
                     suppressGlow -> null
-                    tokens.uiTheme == UiTheme.CARBON_FORGE -> null
+                    tokens.uiTheme == UiTheme.CARBON_FORGE || tokens.uiTheme == UiTheme.AMOLED_STEALTH -> null
                     tokens.uiTheme == UiTheme.UBUNTU_YARU -> Brush.radialGradient(
                         colors = listOf(Color(0x28E95420), Color.Transparent),
                         center = Offset(size.width * 0.14f, size.height * 0.06f),
@@ -180,12 +180,14 @@ fun IronPulseTopBar(
             UiTheme.MATERIAL_YOU -> 999.dp
             UiTheme.UBUNTU_YARU -> 10.dp
             UiTheme.CARBON_FORGE -> 8.dp
+            UiTheme.AMOLED_STEALTH -> 12.dp
         }
     )
     val headerBorder = when (tokens.uiTheme) {
         UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
         UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.14f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+        UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.12f)
     }
 
     val settingsActive = activeTab == AppTab.SETTINGS && !aboutOpen
@@ -377,6 +379,7 @@ fun IronPulseBottomNav(
         UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
         UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.16f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+        UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.12f)
     }
 
     Box(
@@ -589,6 +592,7 @@ fun PhaseLogoEmblem(
         UiTheme.MATERIAL_YOU -> 16.dp
         UiTheme.CARBON_FORGE -> 10.dp
         UiTheme.UBUNTU_YARU -> 12.dp
+        UiTheme.AMOLED_STEALTH -> 14.dp
     }
     val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius) }
 

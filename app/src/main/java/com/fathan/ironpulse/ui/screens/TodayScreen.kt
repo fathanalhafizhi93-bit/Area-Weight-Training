@@ -86,6 +86,8 @@ import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.TodayMascot
+import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
+import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
@@ -296,13 +298,14 @@ fun TodayScreen(
                         lang = lang
                     )
 
-                    // Interactive Companion Mascot
+                    // Interactive Companion Mascot (truly absent while Pulse is out leading tutorial)
                     TodayMascot(
                         mascot = state.mascot,
                         eyeStateFlow = mascotEyeFlow,
                         voiceEnabled = state.appPrefs.mascotVoiceEnabled,
                         orbVisibleAlpha = homeOrbAlphaProvider,
                         orbAnimActive = homeOrbAnimActive,
+                        hideForTutorial = state.tutorialOpen,
                         homeOrbBoundsHolder = homeOrbBoundsHolder,
                         onTapMascot = onTapMascot,
                         onReplayVoice = onReplayMascotVoice
@@ -385,14 +388,20 @@ fun TodayScreen(
 
         // 2. ISOLATED STANDALONE REST TIMER CARD
         item(key = "rest_timer_card", contentType = "rest_timer") {
-            RestTimerHeroCard(
-                restTimerFlow = restTimerFlow,
-                secUnit = secUnit,
-                onStartRestPreset = onStartRestPreset,
-                onToggleRestPauseOrStart = onToggleRestPauseOrStart,
-                onAdjustRest = onAdjustRest,
-                onResetRest = onResetRest
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .tutorialSpotlightTarget(TutorialSpotlightTarget.TODAY_REST_TIMER)
+            ) {
+                RestTimerHeroCard(
+                    restTimerFlow = restTimerFlow,
+                    secUnit = secUnit,
+                    onStartRestPreset = onStartRestPreset,
+                    onToggleRestPauseOrStart = onToggleRestPauseOrStart,
+                    onAdjustRest = onAdjustRest,
+                    onResetRest = onResetRest
+                )
+            }
         }
 
         // 3. PRIMARY START WORKOUT CTA

@@ -1016,12 +1016,30 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         _tutorialOpen.value = true
     }
 
+    fun playTutorialChirp(variant: String = "ready") {
+        val vol = ((_profile.value?.volume ?: 0.85) * 0.72).toFloat().coerceIn(0.22f, 0.78f)
+        audioEngine.playMascotChirp(variant, vol)
+    }
+
+    fun tapTutorialMascot() {
+        haptics.buttonTap()
+        viewModelScope.launch {
+            _mascotEyeState.value = _mascotEyeState.value.copy(tapBounce = true)
+            delay(240L)
+            _mascotEyeState.value = _mascotEyeState.value.copy(tapBounce = false)
+        }
+        playTutorialChirp("clap")
+    }
+
     fun closeTutorial() {
         _tutorialOpen.value = false
         _user.value?.uid?.let { uid -> prefsStore.setTutorialSeen(uid, true) }
+        if (_activeTab.value != AppTab.TODAY) {
+            _activeTab.value = AppTab.TODAY
+        }
         if (!initialGreetingFired && _profile.value != null && !_showNamePrompt.value) {
             initialGreetingFired = true
-            updateMascotSpeech(playChirp = true, speakTts = true)
+            updateMascotSpeech(playChirp = true, speakTts = false)
         }
     }
 

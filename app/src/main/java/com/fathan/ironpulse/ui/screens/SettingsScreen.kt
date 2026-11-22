@@ -103,8 +103,10 @@ import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
+import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.fluidModalEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
@@ -384,6 +386,7 @@ fun SettingsScreen(
                     end = 16.dp,
                     top = contentPadding.calculateTopPadding() + 12.dp
                 )
+                .tutorialSpotlightTarget(TutorialSpotlightTarget.SETTINGS_HEADER)
                 .onSizeChanged { headerHeightPx = it.height }
         )
     }
@@ -1309,7 +1312,15 @@ private fun ThemePreviewCard(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val previewAccent = if (theme == UiTheme.UBUNTU_YARU) Color(0xFFE95420) else accentColor
+    val previewAccent = when (theme) {
+        UiTheme.UBUNTU_YARU -> Color(0xFFE95420)
+        UiTheme.AMOLED_STEALTH -> if (accentColor == MaterialYouColorEngine.parseColor(MaterialYouColorEngine.DEFAULT_ACCENT_COLOR)) {
+            Color(0xFF00E5FF)
+        } else {
+            accentColor
+        }
+        else -> accentColor
+    }
 
     Surface(
         onClick = onSelect,
@@ -1333,6 +1344,7 @@ private fun ThemePreviewCard(
                     UiTheme.MATERIAL_YOU -> 14.dp
                     UiTheme.CARBON_FORGE -> 6.dp
                     UiTheme.UBUNTU_YARU -> 7.dp
+                    UiTheme.AMOLED_STEALTH -> 10.dp
                 }
             )
             Box(
@@ -1344,14 +1356,17 @@ private fun ThemePreviewCard(
                         val strokePx = 1.dp.toPx()
                         val cellPx = (2.dp.toPx()).roundToInt().coerceIn(4, 8)
                         val grainScale = density.roundToInt().coerceIn(1, 3)
+                        val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
                         val baseBg = when (theme) {
                             UiTheme.MATERIAL_YOU -> Color(0xFF23202A)
                             UiTheme.CARBON_FORGE -> Color(0xFF101318)
                             UiTheme.UBUNTU_YARU -> Color(0xFF2C2C2C)
+                            UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
                         }
                         val shaderBrush = when (theme) {
                             UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = false)
                             UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = false)
+                            UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = false)
                             UiTheme.MATERIAL_YOU -> null
                         }
                         val finishBrush = when (theme) {
@@ -1367,10 +1382,15 @@ private fun ThemePreviewCard(
                             UiTheme.UBUNTU_YARU -> Brush.horizontalGradient(
                                 listOf(Color(0x28E95420), Color.Transparent)
                             )
+                            UiTheme.AMOLED_STEALTH -> Brush.verticalGradient(
+                                0.0f to previewAccent.copy(alpha = 0.12f),
+                                0.35f to Color.Transparent
+                            )
                         }
                         val topRim = when (theme) {
                             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.20f)
                             UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.09f)
+                            UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
                             UiTheme.MATERIAL_YOU -> Color.Transparent
                         }
                         onDrawBehind {
@@ -1392,6 +1412,7 @@ private fun ThemePreviewCard(
                         when (theme) {
                             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
                             UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+                            UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.16f)
                             UiTheme.MATERIAL_YOU -> previewAccent.copy(alpha = 0.28f)
                         },
                         previewShape
@@ -1425,6 +1446,7 @@ private fun ThemePreviewCard(
                             UiTheme.MATERIAL_YOU -> 999.dp
                             UiTheme.CARBON_FORGE -> 3.dp
                             UiTheme.UBUNTU_YARU -> 5.dp
+                            UiTheme.AMOLED_STEALTH -> 6.dp
                         }
                     )
                     Box(
@@ -2348,8 +2370,8 @@ private fun SystemGuideAndAboutCard(
 
         SystemActionRow(
             icon = Icons.Rounded.School,
-            title = lang.t("Panduan Fitur IronPulse", "Feature Walkthrough"),
-            subtitle = lang.t("Pelajari 5 alur utama jadwal, set, dan maskot.", "Review the 5 core flows: schedule, sets & mascot."),
+            title = lang.t("Tur Interaktif Bersama Pulse", "Interactive Tour with Pulse"),
+            subtitle = lang.t("Pulse memandumu keliling 5 tab, template jadwal & alarm.", "Let Pulse walk you through all 5 tabs, templates & alarms."),
             onClick = onOpenTutorial
         )
 
