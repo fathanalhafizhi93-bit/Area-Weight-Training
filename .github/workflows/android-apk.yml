@@ -52,16 +52,24 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
+      - name: Cache Robolectric Android SDK jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: ${{ runner.os }}-robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-robolectric-
+
       - name: Prepare signing keystore
         env:
           SECRET_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           rm -f local.properties
           if [ ! -f debug.keystore ] && [ -n "${SECRET_KEYSTORE_B64}" ]; then
-            printf '%s' "${SECRET_KEYSTORE_B64}" | base64 -d > debug.keystore
+            printf '%s' "${SECRET_KEYSTORE_B64}" | tr -d '\r\n ' | base64 -d > debug.keystore
           fi
           if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
+            tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore
           fi
           if [ ! -f debug.keystore ]; then
             echo "Generating ephemeral debug.keystore via keytool"
@@ -85,14 +93,16 @@ jobs:
           SECRET_FIRESTORE_DB_ID: ${{ secrets.FIRESTORE_DATABASE_ID }}
         run: |
           mkdir -p app app/src/main/res/values
+          USED_CI_FALLBACK=false
           if [ ! -s app/google-services.json ] && [ -n "${SECRET_GOOGLE_SERVICES}" ]; then
             if printf '%s' "${SECRET_GOOGLE_SERVICES}" | grep -q '"project_info"'; then
               printf '%s\n' "${SECRET_GOOGLE_SERVICES}" > app/google-services.json
             else
-              printf '%s' "${SECRET_GOOGLE_SERVICES}" | base64 -d > app/google-services.json
+              printf '%s' "${SECRET_GOOGLE_SERVICES}" | tr -d '\r\n ' | base64 -d > app/google-services.json
             fi
           fi
           if [ ! -s app/google-services.json ]; then
+            USED_CI_FALLBACK=true
             echo "::warning::app/google-services.json missing in checkout/secrets; creating CI fallback config for compilation & tests."
             cat > app/google-services.json << 'EOF'
           {
@@ -137,6 +147,7 @@ jobs:
           EOF
           fi
           test -s app/google-services.json
+          python3 -m json.tool app/google-services.json > /dev/null
 
           if [ ! -s app/src/main/res/values/firebase_applet_config.xml ]; then
             DB_ID="${SECRET_FIRESTORE_DB_ID:-(default)}"
@@ -149,10 +160,14 @@ jobs:
           EOF
           fi
           test -s app/src/main/res/values/firebase_applet_config.xml
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('app/src/main/res/values/firebase_applet_config.xml')"
 
           KEYSTORE_SHA1=$(keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey 2>/dev/null | awk '/SHA1:/ {gsub(":", "", $2); print tolower($2); exit}')
           echo "Signing keystore SHA1: ${KEYSTORE_SHA1:-unknown}"
-          if [ -n "$KEYSTORE_SHA1" ] && ! grep -qi "$KEYSTORE_SHA1" app/google-services.json; then
+          if [ "$USED_CI_FALLBACK" = "true" ]; then
+            echo "### Firebase CI Fallback Notice" >> "$GITHUB_STEP_SUMMARY"
+            echo "Repository tidak menyertakan \`app/google-services.json\` dan secret \`GOOGLE_SERVICES_JSON\` belum diisi. Build tetap berjalan memakai konfigurasi fallback agar tes & kompilasi lulus, namun Google Sign-In pada APK hasil CI ini membutuhkan \`GOOGLE_SERVICES_JSON\` (dan \`FIRESTORE_DATABASE_ID\` / \`DEBUG_KEYSTORE_BASE64\` bila file tidak di-commit)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$KEYSTORE_SHA1" ] && ! grep -qi "$KEYSTORE_SHA1" app/google-services.json; then
             echo "::warning::Signing keystore SHA1 ($KEYSTORE_SHA1) does not match any certificate_hash in app/google-services.json! Google Sign-In will fail on device unless matching keystore/SHA1 is configured."
           fi
 

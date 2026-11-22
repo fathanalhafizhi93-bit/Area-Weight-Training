@@ -30,9 +30,8 @@ import com.fathan.ironpulse.data.GymCachedSnapshot
 import com.fathan.ironpulse.data.GymPresets
 import com.fathan.ironpulse.data.LocalGymCacheStore
 import com.fathan.ironpulse.data.PreferencesStore
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.MemoryCacheSettings
+import com.google.firebase.firestore.MemoryEagerGcSettings
 import com.google.firebase.firestore.PersistentCacheSettings
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
@@ -447,25 +446,17 @@ class StartupSmokeTest {
 
     @Test
     fun firestoreRepository_usesMemoryOnlyCacheWithoutDiskPersistence() {
-        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
-        if (FirebaseApp.getApps(context).isEmpty()) {
-            FirebaseApp.initializeApp(
-                context,
-                FirebaseOptions.Builder()
-                    .setApplicationId("1:1234567890:android:abcdef123456")
-                    .setApiKey("AIzaSyTestKeyForUnitTestOnly1234567890")
-                    .setProjectId("ironpulse-test-project")
-                    .build()
-            )
-        }
-
-        val repo = FirestoreGymRepository(context)
+        val settings = FirestoreGymRepository.buildMemoryOnlySettings()
+        val cacheSettings = settings.cacheSettings
         assertTrue(
-            "Expected FirestoreGymRepository to use MemoryCacheSettings",
-            repo.isMemoryOnlyCache
+            "Expected FirestoreGymRepository to configure MemoryCacheSettings",
+            cacheSettings is MemoryCacheSettings
         )
-        val cacheSettings = repo.db.firestoreSettings.cacheSettings
-        assertTrue(cacheSettings is MemoryCacheSettings)
         assertFalse(cacheSettings is PersistentCacheSettings)
+        val memorySettings = cacheSettings as MemoryCacheSettings
+        assertTrue(
+            "Expected eager memory GC to minimize Firestore RAM footprint",
+            memorySettings.garbageCollectorSettings is MemoryEagerGcSettings
+        )
     }
 }

@@ -19,8 +19,10 @@ class IronPulseApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (FirebaseApp.getApps(this).isEmpty()) {
-            FirebaseApp.initializeApp(this)
+        runCatching {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseApp.initializeApp(this)
+            }
         }
         runCatching { createNotificationChannels() }
         appScope.launch {

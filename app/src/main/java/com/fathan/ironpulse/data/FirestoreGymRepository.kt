@@ -24,6 +24,7 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.MemoryCacheSettings
 import com.google.firebase.firestore.firestoreSettings
@@ -55,13 +56,7 @@ class FirestoreGymRepository(
 
     init {
         runCatching {
-            db.firestoreSettings = firestoreSettings {
-                setLocalCacheSettings(
-                    memoryCacheSettings {
-                        setGcSettings(memoryEagerGcSettings {})
-                    }
-                )
-            }
+            db.firestoreSettings = buildMemoryOnlySettings()
         }
     }
 
@@ -704,5 +699,13 @@ class FirestoreGymRepository(
         private const val OP_CREATE = "create"
         private const val OP_UPDATE = "update"
         private const val OP_DELETE = "delete"
+
+        fun buildMemoryOnlySettings(): FirebaseFirestoreSettings = firestoreSettings {
+            setLocalCacheSettings(
+                memoryCacheSettings {
+                    setGcSettings(memoryEagerGcSettings {})
+                }
+            )
+        }
     }
 }
