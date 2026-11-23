@@ -195,6 +195,16 @@ private fun resolveThemeIconStyle(
         join = StrokeJoin.Round,
         cornerScale = 0.30f
     )
+    UiTheme.XMATERIAL_YOU -> ThemeIconStyle(
+        primary = tint,
+        secondary = accent,
+        fillWash = tint.copy(alpha = 0.11f),
+        highlight = Color.White.copy(alpha = 0.60f),
+        strokeWidth = widthPx * 0.080f,
+        cap = StrokeCap.Round,
+        join = StrokeJoin.Round,
+        cornerScale = 0.20f
+    )
 }
 
 private fun DrawScope.drawThemeIconUnderlay(
@@ -281,6 +291,34 @@ private fun DrawScope.drawThemeIconUnderlay(
                 )
             }
         }
+        UiTheme.XMATERIAL_YOU -> {
+            if (filledBadge) {
+                val inset = w * 0.05f
+                val bigR = w * 0.30f
+                val smallR = w * 0.10f
+                val obsidianSeal = Path().apply {
+                    moveTo(inset + bigR, inset)
+                    lineTo(w - inset - smallR, inset)
+                    quadraticBezierTo(w - inset, inset, w - inset, inset + smallR)
+                    lineTo(w - inset, h - inset - bigR)
+                    quadraticBezierTo(w - inset, h - inset, w - inset - bigR, h - inset)
+                    lineTo(inset + smallR, h - inset)
+                    quadraticBezierTo(inset, h - inset, inset, h - inset - smallR)
+                    lineTo(inset, inset + bigR)
+                    quadraticBezierTo(inset, inset, inset + bigR, inset)
+                    close()
+                }
+                drawPath(
+                    path = obsidianSeal,
+                    color = style.fillWash
+                )
+                drawPath(
+                    path = obsidianSeal,
+                    color = style.secondary.copy(alpha = 0.42f),
+                    style = Stroke(w * 0.040f)
+                )
+            }
+        }
     }
 }
 
@@ -327,6 +365,13 @@ private fun DrawScope.drawThemeIconOverlay(
             )
         }
         UiTheme.MATERIAL_YOU -> Unit
+        UiTheme.XMATERIAL_YOU -> {
+            drawCircle(
+                color = style.secondary.copy(alpha = 0.72f),
+                radius = w * 0.042f,
+                center = Offset(w * 0.78f, h * 0.20f)
+            )
+        }
     }
 }
 

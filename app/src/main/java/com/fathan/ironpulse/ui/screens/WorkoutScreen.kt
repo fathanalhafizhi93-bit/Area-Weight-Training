@@ -187,7 +187,7 @@ fun WorkoutScreen(
                     ) {
                         Surface(
                             onClick = onBackToToday,
-                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            shape = tokens.buttonShape,
                             color = tokens.controlBg,
                             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                             modifier = Modifier.tactilePress(disabledByPerf = noAnim)
@@ -379,7 +379,7 @@ fun WorkoutScreen(
                                 if (activeSchedule?.isGymDay == false) onOpenSchedule()
                                 else onOpenExercisesForDay(state.todayDayKey)
                             },
-                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            shape = tokens.buttonShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = tokens.accentColor,
                                 contentColor = tokens.onAccentColor
@@ -1431,7 +1431,7 @@ private fun ExerciseCockpitCard(
             OutlinedButton(
                 onClick = onAddSet,
                 enabled = entry.sets.size < 12,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 modifier = Modifier
                     .weight(1f)
@@ -1446,7 +1446,7 @@ private fun ExerciseCockpitCard(
             OutlinedButton(
                 onClick = onRemoveSet,
                 enabled = entry.sets.size > 1,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 modifier = Modifier
                     .weight(1f)
@@ -1640,7 +1640,7 @@ internal fun WorkoutSessionSummaryCard(
         ) {
             OutlinedButton(
                 onClick = onBackToToday,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 modifier = Modifier
                     .weight(1f)
@@ -1664,7 +1664,7 @@ internal fun WorkoutSessionSummaryCard(
             }
             Button(
                 onClick = onOpenHistory,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = tokens.accentColor,
                     contentColor = tokens.onAccentColor

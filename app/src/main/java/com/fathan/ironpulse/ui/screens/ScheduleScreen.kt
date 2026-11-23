@@ -272,7 +272,7 @@ fun ScheduleScreen(
                 ) {
                     OutlinedButton(
                         onClick = { timePickerDay = null },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                         modifier = Modifier
                             .weight(1f)
@@ -287,7 +287,7 @@ fun ScheduleScreen(
                             viewModel.updateScheduleFields(dayKey = editingDay, alarmTime = hhmm)
                             timePickerDay = null
                         },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
@@ -567,7 +567,7 @@ private fun DayScheduleCard(
                                 onStopEditingFocus()
                             }
                         }),
-                        shape = RoundedCornerShape(tokens.inputRadius),
+                        shape = tokens.inputShape,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = tokens.accentColor,
                             unfocusedBorderColor = tokens.subtleBorderColor,
@@ -581,7 +581,7 @@ private fun DayScheduleCard(
                 } else {
                     Surface(
                         onClick = onStartEditingFocus,
-                        shape = RoundedCornerShape(tokens.inputRadius),
+                        shape = tokens.inputShape,
                         color = tokens.wellBg,
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
                         modifier = Modifier
@@ -639,7 +639,7 @@ private fun DayScheduleCard(
                     ) {
                         Surface(
                             onClick = onOpenTimePicker,
-                            shape = RoundedCornerShape(tokens.inputRadius),
+                            shape = tokens.inputShape,
                             color = tokens.wellBg,
                             border = BorderStroke(1.dp, tokens.subtleBorderColor),
                             modifier = Modifier
@@ -672,7 +672,7 @@ private fun DayScheduleCard(
 
                         Surface(
                             onClick = onToggleAlarmEnabled,
-                            shape = RoundedCornerShape(tokens.inputRadius),
+                            shape = tokens.inputShape,
                             color = if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
                             border = BorderStroke(
                                 1.dp,
@@ -712,7 +712,7 @@ private fun DayScheduleCard(
                     Box {
                         Surface(
                             onClick = { ringtoneMenuOpen = true },
-                            shape = RoundedCornerShape(tokens.inputRadius),
+                            shape = tokens.inputShape,
                             color = tokens.wellBg,
                             border = BorderStroke(1.dp, tokens.subtleBorderColor),
                             modifier = Modifier

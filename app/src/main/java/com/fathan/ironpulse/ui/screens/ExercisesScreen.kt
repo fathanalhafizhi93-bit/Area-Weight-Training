@@ -157,7 +157,7 @@ fun ExercisesScreen(
                     ) {
                         Button(
                             onClick = { showLibraryModal = true },
-                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            shape = tokens.buttonShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = tokens.accentColor,
                                 contentColor = tokens.onAccentColor
@@ -179,7 +179,7 @@ fun ExercisesScreen(
                         }
                         OutlinedButton(
                             onClick = { showCreateCustomModal = true },
-                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            shape = tokens.buttonShape,
                             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                             modifier = Modifier
                                 .weight(1f)
@@ -213,7 +213,7 @@ fun ExercisesScreen(
                     val isToday = day == state.todayDayKey
                     Surface(
                         onClick = { viewModel.setSelectedExerciseDay(day) },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         color = if (isSelected) tokens.accentColor else tokens.controlBg,
                         border = BorderStroke(
                             1.dp,
@@ -355,7 +355,7 @@ fun ExercisesScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = { showLibraryModal = true },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
@@ -761,7 +761,7 @@ private fun ExerciseLibraryModal(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(tokens.inputRadius),
+                shape = tokens.inputShape,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tokens.accentColor,
                     unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -966,7 +966,7 @@ private fun ExerciseLibraryModal(
                         onAddBatch(chosen)
                     },
                     enabled = selectedNames.isNotEmpty() && remainingSlots > 0,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.accentColor,
                         contentColor = tokens.onAccentColor
@@ -1133,7 +1133,7 @@ private fun ExerciseFormModal(
                 label = { Text(lang.t("Nama Gerakan", "Movement Name")) },
                 placeholder = { Text(lang.t("Contoh: Incline Bench Press", "e.g. Incline Bench Press")) },
                 singleLine = true,
-                shape = RoundedCornerShape(tokens.inputRadius),
+                shape = tokens.inputShape,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tokens.accentColor,
                     unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1204,7 +1204,7 @@ private fun ExerciseFormModal(
                 onValueChange = { equipment = it.take(40) },
                 label = { Text(lang.t("Alat / Equipment", "Equipment")) },
                 singleLine = true,
-                shape = RoundedCornerShape(tokens.inputRadius),
+                shape = tokens.inputShape,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tokens.accentColor,
                     unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1224,7 +1224,7 @@ private fun ExerciseFormModal(
                     label = { Text(lang.t("Target Set", "Target Sets")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(tokens.inputRadius),
+                    shape = tokens.inputShape,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = tokens.accentColor,
                         unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1240,7 +1240,7 @@ private fun ExerciseFormModal(
                         onValueChange = { repsText = it.take(20) },
                         label = { Text(lang.t("Target Repetisi", "Target Reps")) },
                         singleLine = true,
-                        shape = RoundedCornerShape(tokens.inputRadius),
+                        shape = tokens.inputShape,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = tokens.accentColor,
                             unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1256,7 +1256,7 @@ private fun ExerciseFormModal(
                         label = { Text(lang.t("Menit", "Min")) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(tokens.inputRadius),
+                        shape = tokens.inputShape,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = tokens.accentColor,
                             unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1271,7 +1271,7 @@ private fun ExerciseFormModal(
                         label = { Text(lang.t("Detik", "Sec")) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(tokens.inputRadius),
+                        shape = tokens.inputShape,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = tokens.accentColor,
                             unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1312,7 +1312,7 @@ private fun ExerciseFormModal(
                         label = { Text(lang.t("Beban Awal (kg)", "Start Load (kg)")) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        shape = RoundedCornerShape(tokens.inputRadius),
+                        shape = tokens.inputShape,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = tokens.accentColor,
                             unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1328,7 +1328,7 @@ private fun ExerciseFormModal(
                     label = { Text(lang.t("Istirahat (detik)", "Rest (sec)")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(tokens.inputRadius),
+                    shape = tokens.inputShape,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = tokens.accentColor,
                         unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1345,7 +1345,7 @@ private fun ExerciseFormModal(
                 label = { Text(lang.t("Catatan Teknik / Form", "Technique / Form Notes")) },
                 minLines = 2,
                 maxLines = 3,
-                shape = RoundedCornerShape(tokens.inputRadius),
+                shape = tokens.inputShape,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tokens.accentColor,
                     unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -1414,7 +1414,7 @@ private fun ExerciseFormModal(
                             )
                         )
                     },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.accentColor,
                         contentColor = tokens.onAccentColor

@@ -164,7 +164,7 @@ fun NamePromptModal(
                 label = { Text(lang.t("Nama Panggilan", "Nickname / Display Name")) },
                 placeholder = { Text(lang.t("Contoh: Fathan", "e.g. Alex")) },
                 singleLine = true,
-                shape = RoundedCornerShape(tokens.inputRadius),
+                shape = tokens.inputShape,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tokens.accentColor,
                     unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -188,7 +188,7 @@ fun NamePromptModal(
                         onSaveName(cleaned)
                     }
                 },
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = tokens.accentColor,
                     contentColor = tokens.onAccentColor
@@ -326,7 +326,7 @@ fun CooldownAlertModal(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
@@ -337,7 +337,7 @@ fun CooldownAlertModal(
 
                 Button(
                     onClick = onBypass,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.accentColor,
                         contentColor = tokens.onAccentColor
@@ -356,14 +356,6 @@ fun CooldownAlertModal(
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
     val tokens = LocalIronPulseTokens.current
-    val lang = tokens.lang
-    val context = LocalContext.current
-    val appVersionLabel = remember(context) {
-        val raw = runCatching {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrNull().orEmpty().ifBlank { "0.0.1-alpha" }
-        "v${raw.replace('-', ' ')}"
-    }
 
     BackHandler(onBack = onDismiss)
 
@@ -381,7 +373,13 @@ fun AboutDialog(onDismiss: () -> Unit) {
             .padding(horizontal = 18.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        AboutContentCards(
+            wrapHeaderInCard = false,
+            headerTrailing = {
+                IconButton(onClick = onDismiss) {
+                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant, size = 20.dp)
+                }
+            },
             modifier = Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
@@ -393,119 +391,148 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     onClick = {}
                 )
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(20.dp)
+        )
+    }
+}
+
+@Composable
+fun AboutContentCards(
+    modifier: Modifier = Modifier,
+    wrapHeaderInCard: Boolean = true,
+    headerTrailing: (@Composable () -> Unit)? = null
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+    val context = LocalContext.current
+    val appVersionLabel = remember(context) {
+        val raw = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty().ifBlank { "0.0.1-alpha" }
+        "v${raw.replace('-', ' ')}"
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(if (wrapHeaderInCard) 12.dp else 16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (wrapHeaderInCard) {
+                        Modifier
+                            .ironGlassSurface(tokens)
+                            .padding(16.dp)
+                    } else {
+                        Modifier
+                    }
+                ),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    ThemeBrandEmblem(
+                ThemeBrandEmblem(
+                    theme = tokens.uiTheme,
+                    accentOverride = tokens.accentColor,
+                    size = 44.dp
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    ThemeBrandWordmark(
                         theme = tokens.uiTheme,
-                        accentOverride = tokens.accentColor,
-                        size = 44.dp
+                        accentColor = tokens.accentColor,
+                        fontSize = 19.sp
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        ThemeBrandWordmark(
-                            theme = tokens.uiTheme,
-                            accentColor = tokens.accentColor,
-                            fontSize = 19.sp
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "About IronPulse",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.palette.onSurfaceVariant
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "About IronPulse",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.palette.onSurfaceVariant
-                            )
-                            Text(
-                                text = appVersionLabel,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = FontFamily.Monospace,
-                                color = tokens.accentColor
-                            )
-                        }
+                        Text(
+                            text = appVersionLabel,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = FontFamily.Monospace,
+                            color = tokens.accentColor
+                        )
                     }
                 }
-                IconButton(onClick = onDismiss) {
-                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant, size = 20.dp)
-                }
             }
+            headerTrailing?.invoke()
+        }
 
-            // Credits Hero Box
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .ironGlassSurface(tokens, subtle = true, borderOverride = tokens.accentColor.copy(alpha = 0.3f))
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = lang.t("KREDIT & PEMBUAT", "CREDITS & CREATORS"),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.6.sp,
-                    color = tokens.accentColor
-                )
-                HorizontalDivider(color = tokens.subtleBorderColor)
-                AboutCreditRow(
-                    label = "scripter",
-                    value = "Fathan, and Artificial intelligence",
-                    valueColor = tokens.palette.onSurface
-                )
-                AboutCreditRow(
-                    label = "concept",
-                    value = "fathan.",
-                    valueColor = tokens.accentColor,
-                    mono = true
-                )
-            }
+        // Credits Hero Box
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .ironGlassSurface(tokens, subtle = !wrapHeaderInCard, borderOverride = tokens.accentColor.copy(alpha = 0.3f))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = lang.t("KREDIT & PEMBUAT", "CREDITS & CREATORS"),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.6.sp,
+                color = tokens.accentColor
+            )
+            HorizontalDivider(color = tokens.subtleBorderColor)
+            AboutCreditRow(
+                label = "scripter",
+                value = "Fathan, and Artificial intelligence",
+                valueColor = tokens.palette.onSurface
+            )
+            AboutCreditRow(
+                label = "concept",
+                value = "fathan.",
+                valueColor = tokens.accentColor,
+                mono = true
+            )
+        }
 
-            // About the App Box
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .ironGlassSurface(tokens, subtle = true)
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = lang.t("Tentang Aplikasi", "About the App"),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tokens.palette.onSurface
-                )
-                Text(
-                    text = lang.t(
-                        "IronPulse dirancang untuk membantu konsistensi jadwal latihan gym Anda setiap minggu, lengkap dengan alarm hari aktif, unggahan ringtone kustom, panduan daftar gerakan harian, catatan beban/set/repetisi, riwayat kalender sesi, serta timer istirahat antar set yang tersinkronisasi ke Cloud.",
-                        "IronPulse is built to keep your weekly gym schedule consistent—featuring daily workout alarms, custom ringtones, daily movement plans, weight/set/rep logging, a workout history calendar, and cloud-synced rest timers."
-                    ),
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp,
-                    color = tokens.palette.onSurfaceVariant
-                )
-                HorizontalDivider(color = tokens.subtleBorderColor)
-                Text(
-                    text = listOf(
-                        lang.t("Jadwal Mingguan", "Weekly Schedule"),
-                        lang.t("Kalender Riwayat", "History Calendar"),
-                        lang.t("Ringtone Kustom", "Custom Ringtones"),
-                        lang.t("Alarm Background Android", "Android Background Alarms")
-                    ).joinToString(" · "),
-                    fontSize = 11.5.sp,
-                    color = tokens.palette.onSurfaceVariant
-                )
-            }
+        // About the App Box
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .ironGlassSurface(tokens, subtle = !wrapHeaderInCard)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = lang.t("Tentang Aplikasi", "About the App"),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.palette.onSurface
+            )
+            Text(
+                text = lang.t(
+                    "IronPulse dirancang untuk membantu konsistensi jadwal latihan gym Anda setiap minggu, lengkap dengan alarm hari aktif, unggahan ringtone kustom, panduan daftar gerakan harian, catatan beban/set/repetisi, riwayat kalender sesi, serta timer istirahat antar set yang tersinkronisasi ke Cloud.",
+                    "IronPulse is built to keep your weekly gym schedule consistent—featuring daily workout alarms, custom ringtones, daily movement plans, weight/set/rep logging, a workout history calendar, and cloud-synced rest timers."
+                ),
+                fontSize = 13.sp,
+                lineHeight = 20.sp,
+                color = tokens.palette.onSurfaceVariant
+            )
+            HorizontalDivider(color = tokens.subtleBorderColor)
+            Text(
+                text = listOf(
+                    lang.t("Jadwal Mingguan", "Weekly Schedule"),
+                    lang.t("Kalender Riwayat", "History Calendar"),
+                    lang.t("Ringtone Kustom", "Custom Ringtones"),
+                    lang.t("Alarm Background Android", "Android Background Alarms")
+                ).joinToString(" · "),
+                fontSize = 11.5.sp,
+                color = tokens.palette.onSurfaceVariant
+            )
         }
     }
 }
@@ -646,7 +673,7 @@ fun ActiveAlarmOverlay(
                 ) {
                     Button(
                         onClick = onStartWorkout,
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
@@ -659,7 +686,7 @@ fun ActiveAlarmOverlay(
                     }
                     OutlinedButton(
                         onClick = onSnooze,
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {

@@ -126,14 +126,14 @@ fun ScheduleTopProgramStrip(
             Spacer(modifier = Modifier.width(10.dp))
 
             Surface(
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 color = tokens.accentColor.copy(alpha = 0.16f),
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.42f)),
                 modifier = Modifier
                     .testTag("save_custom_schedule_button")
                     .heightIn(min = 48.dp)
                     .tactilePress(enabled = !applyingSchedule, disabledByPerf = noAnim)
-                    .clip(RoundedCornerShape(tokens.buttonRadius))
+                    .clip(tokens.buttonShape)
                     .clickable(enabled = !applyingSchedule) { onOpenSaveDialog() }
             ) {
                 Row(
@@ -250,15 +250,16 @@ private fun ScheduleStripCard(
         else listOf("S", "S", "R", "K", "J", "S", "M")
     }
 
+    val cardShape = if (tokens.isXMaterial) tokens.subtleCardShape else RoundedCornerShape(14.dp)
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = cardShape,
         color = containerCol,
         border = BorderStroke(if (isActive) 1.5.dp else 1.dp, borderCol),
         modifier = Modifier
             .width(172.dp)
             .testTag(testTagName)
             .tactilePress(enabled = enabled, pressedScale = 0.97f, disabledByPerf = noAnim)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(cardShape)
             .clickable(enabled = enabled) { onClick() }
     ) {
         Column(
@@ -420,7 +421,7 @@ fun SaveCustomScheduleDialog(
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
@@ -436,7 +437,7 @@ fun SaveCustomScheduleDialog(
                         }
                         onConfirm(cleaned)
                     },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.accentColor,
                         contentColor = tokens.onAccentColor
@@ -480,7 +481,7 @@ fun SaveCustomScheduleDialog(
                 placeholder = {
                     Text(lang.t("Contoh: Jadwal Kustom Saya", "e.g. My Custom Split"))
                 },
-                shape = RoundedCornerShape(tokens.inputRadius),
+                shape = tokens.inputShape,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tokens.accentColor,
                     unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -571,6 +572,7 @@ fun ScheduleProgramPreviewSheet(
         UiTheme.CARBON_FORGE -> CutCornerShape(topStart = 12.dp, topEnd = 12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 28.dp, topEnd = 12.dp)
         UiTheme.FRUTIGER_AERO, UiTheme.MATERIAL_YOU -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     }
     val sheetBg = when (tokens.uiTheme) {
@@ -578,6 +580,11 @@ fun ScheduleProgramPreviewSheet(
         UiTheme.UBUNTU_YARU -> Color(0xFF2B272D)
         UiTheme.CARBON_FORGE -> tokens.effectiveTintColor
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xFF14274E) else Color(0xFFF2FAFF)
+        UiTheme.XMATERIAL_YOU -> when (tokens.timePhase) {
+            com.fathan.ironpulse.model.DayTimePhase.MORNING -> Color(0xFF1D0F24)
+            com.fathan.ironpulse.model.DayTimePhase.AFTERNOON -> Color(0xFF0B2236)
+            com.fathan.ironpulse.model.DayTimePhase.NIGHT -> Color(0xFF14173B)
+        }
         UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerHigh
     }
 
@@ -856,7 +863,7 @@ fun ScheduleProgramPreviewSheet(
             Button(
                 onClick = { onApply(preserveAlarms) },
                 enabled = !applying,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = tokens.accentColor,
                     contentColor = tokens.onAccentColor

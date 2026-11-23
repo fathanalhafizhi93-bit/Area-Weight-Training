@@ -159,6 +159,12 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         0.45f to tokens.palette.surface,
                         1.0f to tokens.palette.surfaceContainerLowest
                     )
+                    UiTheme.XMATERIAL_YOU -> Brush.verticalGradient(
+                        0.0f to Color(0xFF0A0B0F),
+                        0.38f to Color(0xFF07080B),
+                        0.76f to Color(0xFF060608),
+                        1.0f to Color(0xFF090A0D)
+                    )
                     UiTheme.AMOLED_STEALTH -> null
                 }
                 val topGlow = when {
@@ -187,6 +193,15 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             radius = size.width.coerceAtLeast(520f) * 0.90f
                         )
                     }
+                    tokens.uiTheme == UiTheme.XMATERIAL_YOU -> Brush.radialGradient(
+                        colors = listOf(
+                            tokens.phaseTokens.accent.copy(alpha = 0.085f),
+                            tokens.phaseTokens.accentBright.copy(alpha = 0.03f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.16f, size.height * 0.06f),
+                        radius = size.width.coerceAtLeast(520f) * 0.88f
+                    )
                     else -> Brush.radialGradient(
                         colors = listOf(tokens.accentColor.copy(alpha = 0.12f), Color.Transparent),
                         center = Offset(size.width * 0.20f, size.height * 0.06f),
@@ -218,6 +233,14 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             radius = size.width.coerceAtLeast(520f) * 0.88f
                         )
                     }
+                    tokens.uiTheme == UiTheme.XMATERIAL_YOU -> Brush.radialGradient(
+                        colors = listOf(
+                            tokens.phaseTokens.accent.copy(alpha = 0.05f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.86f, size.height * 0.88f),
+                        radius = size.width.coerceAtLeast(480f) * 0.82f
+                    )
                     else -> null
                 }
                 val carbonBgTwill = if (tokens.uiTheme == UiTheme.CARBON_FORGE) {
@@ -347,6 +370,24 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             }
                         }
                     }
+
+                    if (tokens.uiTheme == UiTheme.XMATERIAL_YOU && !suppressGlow && tokens.isXMaterialNight) {
+                        val nocturnalStars = listOf(
+                            Triple(0.16f, 0.10f, 1.1f),
+                            Triple(0.46f, 0.14f, 0.9f),
+                            Triple(0.74f, 0.09f, 1.2f),
+                            Triple(0.88f, 0.20f, 1.0f),
+                            Triple(0.28f, 0.84f, 0.9f),
+                            Triple(0.78f, 0.78f, 1.1f)
+                        )
+                        nocturnalStars.forEach { (sx, sy, sr) ->
+                            drawCircle(
+                                color = Color(0xFFDDD6FA).copy(alpha = 0.22f),
+                                radius = sr.dp.toPx(),
+                                center = Offset(size.width * sx, size.height * sy)
+                            )
+                        }
+                    }
                 }
             }
     )
@@ -355,17 +396,15 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
 @Composable
 fun IronPulseTopBar(
     activeTab: AppTab,
-    aboutOpen: Boolean,
     onLogoClick: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenAbout: () -> Unit,
     onTestAlarm: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val theme = tokens.uiTheme
     val isAero = theme == UiTheme.FRUTIGER_AERO
-    val isYaru = theme == UiTheme.UBUNTU_YARU
+    val isXMaterial = theme == UiTheme.XMATERIAL_YOU
     val isCarbon = theme == UiTheme.CARBON_FORGE
     val isStealth = theme == UiTheme.AMOLED_STEALTH
 
@@ -376,17 +415,24 @@ fun IronPulseTopBar(
             UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
+            UiTheme.XMATERIAL_YOU -> RoundedCornerShape(
+                topStart = 12.dp,
+                topEnd = 4.dp,
+                bottomEnd = 12.dp,
+                bottomStart = 4.dp
+            )
         }
     }
     val headerBorder = when (theme) {
-        UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
-        UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.45f)
+        UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.65f)
+        UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.42f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141216)
-        UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.45f)
+        UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.42f)
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0x885BC6FA) else Color(0x990099E5)
+        UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.headerBorder
     }
 
-    val settingsActive = activeTab == AppTab.SETTINGS && !aboutOpen
+    val settingsActive = activeTab == AppTab.SETTINGS
 
     Column(
         modifier = Modifier
@@ -400,10 +446,10 @@ fun IronPulseTopBar(
             modifier = Modifier
                 .widthIn(max = 840.dp)
                 .fillMaxWidth()
-                .height(58.dp)
-                .padding(horizontal = 12.dp),
+                .height(56.dp)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier.weight(1f),
@@ -420,29 +466,22 @@ fun IronPulseTopBar(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 TopBarIconButton(
                     icon = IronPulseIcon.SETTINGS,
                     contentDescription = lang.t("Buka pengaturan", "Open settings"),
                     active = settingsActive,
                     shape = iconShape,
-                    onClick = onOpenSettings
-                )
-                TopBarIconButton(
-                    icon = IronPulseIcon.INFO,
-                    contentDescription = lang.t("Tentang IronPulse", "About IronPulse"),
-                    active = aboutOpen,
-                    shape = iconShape,
-                    onClick = onOpenAbout
+                    onClick = onOpenSettings,
+                    modifier = Modifier.testTag("topbar_settings_button")
                 )
 
-                val ctaShape = remember(theme, tokens.buttonRadius) {
-                    if (isCarbon) CutCornerShape(6.dp) else RoundedCornerShape(tokens.buttonRadius)
-                }
+                val ctaShape = tokens.buttonShape
                 Box(
                     modifier = Modifier
                         .height(38.dp)
+                        .testTag("topbar_test_alarm_button")
                         .tactilePress(disabledByPerf = tokens.performance.noAnimations)
                         .clip(ctaShape)
                         .then(
@@ -458,6 +497,15 @@ fun IronPulseTopBar(
                                         ctaShape
                                     )
                                     .border(1.dp, Color.White.copy(alpha = 0.78f), ctaShape)
+                                isXMaterial -> Modifier
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color(0xFF161820),
+                                            1.0f to Color(0xFF0D0E13)
+                                        ),
+                                        ctaShape
+                                    )
+                                    .border(0.95.dp, tokens.phaseTokens.accent.copy(alpha = 0.62f), ctaShape)
                                 isStealth -> Modifier
                                     .background(Color(0xFF000000), ctaShape)
                                     .border(1.1.dp, tokens.accentColor, ctaShape)
@@ -473,9 +521,14 @@ fun IronPulseTopBar(
                             }
                         )
                         .clickable(onClick = onTestAlarm)
-                        .padding(horizontal = 11.dp),
+                        .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    val ctaContentTint = when {
+                        isStealth -> tokens.accentColor
+                        isXMaterial -> tokens.accentTextColor
+                        else -> tokens.onAccentColor
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
@@ -483,15 +536,15 @@ fun IronPulseTopBar(
                         ThemedIcon(
                             icon = IronPulseIcon.ALARM,
                             contentDescription = null,
-                            tint = if (isStealth) tokens.accentColor else tokens.onAccentColor,
+                            tint = ctaContentTint,
                             size = 14.dp
                         )
                         Text(
                             text = lang.t("Tes Alarm", "Test Alarm"),
-                            fontSize = 11.sp,
+                            fontSize = 11.5.sp,
                             fontFamily = tokens.fontPack.displayFont,
                             fontWeight = FontWeight.Bold,
-                            color = if (isStealth) tokens.accentColor else tokens.onAccentColor,
+                            color = ctaContentTint,
                             maxLines = 1
                         )
                     }
@@ -507,29 +560,35 @@ private fun TopBarIconButton(
     contentDescription: String,
     active: Boolean,
     shape: androidx.compose.ui.graphics.Shape,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
     val isAero = tokens.uiTheme == UiTheme.FRUTIGER_AERO
     val isAeroNight = tokens.isAeroNight
     val isStealth = tokens.uiTheme == UiTheme.AMOLED_STEALTH
+    val isXMaterial = tokens.uiTheme == UiTheme.XMATERIAL_YOU
     val containerColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active && isAero -> if (isAeroNight) Color(0xFF0099E5) else Color(0xFF0084CE)
         active && isStealth -> tokens.accentColor.copy(alpha = 0.16f)
+        active && isXMaterial -> tokens.phaseTokens.accent.copy(alpha = 0.14f)
         active -> tokens.accentColor.copy(alpha = 0.22f)
         isAero -> if (isAeroNight) Color(0xD91E3D6B) else Color(0xF5FFFFFF)
         isStealth -> Color(0xFF05070A)
+        isXMaterial -> Color(0xFF13151C)
         isMaterialYou -> tokens.palette.surfaceContainerHigh
         else -> tokens.controlBg
     }
     val borderColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active && isAero -> if (isAeroNight) Color(0xFF93E2FF) else Color(0xFF005F9E)
+        active && isXMaterial -> tokens.phaseTokens.accent.copy(alpha = 0.75f)
         active -> tokens.accentColor
         isAero -> if (isAeroNight) Color(0x885BC6FA) else Color(0x990082C8)
         isStealth -> tokens.accentColor.copy(alpha = 0.42f)
+        isXMaterial -> Color(0xFF282A34)
         isMaterialYou -> tokens.palette.outlineVariant
         tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141216)
         else -> Color.White.copy(alpha = 0.18f)
@@ -537,6 +596,7 @@ private fun TopBarIconButton(
     val tint = when {
         active && isMaterialYou -> tokens.palette.onSecondaryContainer
         active && isAero -> Color.White
+        active && isXMaterial -> tokens.accentTextColor
         active -> tokens.accentColor
         isAero -> if (isAeroNight) Color(0xFFE0F2FE) else Color(0xFF073B66)
         else -> tokens.palette.onSurfaceVariant
@@ -546,8 +606,8 @@ private fun TopBarIconButton(
         onClick = onClick,
         shape = shape,
         color = containerColor,
-        border = BorderStroke(1.dp, borderColor),
-        modifier = Modifier
+        border = BorderStroke(if (isXMaterial) 0.9.dp else 1.dp, borderColor),
+        modifier = modifier
             .size(38.dp)
             .tactilePress(disabledByPerf = tokens.performance.noAnimations)
     ) {
@@ -572,6 +632,12 @@ private fun TopBarIconButton(
                         0.45f to Color.Transparent
                     )
                 )
+                UiTheme.XMATERIAL_YOU -> Modifier.background(
+                    Brush.verticalGradient(
+                        0.0f to Color.White.copy(alpha = 0.04f),
+                        0.5f to Color.Transparent
+                    )
+                )
                 else -> Modifier
             },
             contentAlignment = Alignment.Center
@@ -580,7 +646,7 @@ private fun TopBarIconButton(
                 icon = icon,
                 contentDescription = contentDescription,
                 tint = tint,
-                size = 19.dp,
+                size = 18.dp,
                 filledBadge = false
             )
         }
@@ -601,6 +667,7 @@ fun IronPulseBottomNav(
     val isYaru = theme == UiTheme.UBUNTU_YARU
     val isStealth = theme == UiTheme.AMOLED_STEALTH
     val isAero = theme == UiTheme.FRUTIGER_AERO
+    val isXMaterial = theme == UiTheme.XMATERIAL_YOU
 
     val items = remember(lang) {
         listOf(
@@ -625,6 +692,7 @@ fun IronPulseBottomNav(
         UiTheme.UBUNTU_YARU -> Color(0xFF141216)
         UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.48f)
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0x885BC6FA) else Color(0xAA0099E5)
+        UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.headerBorder
     }
 
     // Outer wrapper differs per OS: Ubuntu Dock floats subtly, Aero has glossy taskbar rail,
@@ -794,6 +862,41 @@ fun IronPulseBottomNav(
                                     .background(tokens.palette.secondaryContainer)
                             )
                         }
+                        isXMaterial -> {
+                            // Smoked Dark Obsidian nav pod with subtle metallic jewel line
+                            val obsidianPodShape = RoundedCornerShape(
+                                topStart = 12.dp,
+                                topEnd = 4.dp,
+                                bottomEnd = 12.dp,
+                                bottomStart = 4.dp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .width(62.dp)
+                                    .height(33.dp)
+                                    .clip(obsidianPodShape)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color(0xFF191B23),
+                                            1.0f to Color(0xFF0E1015)
+                                        )
+                                    )
+                                    .border(
+                                        0.85.dp,
+                                        tokens.phaseTokens.accent.copy(alpha = 0.52f),
+                                        obsidianPodShape
+                                    ),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(20.dp)
+                                        .height(2.dp)
+                                        .background(tokens.phaseTokens.accentBright.copy(alpha = 0.85f))
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -809,6 +912,7 @@ fun IronPulseBottomNav(
                         targetValue = when {
                             isActive && isMaterialYou -> tokens.palette.onSurface
                             isActive && isAero -> if (tokens.isAeroNight) Color(0xFF7DD3FC) else Color(0xFF004B80)
+                            isActive && isXMaterial -> tokens.accentTextColor
                             isActive -> tokens.accentColor
                             isAero -> if (tokens.isAeroNight) Color(0xFFB4D3EB) else Color(0xFF1E496E)
                             else -> tokens.mutedTextColor
@@ -850,6 +954,7 @@ fun IronPulseBottomNav(
                                     tint = when {
                                         isActive && isMaterialYou -> tokens.palette.onSecondaryContainer
                                         isActive && isAero -> Color.White
+                                        isActive && isXMaterial -> tokens.onAccentColor
                                         else -> itemContentColor
                                     },
                                     size = 21.dp,
@@ -1136,9 +1241,9 @@ fun TactileStepperControl(
         Row(
             modifier = Modifier
                 .height(44.dp)
-                .clip(RoundedCornerShape(tokens.inputRadius))
-                .background(tokens.wellBg, RoundedCornerShape(tokens.inputRadius))
-                .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(tokens.inputRadius))
+                .clip(tokens.inputShape)
+                .background(tokens.wellBg, tokens.inputShape)
+                .border(1.dp, tokens.subtleBorderColor, tokens.inputShape)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1332,7 +1437,7 @@ fun ConfirmDeleteDialog(
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
@@ -1343,7 +1448,7 @@ fun ConfirmDeleteDialog(
                 }
                 Button(
                     onClick = onConfirm,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFDC2626),
                         contentColor = Color.White

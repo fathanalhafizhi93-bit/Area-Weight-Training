@@ -186,7 +186,7 @@ fun GymFocusHudStage(
                 Surface(
                     onClick = onPrevExercise,
                     enabled = hasPrev,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     color = if (hasPrev) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
                     border = BorderStroke(
                         1.dp,
@@ -234,7 +234,7 @@ fun GymFocusHudStage(
                 Surface(
                     onClick = onNextExercise,
                     enabled = hasNext,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     color = if (hasNext) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
                     border = BorderStroke(
                         1.dp,
@@ -396,7 +396,7 @@ fun GymFocusHudStage(
                                 onSelectExerciseTimerSet(s.setNumber)
                             }
                         },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         color = bgColor,
                         border = BorderStroke(1.5.dp, borderColor),
                         modifier = Modifier
@@ -432,7 +432,7 @@ fun GymFocusHudStage(
             Surface(
                 onClick = onRemoveSet,
                 enabled = entry.sets.size > 1,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 color = if (entry.sets.size > 1) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 modifier = Modifier
@@ -453,7 +453,7 @@ fun GymFocusHudStage(
             Surface(
                 onClick = onAddSet,
                 enabled = entry.sets.size < 12,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 color = if (entry.sets.size < 12) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.5f)),
                 modifier = Modifier
@@ -833,7 +833,7 @@ private fun HudRestTimerRingCard(
             ) {
                 Surface(
                     onClick = { onAdjustRest(-15) },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     color = tokens.controlBg,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
@@ -855,7 +855,7 @@ private fun HudRestTimerRingCard(
 
                 Button(
                     onClick = onToggleRestPause,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ringColor,
                         contentColor = if (restRemaining == 0) Color(0xFF0A0B0E) else tokens.onAccentColor
@@ -883,7 +883,7 @@ private fun HudRestTimerRingCard(
 
                 Surface(
                     onClick = { onAdjustRest(15) },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     color = tokens.controlBg,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
@@ -906,7 +906,7 @@ private fun HudRestTimerRingCard(
 
             OutlinedButton(
                 onClick = onDismissRest,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -969,7 +969,7 @@ private fun HudRestTimerRingCard(
                     val isRecommended = secs == recommendedRestSeconds
                     Surface(
                         onClick = { onStartRest(secs) },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         color = if (isRecommended) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
                         border = BorderStroke(
                             1.dp,
@@ -1116,7 +1116,7 @@ private fun HudGiantStepper(
                     editing = false
                     onDecrement()
                 },
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 color = tokens.controlBg,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 modifier = Modifier
@@ -1141,7 +1141,7 @@ private fun HudGiantStepper(
                     editing = false
                     onIncrement()
                 },
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 color = tokens.accentColor.copy(alpha = 0.18f),
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.45f)),
                 modifier = Modifier
@@ -1279,7 +1279,7 @@ private fun HudExerciseTimerStage(
         ) {
             Button(
                 onClick = { onToggleExerciseTimer(activeSet.setNumber) },
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (timerRunning) Color(0xFFF59E0B) else Color(0xFF38BDF8),
                     contentColor = Color(0xFF0A0B0E)
@@ -1309,7 +1309,7 @@ private fun HudExerciseTimerStage(
 
             OutlinedButton(
                 onClick = onResetExerciseTimer,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 modifier = Modifier
                     .weight(1f)
@@ -1331,7 +1331,7 @@ private fun HudExerciseTimerStage(
         if (elapsedSeconds > 0 || timerRunning) {
             Button(
                 onClick = onSaveExerciseTimer,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF16A34A),
                     contentColor = Color.White
@@ -1374,7 +1374,7 @@ private fun HudCompleteSetButton(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(tokens.buttonRadius),
+        shape = tokens.buttonShape,
         color = when {
             completed -> Color(0x2616A34A)
             isBlockedByCooldown -> tokens.wellBg

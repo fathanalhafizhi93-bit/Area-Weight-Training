@@ -65,6 +65,15 @@ object MaterialYouColorEngine {
     const val YARU_ORANGE_ACCENT = "#E95420"
     const val AMOLED_STEALTH_CYAN_ACCENT = "#00E5FF"
     const val AERO_SKY_ACCENT = "#0099E5"
+    const val XMATERIAL_MORNING_ACCENT = "#DFBE84"
+    const val XMATERIAL_AFTERNOON_ACCENT = "#8CC5C2"
+    const val XMATERIAL_NIGHT_ACCENT = "#B0A4E3"
+
+    fun xmaterialAccentForPhase(phase: com.fathan.ironpulse.model.DayTimePhase): String = when (phase) {
+        com.fathan.ironpulse.model.DayTimePhase.MORNING -> XMATERIAL_MORNING_ACCENT
+        com.fathan.ironpulse.model.DayTimePhase.AFTERNOON -> XMATERIAL_AFTERNOON_ACCENT
+        com.fathan.ironpulse.model.DayTimePhase.NIGHT -> XMATERIAL_NIGHT_ACCENT
+    }
 
     fun defaultTintForTheme(theme: UiTheme): String = when (theme) {
         UiTheme.MATERIAL_YOU -> "#1C1B22"
@@ -72,6 +81,7 @@ object MaterialYouColorEngine {
         UiTheme.UBUNTU_YARU -> "#2C2C2C"
         UiTheme.AMOLED_STEALTH -> "#07080B"
         UiTheme.FRUTIGER_AERO -> "#DDF5FF"
+        UiTheme.XMATERIAL_YOU -> "#0E0F13"
     }
 
     fun normalizeHexColor(hex: String?, fallback: String = DEFAULT_ACCENT_COLOR): String {
@@ -257,8 +267,12 @@ object MaterialYouColorEngine {
         seedHex: String,
         surfaceTintOverrideHex: String? = null,
         isLight: Boolean = false,
-        isAeroNight: Boolean = false
+        isAeroNight: Boolean = false,
+        xMaterialPhase: com.fathan.ironpulse.model.DayTimePhase? = null
     ): MaterialYouPalette {
+        if (xMaterialPhase != null) {
+            return buildXMaterialYouPhasePalette(xMaterialPhase)
+        }
         if (isAeroNight) {
             return buildFrutigerAeroTwilightPalette(normalizeHexColor(seedHex, AERO_SKY_ACCENT))
         }
@@ -541,5 +555,165 @@ object MaterialYouColorEngine {
             outlineVariant = parseColor(outlineVariantHex)
         )
     }
+
+    /**
+     * Quiet-Luxury Dark Obsidian XMaterial You 3-phase system:
+     * Deep volcanic neutral obsidian surfaces (#060608 / #0E0F13) paired with refined mineral & precious-metal phase accents:
+     * - MORNING ("Fajar Emas / Obsidian Dawn"): Brushed Champagne Gold (#DFBE84) & Warm Ivory.
+     * - AFTERNOON ("Siang Platinum / Obsidian Day"): Smoked Glacier Platinum-Jade (#8CC5C2) & Mineral Mist.
+     * - NIGHT ("Malam Moonstone / Obsidian Night"): Muted Moonstone Amethyst (#B0A4E3) & Lunar Silver.
+     */
+    private fun buildXMaterialYouPhasePalette(
+        phase: com.fathan.ironpulse.model.DayTimePhase
+    ): MaterialYouPalette = when (phase) {
+        com.fathan.ironpulse.model.DayTimePhase.MORNING -> buildFixedPalette(
+            seed = XMATERIAL_MORNING_ACCENT,
+            primaryHex = XMATERIAL_MORNING_ACCENT,
+            onPrimaryHex = "#1B1406",
+            primaryContainerHex = "#241D12",
+            onPrimaryContainerHex = "#F3E0BE",
+            secondaryHex = "#C79F62",
+            onSecondaryHex = "#1A1205",
+            secondaryContainerHex = "#1D1811",
+            onSecondaryContainerHex = "#E9D3AF",
+            tertiaryHex = "#E9D3AF",
+            onTertiaryHex = "#1B150A",
+            tertiaryContainerHex = "#1A1713",
+            onTertiaryContainerHex = "#F5ECDC",
+            surfaceHex = "#060608",
+            surfaceContainerLowestHex = "#040406",
+            surfaceContainerLowHex = "#090A0D",
+            surfaceContainerHex = "#0E0F13",
+            surfaceContainerHighHex = "#15171E",
+            surfaceContainerHighestHex = "#1D2029",
+            onSurfaceHex = "#F5F3EF",
+            onSurfaceVariantHex = "#9D9A93",
+            outlineHex = "#DFBE84",
+            outlineVariantHex = "#25262E"
+        )
+        com.fathan.ironpulse.model.DayTimePhase.AFTERNOON -> buildFixedPalette(
+            seed = XMATERIAL_AFTERNOON_ACCENT,
+            primaryHex = XMATERIAL_AFTERNOON_ACCENT,
+            onPrimaryHex = "#071A1A",
+            primaryContainerHex = "#112121",
+            onPrimaryContainerHex = "#D8F0EE",
+            secondaryHex = "#70ABA8",
+            onSecondaryHex = "#051716",
+            secondaryContainerHex = "#101B1B",
+            onSecondaryContainerHex = "#C6E6E4",
+            tertiaryHex = "#A6C4CC",
+            onTertiaryHex = "#09171B",
+            tertiaryContainerHex = "#121A1D",
+            onTertiaryContainerHex = "#E0EEF2",
+            surfaceHex = "#060608",
+            surfaceContainerLowestHex = "#040406",
+            surfaceContainerLowHex = "#090A0D",
+            surfaceContainerHex = "#0E0F13",
+            surfaceContainerHighHex = "#15171E",
+            surfaceContainerHighestHex = "#1D2029",
+            onSurfaceHex = "#F4F5F5",
+            onSurfaceVariantHex = "#9A9FA1",
+            outlineHex = "#8CC5C2",
+            outlineVariantHex = "#23262B"
+        )
+        com.fathan.ironpulse.model.DayTimePhase.NIGHT -> buildFixedPalette(
+            seed = XMATERIAL_NIGHT_ACCENT,
+            primaryHex = XMATERIAL_NIGHT_ACCENT,
+            onPrimaryHex = "#141028",
+            primaryContainerHex = "#19172B",
+            onPrimaryContainerHex = "#EAE5FF",
+            secondaryHex = "#8D82C4",
+            onSecondaryHex = "#110E22",
+            secondaryContainerHex = "#151422",
+            onSecondaryContainerHex = "#DDD6FA",
+            tertiaryHex = "#A9B8E6",
+            onTertiaryHex = "#0E1326",
+            tertiaryContainerHex = "#141724",
+            onTertiaryContainerHex = "#E4EAFA",
+            surfaceHex = "#060608",
+            surfaceContainerLowestHex = "#040406",
+            surfaceContainerLowHex = "#090A0D",
+            surfaceContainerHex = "#0E0F13",
+            surfaceContainerHighHex = "#15171E",
+            surfaceContainerHighestHex = "#1D2029",
+            onSurfaceHex = "#F4F3F7",
+            onSurfaceVariantHex = "#9B9AA5",
+            outlineHex = "#B0A4E3",
+            outlineVariantHex = "#242530"
+        )
+    }
+
+    private fun buildFixedPalette(
+        seed: String,
+        primaryHex: String,
+        onPrimaryHex: String,
+        primaryContainerHex: String,
+        onPrimaryContainerHex: String,
+        secondaryHex: String,
+        onSecondaryHex: String,
+        secondaryContainerHex: String,
+        onSecondaryContainerHex: String,
+        tertiaryHex: String,
+        onTertiaryHex: String,
+        tertiaryContainerHex: String,
+        onTertiaryContainerHex: String,
+        surfaceHex: String,
+        surfaceContainerLowestHex: String,
+        surfaceContainerLowHex: String,
+        surfaceContainerHex: String,
+        surfaceContainerHighHex: String,
+        surfaceContainerHighestHex: String,
+        onSurfaceHex: String,
+        onSurfaceVariantHex: String,
+        outlineHex: String,
+        outlineVariantHex: String
+    ): MaterialYouPalette = MaterialYouPalette(
+        seed = seed,
+        primaryHex = primaryHex,
+        onPrimaryHex = onPrimaryHex,
+        primaryContainerHex = primaryContainerHex,
+        onPrimaryContainerHex = onPrimaryContainerHex,
+        secondaryHex = secondaryHex,
+        onSecondaryHex = onSecondaryHex,
+        secondaryContainerHex = secondaryContainerHex,
+        onSecondaryContainerHex = onSecondaryContainerHex,
+        tertiaryHex = tertiaryHex,
+        onTertiaryHex = onTertiaryHex,
+        tertiaryContainerHex = tertiaryContainerHex,
+        onTertiaryContainerHex = onTertiaryContainerHex,
+        surfaceHex = surfaceHex,
+        surfaceContainerLowestHex = surfaceContainerLowestHex,
+        surfaceContainerLowHex = surfaceContainerLowHex,
+        surfaceContainerHex = surfaceContainerHex,
+        surfaceContainerHighHex = surfaceContainerHighHex,
+        surfaceContainerHighestHex = surfaceContainerHighestHex,
+        onSurfaceHex = onSurfaceHex,
+        onSurfaceVariantHex = onSurfaceVariantHex,
+        outlineHex = outlineHex,
+        outlineVariantHex = outlineVariantHex,
+        primary = parseColor(primaryHex),
+        onPrimary = parseColor(onPrimaryHex),
+        primaryContainer = parseColor(primaryContainerHex),
+        onPrimaryContainer = parseColor(onPrimaryContainerHex),
+        secondary = parseColor(secondaryHex),
+        onSecondary = parseColor(onSecondaryHex),
+        secondaryContainer = parseColor(secondaryContainerHex),
+        onSecondaryContainer = parseColor(onSecondaryContainerHex),
+        tertiary = parseColor(tertiaryHex),
+        onTertiary = parseColor(onTertiaryHex),
+        tertiaryContainer = parseColor(tertiaryContainerHex),
+        onTertiaryContainer = parseColor(onTertiaryContainerHex),
+        surface = parseColor(surfaceHex),
+        surfaceContainerLowest = parseColor(surfaceContainerLowestHex),
+        surfaceContainerLow = parseColor(surfaceContainerLowHex),
+        surfaceContainer = parseColor(surfaceContainerHex),
+        surfaceContainerHigh = parseColor(surfaceContainerHighHex),
+        surfaceContainerHighest = parseColor(surfaceContainerHighestHex),
+        onSurface = parseColor(onSurfaceHex),
+        onSurfaceVariant = parseColor(onSurfaceVariantHex),
+        outline = parseColor(outlineHex),
+        outlineVariant = parseColor(outlineVariantHex)
+    )
 }
+
 

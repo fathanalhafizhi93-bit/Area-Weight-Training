@@ -45,8 +45,13 @@ import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import kotlin.math.cos
 import kotlin.math.sin
 
-fun resolvePreviewAccentForTheme(theme: UiTheme, activeAccent: Color): Color = when (theme) {
+fun resolvePreviewAccentForTheme(
+    theme: UiTheme,
+    activeAccent: Color,
+    timePhase: DayTimePhase = DayTimePhase.AFTERNOON
+): Color = when (theme) {
     UiTheme.FRUTIGER_AERO -> MaterialYouColorEngine.parseColor(MaterialYouColorEngine.AERO_SKY_ACCENT)
+    UiTheme.XMATERIAL_YOU -> MaterialYouColorEngine.parseColor(MaterialYouColorEngine.xmaterialAccentForPhase(timePhase))
     UiTheme.UBUNTU_YARU -> MaterialYouColorEngine.parseColor(MaterialYouColorEngine.YARU_ORANGE_ACCENT)
     UiTheme.AMOLED_STEALTH -> if (activeAccent == MaterialYouColorEngine.parseColor(MaterialYouColorEngine.DEFAULT_ACCENT_COLOR)) {
         MaterialYouColorEngine.parseColor(MaterialYouColorEngine.AMOLED_STEALTH_CYAN_ACCENT)
@@ -64,7 +69,8 @@ fun ThemeBrandEmblem(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val accent = accentOverride ?: resolvePreviewAccentForTheme(theme, tokens.accentColor)
+    val accent = accentOverride ?: resolvePreviewAccentForTheme(theme, tokens.accentColor, tokens.timePhase)
+    val timePhase = tokens.timePhase
 
     Canvas(
         modifier = modifier
@@ -77,6 +83,7 @@ fun ThemeBrandEmblem(
             UiTheme.UBUNTU_YARU -> drawUbuntuYaruEmblem(accent)
             UiTheme.AMOLED_STEALTH -> drawAmoledStealthEmblem(accent)
             UiTheme.FRUTIGER_AERO -> drawFrutigerAeroEmblem()
+            UiTheme.XMATERIAL_YOU -> drawXMaterialYouEmblem(accent, timePhase)
         }
     }
 }
@@ -367,6 +374,80 @@ private fun DrawScope.drawFrutigerAeroEmblem() {
     )
 }
 
+private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase) {
+    val w = size.width
+    val h = size.height
+    val pad = w * 0.06f
+    val bigR = w * 0.30f
+    val smallR = w * 0.10f
+
+    // Sculpted Smoked Obsidian Seal (architectural folio silhouette)
+    val obsidianSeal = Path().apply {
+        moveTo(pad + bigR, pad)
+        lineTo(w - pad - smallR, pad)
+        quadraticBezierTo(w - pad, pad, w - pad, pad + smallR)
+        lineTo(w - pad, h - pad - bigR)
+        quadraticBezierTo(w - pad, h - pad, w - pad - bigR, h - pad)
+        lineTo(pad + smallR, h - pad)
+        quadraticBezierTo(pad, h - pad, pad, h - pad - smallR)
+        lineTo(pad, pad + bigR)
+        quadraticBezierTo(pad, pad, pad + bigR, pad)
+        close()
+    }
+
+    val (metalMain, metalHighlight) = when (phase) {
+        DayTimePhase.MORNING -> Color(0xFFDFBE84) to Color(0xFFF3E0BE)
+        DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2) to Color(0xFFC6E6E4)
+        DayTimePhase.NIGHT -> Color(0xFFB0A4E3) to Color(0xFFDDD6FA)
+    }
+
+    drawPath(
+        path = obsidianSeal,
+        brush = Brush.verticalGradient(
+            colors = listOf(Color(0xFF181A22), Color(0xFF0E0F14), Color(0xFF08090C))
+        )
+    )
+    // Quiet diagonal satin reflection
+    drawPath(
+        path = obsidianSeal,
+        brush = Brush.linearGradient(
+            colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent, Color.Transparent),
+            start = Offset(0f, 0f),
+            end = Offset(w * 0.85f, h * 0.85f)
+        )
+    )
+    // Fine metallic hairline bevel
+    drawPath(
+        path = obsidianSeal,
+        brush = Brush.linearGradient(
+            colors = listOf(metalHighlight.copy(alpha = 0.85f), metalMain.copy(alpha = 0.45f), Color(0xFF282A34)),
+            start = Offset(0f, 0f),
+            end = Offset(w, h)
+        ),
+        style = Stroke(width = w * 0.045f, join = StrokeJoin.Round)
+    )
+
+    // Crisp Alabaster Ivory pulse trace with restrained precious-metal terminal node
+    val pulse = Path().apply {
+        moveTo(w * 0.22f, h * 0.56f)
+        lineTo(w * 0.36f, h * 0.56f)
+        lineTo(w * 0.46f, h * 0.32f)
+        lineTo(w * 0.56f, h * 0.70f)
+        lineTo(w * 0.65f, h * 0.49f)
+        lineTo(w * 0.78f, h * 0.49f)
+    }
+    drawPath(
+        path = pulse,
+        color = Color(0xFFF5F3EF),
+        style = Stroke(width = w * 0.075f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+    drawCircle(
+        color = metalHighlight,
+        radius = w * 0.055f,
+        center = Offset(w * 0.78f, h * 0.49f)
+    )
+}
+
 @Composable
 fun ThemeBrandWordmark(
     theme: UiTheme,
@@ -374,7 +455,10 @@ fun ThemeBrandWordmark(
     fontSize: TextUnit = 21.sp,
     modifier: Modifier = Modifier
 ) {
-    val isAeroNight = LocalIronPulseTokens.current.isAeroNight
+    val tokens = LocalIronPulseTokens.current
+    val isAeroNight = tokens.isAeroNight
+    val isXMaterialNight = tokens.isXMaterialNight
+    val timePhase = tokens.timePhase
     val metallicBrush = remember {
         Brush.verticalGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFAEB8C6)))
     }
@@ -464,6 +548,19 @@ fun ThemeBrandWordmark(
                 append("Pulse")
             }
         }
+        UiTheme.XMATERIAL_YOU -> buildAnnotatedString {
+            val metalColor = when (timePhase) {
+                DayTimePhase.MORNING -> Color(0xFFDFBE84)
+                DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2)
+                DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
+            }
+            withStyle(SpanStyle(color = Color(0xFFF5F3EF), fontFamily = fontPack.displayFont, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.25).sp)) {
+                append("Iron")
+            }
+            withStyle(SpanStyle(color = metalColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.15).sp)) {
+                append("Pulse")
+            }
+        }
     }
 
     val effectiveSize = when (theme) {
@@ -532,6 +629,12 @@ fun ThemedPhaseLogoEmblem(
             UiTheme.UBUNTU_YARU -> RoundedCornerShape(13.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(12.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
+            UiTheme.XMATERIAL_YOU -> RoundedCornerShape(
+                topStart = 14.dp,
+                topEnd = 5.dp,
+                bottomEnd = 14.dp,
+                bottomStart = 5.dp
+            )
         }
     }
 
@@ -541,6 +644,7 @@ fun ThemedPhaseLogoEmblem(
         UiTheme.UBUNTU_YARU -> Color(0xFF2D272B)
         UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
         UiTheme.FRUTIGER_AERO -> Color.Transparent
+        UiTheme.XMATERIAL_YOU -> Color(0xFF0E0F13)
     }
     val containerBorder = when (theme) {
         UiTheme.MATERIAL_YOU -> softAccent.copy(alpha = 0.25f)
@@ -548,6 +652,11 @@ fun ThemedPhaseLogoEmblem(
         UiTheme.UBUNTU_YARU -> accent.copy(alpha = 0.45f)
         UiTheme.AMOLED_STEALTH -> accent.copy(alpha = 0.72f)
         UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.90f)
+        UiTheme.XMATERIAL_YOU -> when (timePhase) {
+            DayTimePhase.MORNING -> Color(0x66DFBE84)
+            DayTimePhase.AFTERNOON -> Color(0x668CC5C2)
+            DayTimePhase.NIGHT -> Color(0x66B0A4E3)
+        }
     }
 
     Box(
@@ -555,7 +664,7 @@ fun ThemedPhaseLogoEmblem(
             .size(52.dp)
             .clip(containerShape)
             .background(containerBg, containerShape)
-            .border(1.dp, containerBorder, containerShape)
+            .border(if (theme == UiTheme.XMATERIAL_YOU) 0.95.dp else 1.2.dp, containerBorder, containerShape)
             .testTag("phase_emblem_${theme.wireValue}_${timePhase.name.lowercase()}"),
         contentAlignment = Alignment.Center
     ) {
@@ -566,7 +675,74 @@ fun ThemedPhaseLogoEmblem(
                 UiTheme.UBUNTU_YARU -> drawUbuntuYaruPhase(timePhase, accent, softAccent)
                 UiTheme.AMOLED_STEALTH -> drawAmoledStealthPhase(timePhase, accent)
                 UiTheme.FRUTIGER_AERO -> drawFrutigerAeroPhase(timePhase)
+                UiTheme.XMATERIAL_YOU -> drawXMaterialYouPhase(timePhase)
             }
+        }
+    }
+}
+
+private fun DrawScope.drawXMaterialYouPhase(phase: DayTimePhase) {
+    val w = size.width
+    val h = size.height
+    val cx = w * 0.5f
+    val cy = h * 0.5f
+    when (phase) {
+        DayTimePhase.MORNING -> {
+            // Haute-Horology Dawn Sun Horizon in Brushed Champagne Gold & Alabaster
+            val r = w * 0.24f
+            val hy = h * 0.68f
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x28DFBE84), Color.Transparent)),
+                radius = w * 0.44f,
+                center = Offset(cx, hy * 0.80f)
+            )
+            drawArc(
+                color = Color(0xFFDFBE84),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = true,
+                topLeft = Offset(cx - r, hy - r),
+                size = Size(r * 2f, r * 2f)
+            )
+            drawLine(
+                Color(0xFFF3E0BE),
+                Offset(w * 0.16f, hy + 2.dp.toPx()),
+                Offset(w * 0.84f, hy + 2.dp.toPx()),
+                1.8.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+        }
+        DayTimePhase.AFTERNOON -> {
+            // Precision Platinum-Jade Solar Dial Ring
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x268CC5C2), Color.Transparent)),
+                radius = w * 0.44f,
+                center = Offset(cx, cy)
+            )
+            drawCircle(
+                color = Color(0xFF8CC5C2),
+                radius = w * 0.28f,
+                center = Offset(cx, cy),
+                style = Stroke(width = 1.8.dp.toPx())
+            )
+            drawCircle(
+                color = Color(0xFFC6E6E4),
+                radius = w * 0.12f,
+                center = Offset(cx, cy)
+            )
+        }
+        DayTimePhase.NIGHT -> {
+            // Nocturnal Moonstone Crescent & Single Lunar Star
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x28B0A4E3), Color.Transparent)),
+                radius = w * 0.44f,
+                center = Offset(cx, cy)
+            )
+            drawPath(
+                path = buildCrescentPath(),
+                color = Color(0xFFB0A4E3)
+            )
+            drawCircle(Color(0xFFDDD6FA), 1.6.dp.toPx(), Offset(w * 0.75f, h * 0.28f))
         }
     }
 }

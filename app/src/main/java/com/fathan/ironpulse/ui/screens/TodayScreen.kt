@@ -41,7 +41,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +73,7 @@ import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DaySchedule
+import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.ui.components.IronPulseIcon
@@ -83,6 +86,7 @@ import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.theme.IronPulseThemeTokens
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -391,7 +395,11 @@ fun TodayScreen(
         if (activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()) {
             item(key = "start_workout_cta", contentType = "cta") {
                 val ctaRadius = (tokens.cardRadius * 0.78f).coerceAtLeast(10.dp)
-                val ctaShape = RoundedCornerShape(ctaRadius)
+                val ctaShape = if (tokens.isXMaterial) {
+                    RoundedCornerShape(topStart = 24.dp, topEnd = 9.dp, bottomEnd = 24.dp, bottomStart = 9.dp)
+                } else {
+                    RoundedCornerShape(ctaRadius)
+                }
                 Surface(
                     onClick = { onOpenWorkout(null) },
                     shape = ctaShape,
@@ -532,7 +540,7 @@ fun TodayScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = onOpenSchedule,
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
@@ -579,7 +587,7 @@ fun TodayScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = { onOpenExercisesForDay(state.todayDayKey) },
-                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
@@ -869,7 +877,7 @@ private fun RestTimerHeroCard(
         else -> null
     }
 
-    val buttonShape = remember(tokens.buttonRadius) { RoundedCornerShape(tokens.buttonRadius) }
+    val buttonShape = tokens.buttonShape
     val presetChipShape = remember { RoundedCornerShape(10.dp) }
 
     Column(
@@ -1101,6 +1109,106 @@ private fun formatNextCountdown(targetMillis: Long, nowMillis: Long, lang: AppLa
     }
 }
 
+internal data class ClockCornerOrbPalette(
+    val orbCoreCenter: Color,
+    val orbCoreMid: Color,
+    val ringBright: Color,
+    val ringAccent: Color,
+    val ringRest: Color
+)
+
+internal fun resolveClockCornerOrbPalette(tokens: IronPulseThemeTokens): ClockCornerOrbPalette {
+    val phase = tokens.timePhase
+    return if (tokens.isLightTheme) {
+        when (phase) {
+            DayTimePhase.MORNING -> ClockCornerOrbPalette(
+                orbCoreCenter = if (tokens.isXMaterial) Color(0xFFF43F5E).copy(alpha = 0.34f) else Color(0xFFF59E0B).copy(alpha = 0.34f),
+                orbCoreMid = Color(0xFFF59E0B).copy(alpha = 0.17f),
+                ringBright = if (tokens.isXMaterial) Color(0xFFE11D48).copy(alpha = 0.38f) else Color(0xFFD97706).copy(alpha = 0.38f),
+                ringAccent = Color(0xFFF59E0B).copy(alpha = 0.22f),
+                ringRest = Color(0xFFD97706).copy(alpha = 0.10f)
+            )
+            DayTimePhase.AFTERNOON -> ClockCornerOrbPalette(
+                orbCoreCenter = Color(0xFF0284C7).copy(alpha = 0.32f),
+                orbCoreMid = if (tokens.isXMaterial) Color(0xFF10B981).copy(alpha = 0.16f) else Color(0xFF38BDF8).copy(alpha = 0.17f),
+                ringBright = Color(0xFF0284C7).copy(alpha = 0.37f),
+                ringAccent = if (tokens.isXMaterial) Color(0xFF059669).copy(alpha = 0.22f) else Color(0xFF0EA5E9).copy(alpha = 0.22f),
+                ringRest = Color(0xFF0284C7).copy(alpha = 0.10f)
+            )
+            DayTimePhase.NIGHT -> ClockCornerOrbPalette(
+                orbCoreCenter = Color(0xFF4F46E5).copy(alpha = 0.32f),
+                orbCoreMid = Color(0xFF38BDF8).copy(alpha = 0.16f),
+                ringBright = Color(0xFF4338CA).copy(alpha = 0.36f),
+                ringAccent = Color(0xFF0284C7).copy(alpha = 0.22f),
+                ringRest = Color(0xFF4338CA).copy(alpha = 0.10f)
+            )
+        }
+    } else {
+        when (phase) {
+            DayTimePhase.MORNING -> if (tokens.isXMaterial) {
+                ClockCornerOrbPalette(
+                    orbCoreCenter = Color(0xFFDFBE84).copy(alpha = 0.32f),
+                    orbCoreMid = Color(0xFFF3E0BE).copy(alpha = 0.16f),
+                    ringBright = Color(0xFFF3E0BE).copy(alpha = 0.36f),
+                    ringAccent = Color(0xFFDFBE84).copy(alpha = 0.22f),
+                    ringRest = Color(0xFFDFBE84).copy(alpha = 0.10f)
+                )
+            } else {
+                ClockCornerOrbPalette(
+                    orbCoreCenter = Color(0xFFFBBF24).copy(alpha = 0.34f),
+                    orbCoreMid = Color(0xFFF97316).copy(alpha = 0.17f),
+                    ringBright = Color(0xFFFDE68A).copy(alpha = 0.38f),
+                    ringAccent = Color(0xFFF59E0B).copy(alpha = 0.23f),
+                    ringRest = Color(0xFFFBBF24).copy(alpha = 0.10f)
+                )
+            }
+            DayTimePhase.AFTERNOON -> if (tokens.isXMaterial) {
+                ClockCornerOrbPalette(
+                    orbCoreCenter = Color(0xFF8CC5C2).copy(alpha = 0.32f),
+                    orbCoreMid = Color(0xFFC6E6E4).copy(alpha = 0.16f),
+                    ringBright = Color(0xFFC6E6E4).copy(alpha = 0.36f),
+                    ringAccent = Color(0xFF8CC5C2).copy(alpha = 0.22f),
+                    ringRest = Color(0xFF8CC5C2).copy(alpha = 0.10f)
+                )
+            } else {
+                ClockCornerOrbPalette(
+                    orbCoreCenter = Color(0xFF38BDF8).copy(alpha = 0.33f),
+                    orbCoreMid = Color(0xFF0EA5E9).copy(alpha = 0.16f),
+                    ringBright = Color(0xFFBAE6FD).copy(alpha = 0.38f),
+                    ringAccent = Color(0xFF38BDF8).copy(alpha = 0.22f),
+                    ringRest = Color(0xFF38BDF8).copy(alpha = 0.10f)
+                )
+            }
+            DayTimePhase.NIGHT -> ClockCornerOrbPalette(
+                orbCoreCenter = when {
+                    tokens.isXMaterial || tokens.isXMaterialNight -> Color(0xFFB0A4E3).copy(alpha = 0.32f)
+                    tokens.isAeroNight -> Color(0xFF38BDF8).copy(alpha = 0.33f)
+                    else -> Color(0xFF818CF8).copy(alpha = 0.34f)
+                },
+                orbCoreMid = when {
+                    tokens.isXMaterial || tokens.isXMaterialNight -> Color(0xFFDDD6FA).copy(alpha = 0.16f)
+                    tokens.isAeroNight -> Color(0xFF2DD4BF).copy(alpha = 0.16f)
+                    else -> Color(0xFF6366F1).copy(alpha = 0.17f)
+                },
+                ringBright = when {
+                    tokens.isXMaterial || tokens.isXMaterialNight -> Color(0xFFDDD6FA).copy(alpha = 0.36f)
+                    tokens.isAeroNight -> Color(0xFF7DD3FC).copy(alpha = 0.38f)
+                    else -> Color(0xFFC7D2FE).copy(alpha = 0.38f)
+                },
+                ringAccent = when {
+                    tokens.isXMaterial || tokens.isXMaterialNight -> Color(0xFFB0A4E3).copy(alpha = 0.22f)
+                    else -> Color(0xFF818CF8).copy(alpha = 0.22f)
+                },
+                ringRest = if (tokens.isXMaterial || tokens.isXMaterialNight) {
+                    Color(0xFFB0A4E3).copy(alpha = 0.10f)
+                } else {
+                    Color(0xFF818CF8).copy(alpha = 0.10f)
+                }
+            )
+        }
+    }
+}
+
 @Composable
 internal fun HeroAnimatedAtmosphereLayer(
     modifier: Modifier = Modifier,
@@ -1109,20 +1217,33 @@ internal fun HeroAnimatedAtmosphereLayer(
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
     val animate = !noAnim && tabActive
+    val noAmbientGlow = tokens.performance.noAmbientGlow
 
-    val breathe = if (animate) {
-        val inf = rememberInfiniteTransition(label = "heroBreathe")
-        inf.animateFloat(
+    val breatheState: State<Float>
+    val ringAngleState: State<Float>
+    if (animate) {
+        val inf = rememberInfiniteTransition(label = "heroAtmosphere")
+        breatheState = inf.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 3600, easing = FastOutSlowInEasing),
+                animation = tween(durationMillis = 4200, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "breathe"
-        ).value
+        )
+        ringAngleState = inf.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 14000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "clockCornerRingRotate"
+        )
     } else {
-        0.5f
+        breatheState = remember { mutableFloatStateOf(0.5f) }
+        ringAngleState = remember { mutableFloatStateOf(42f) }
     }
 
     val scrimAlpha = tokens.heroScrimAlpha
@@ -1131,24 +1252,113 @@ internal fun HeroAnimatedAtmosphereLayer(
     val heroEnd = tokens.phaseTokens.heroEnd.copy(alpha = tokens.phaseTokens.heroEnd.alpha * scrimAlpha)
     val glowColor = tokens.phaseTokens.glowPrimary
     val accentBright = tokens.phaseTokens.accentBright
-
-    Canvas(modifier = modifier) {
-        val gradient = Brush.linearGradient(colors = listOf(heroStart, heroMid, heroEnd))
-        drawRect(gradient)
-
-        val cx = size.width * 0.86f
-        val cy = size.height * 0.16f
-        val pulseRadius = (80.dp.toPx()) * (0.94f + 0.12f * breathe)
-        val auraBrush = Brush.radialGradient(
-            colors = listOf(
-                glowColor.copy(alpha = 0.16f + 0.08f * breathe),
-                accentBright.copy(alpha = 0.05f + 0.04f * breathe),
-                Color.Transparent
-            ),
-            center = Offset(cx, cy),
-            radius = pulseRadius * 1.4f
-        )
-        drawCircle(brush = auraBrush, radius = pulseRadius * 1.4f, center = Offset(cx, cy))
+    val orbPalette = remember(tokens.timePhase, tokens.isLightTheme, tokens.isXMaterial, tokens.isXMaterialNight, tokens.isAeroNight) {
+        resolveClockCornerOrbPalette(tokens)
     }
+
+    Spacer(
+        modifier = modifier
+            .testTag("hero_atmosphere_layer")
+            .drawWithCache {
+                val bgGradient = Brush.linearGradient(colors = listOf(heroStart, heroMid, heroEnd))
+                if (size.width <= 2f || size.height <= 2f) {
+                    return@drawWithCache onDrawBehind {
+                        drawRect(bgGradient)
+                    }
+                }
+
+                // Centered right on the top-right vertex so the card clip reveals a large 1/4 quarter-circle
+                val cx = size.width
+                val cy = 0f
+                val center = Offset(cx, cy)
+
+                val orbRadius = (size.minDimension * 0.68f)
+                    .coerceIn(136.dp.toPx(), 200.dp.toPx())
+                    .coerceAtLeast(1f)
+                val ringRadius = (orbRadius + 12.dp.toPx()).coerceAtLeast(1f)
+                val auraRadius = (orbRadius * 1.30f).coerceAtLeast(1f)
+                val ringStrokePx = 1.75.dp.toPx()
+                val innerRimStrokePx = 0.85.dp.toPx()
+                val nodeRadiusPx = 2.4.dp.toPx()
+
+                val auraBrush = Brush.radialGradient(
+                    colors = listOf(
+                        glowColor.copy(alpha = 0.14f),
+                        accentBright.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = auraRadius
+                )
+                val orbBrush = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.0f to orbPalette.orbCoreCenter,
+                        0.55f to orbPalette.orbCoreMid,
+                        1.0f to Color.Transparent
+                    ),
+                    center = center,
+                    radius = orbRadius
+                )
+                // Symmetric dual-lobe sweep so rotating highlights glide continuously across the 1/4 quadrant
+                val ringSweepBrush = Brush.sweepGradient(
+                    0.00f to orbPalette.ringBright,
+                    0.14f to orbPalette.ringAccent,
+                    0.28f to orbPalette.ringRest,
+                    0.40f to orbPalette.ringAccent,
+                    0.50f to orbPalette.ringBright,
+                    0.64f to orbPalette.ringAccent,
+                    0.78f to orbPalette.ringRest,
+                    0.90f to orbPalette.ringAccent,
+                    1.00f to orbPalette.ringBright,
+                    center = center
+                )
+
+                onDrawBehind {
+                    drawRect(bgGradient)
+
+                    if (!noAmbientGlow) {
+                        val pulseScale = 0.96f + 0.07f * breatheState.value
+                        drawCircle(
+                            brush = auraBrush,
+                            radius = auraRadius * pulseScale,
+                            center = center
+                        )
+                    }
+
+                    // Large soft 1/4 gradient orb + thin inner arc rim
+                    drawCircle(
+                        brush = orbBrush,
+                        radius = orbRadius,
+                        center = center
+                    )
+                    drawCircle(
+                        color = orbPalette.ringRest.copy(alpha = (orbPalette.ringRest.alpha * 1.4f).coerceAtMost(0.18f)),
+                        radius = orbRadius * 0.94f,
+                        center = center,
+                        style = Stroke(width = innerRimStrokePx)
+                    )
+
+                    // Slow rotating thin luminous ring + symmetric orbital light beads across the 1/4 rim
+                    rotate(degrees = ringAngleState.value, pivot = center) {
+                        drawCircle(
+                            brush = ringSweepBrush,
+                            radius = ringRadius,
+                            center = center,
+                            style = Stroke(width = ringStrokePx, cap = StrokeCap.Round)
+                        )
+                        drawCircle(
+                            color = orbPalette.ringBright,
+                            radius = nodeRadiusPx,
+                            center = Offset(cx + ringRadius, cy)
+                        )
+                        drawCircle(
+                            color = orbPalette.ringBright,
+                            radius = nodeRadiusPx,
+                            center = Offset(cx - ringRadius, cy)
+                        )
+                    }
+                }
+            }
+    )
 }
 

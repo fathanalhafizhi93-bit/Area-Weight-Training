@@ -91,6 +91,13 @@ enum class UiTheme(
         titleEn = "Frutiger Aero (Y2K)",
         subtitleId = "Langit biru cerah, kaca glossy ringan 120 FPS, dan aksen biru Aero terkunci",
         subtitleEn = "Bright sky-blue translucent gloss at 120 FPS with signature locked Aero blue"
+    ),
+    XMATERIAL_YOU(
+        wireValue = "xmaterial-you",
+        titleId = "XMaterial You",
+        titleEn = "XMaterial You",
+        subtitleId = "Obsidian gelap elegan dengan kilau kaca halus dan aksen fase Pagi, Siang & Malam",
+        subtitleEn = "Quiet-luxury dark obsidian glass with subtle metallic accents across Dawn, Day & Night"
     );
 
     companion object {
@@ -100,6 +107,7 @@ enum class UiTheme(
             UBUNTU_YARU.wireValue -> UBUNTU_YARU
             AMOLED_STEALTH.wireValue -> AMOLED_STEALTH
             FRUTIGER_AERO.wireValue -> FRUTIGER_AERO
+            XMATERIAL_YOU.wireValue -> XMATERIAL_YOU
             // Legacy removed heavy glass themes map seamlessly to lightweight Material You
             else -> MATERIAL_YOU
         }

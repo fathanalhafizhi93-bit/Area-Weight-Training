@@ -137,7 +137,7 @@ fun VisualColorPickerDialog(
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
@@ -151,7 +151,7 @@ fun VisualColorPickerDialog(
                         val internalHex = MaterialYouColorEngine.colorToHex(selectedColor)
                         onApplyHex(internalHex)
                     },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = selectedColor,
                         contentColor = onSelectedColor

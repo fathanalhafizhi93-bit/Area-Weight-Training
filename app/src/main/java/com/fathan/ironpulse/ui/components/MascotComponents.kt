@@ -145,7 +145,7 @@ data class MascotOrbPalette(
 )
 
 /**
- * Resolves a harmonious 5-OS-Theme × 3-Day-Phase (15-combination) color palette for Pulse Mascot,
+ * Resolves a harmonious 6-OS-Theme × 3-Day-Phase (18-combination) color palette for Pulse Mascot,
  * keeping each theme's unmistakable OS character while adapting smoothly across Morning, Afternoon, and Night.
  */
 fun resolveMascotOrbPalette(
@@ -332,6 +332,42 @@ fun resolveMascotOrbPalette(
             borderColor = Color(0xFF818CF8),
             expressionAccent = Color(0xFFA5B4FC),
             cardAccent = Color(0xFFA5B4FC)
+        )
+    }
+
+    UiTheme.XMATERIAL_YOU -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF1F1E24),
+            coreMid = Color(0xFF101015),
+            coreEnd = Color(0xFF060608),
+            lowerBounce = Color(0x42DFBE84),
+            haloPrimary = Color(0xFFDFBE84),
+            haloSecondary = Color(0xFFF3E0BE),
+            borderColor = Color(0x9CDFBE84),
+            expressionAccent = Color(0xFFF3E0BE),
+            cardAccent = Color(0xFFEBCEA0)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = Color(0xFF1C2024),
+            coreMid = Color(0xFF0F1115),
+            coreEnd = Color(0xFF060608),
+            lowerBounce = Color(0x428CC5C2),
+            haloPrimary = Color(0xFF8CC5C2),
+            haloSecondary = Color(0xFFC6E6E4),
+            borderColor = Color(0x9C8CC5C2),
+            expressionAccent = Color(0xFFC6E6E4),
+            cardAccent = Color(0xFFA7D8D5)
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF1D1D26),
+            coreMid = Color(0xFF0F1016),
+            coreEnd = Color(0xFF060608),
+            lowerBounce = Color(0x42B0A4E3),
+            haloPrimary = Color(0xFFB0A4E3),
+            haloSecondary = Color(0xFFDDD6FA),
+            borderColor = Color(0x9CB0A4E3),
+            expressionAccent = Color(0xFFDDD6FA),
+            cardAccent = Color(0xFFC5BBE9)
         )
     }
 }
@@ -621,6 +657,23 @@ fun MascotOrbFace(
                         style = Stroke(sw)
                     )
                 }
+                UiTheme.XMATERIAL_YOU -> {
+                    // Fine dark obsidian horology halo with subtle precious-metal glint
+                    drawCircle(
+                        brush = Brush.sweepGradient(
+                            colors = listOf(
+                                orbPalette.haloPrimary.copy(alpha = 0.65f),
+                                Color(0xFF2C2E38),
+                                orbPalette.haloSecondary.copy(alpha = 0.55f),
+                                orbPalette.haloPrimary.copy(alpha = 0.65f)
+                            ),
+                            center = Offset(cx, cy)
+                        ),
+                        radius = r * 0.96f,
+                        center = Offset(cx, cy),
+                        style = Stroke(sw * 0.85f)
+                    )
+                }
             }
         }
 
@@ -752,10 +805,49 @@ fun MascotOrbFace(
                                 center = Offset(cx, cy)
                             )
                         }
+                        UiTheme.XMATERIAL_YOU -> {
+                            // Smoked obsidian crystal visor with delicate precious-metal specular highlight
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to orbPalette.coreStart,
+                                        0.56f to orbPalette.coreMid,
+                                        1.0f to orbPalette.coreEnd
+                                    ),
+                                    center = Offset(cx * 0.82f, cy * 0.74f),
+                                    radius = r * 1.12f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
+                                    center = Offset(cx, cy * 1.56f),
+                                    radius = r * 0.84f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawOval(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.14f),
+                                        Color.Transparent
+                                    )
+                                ),
+                                topLeft = Offset(cx - r * 0.62f, cy - r * 0.86f),
+                                size = Size(r * 1.24f, r * 0.44f)
+                            )
+                        }
                     }
                 }
                 .border(
-                    width = if (theme == UiTheme.FRUTIGER_AERO) 2.2.dp else 2.dp,
+                    width = when (theme) {
+                        UiTheme.FRUTIGER_AERO -> 2.2.dp
+                        UiTheme.XMATERIAL_YOU -> 1.5.dp
+                        else -> 2.dp
+                    },
                     color = orbPalette.borderColor,
                     shape = CircleShape
                 ),

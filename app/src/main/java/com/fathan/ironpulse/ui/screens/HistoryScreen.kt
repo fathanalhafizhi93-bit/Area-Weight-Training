@@ -481,7 +481,7 @@ fun HistoryScreen(
                             if (selectedDateKey == state.todayDateKey) {
                                 Button(
                                     onClick = onStartTodayWorkout,
-                                    shape = RoundedCornerShape(tokens.buttonRadius),
+                                    shape = tokens.buttonShape,
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = tokens.accentColor,
                                         contentColor = tokens.onAccentColor

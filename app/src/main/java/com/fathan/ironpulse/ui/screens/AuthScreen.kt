@@ -328,7 +328,7 @@ fun AuthScreen(
                 Button(
                     onClick = onSignInClick,
                     enabled = !authLoading,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.accentColor,
                         contentColor = tokens.onAccentColor

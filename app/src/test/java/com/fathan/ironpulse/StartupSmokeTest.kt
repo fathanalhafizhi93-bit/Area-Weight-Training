@@ -17,19 +17,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -86,9 +91,13 @@ import com.fathan.ironpulse.ui.components.isClosedEyeExpression
 import com.fathan.ironpulse.ui.components.resolveMascotOrbPalette
 import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
+import com.fathan.ironpulse.ui.screens.ClockCornerOrbPalette
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
+import com.fathan.ironpulse.ui.screens.SettingsCategory
+import com.fathan.ironpulse.ui.screens.SettingsScreen
 import com.fathan.ironpulse.ui.screens.TodayScreen
 import com.fathan.ironpulse.ui.screens.WorkoutSessionSummaryCard
+import com.fathan.ironpulse.ui.screens.resolveClockCornerOrbPalette
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
@@ -191,10 +200,8 @@ class StartupSmokeTest {
                     }
                     IronPulseTopBar(
                         activeTab = AppTab.TODAY,
-                        aboutOpen = false,
                         onLogoClick = {},
                         onOpenSettings = {},
-                        onOpenAbout = {},
                         onTestAlarm = {}
                     )
                     IronPulseBottomNav(
@@ -332,8 +339,8 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun uiTheme_hasFiveThemesIncludingFrutigerAeroAndLegacyFallback() {
-        assertEquals(5, UiTheme.entries.size)
+    fun uiTheme_hasSixThemesIncludingXMaterialYouAndLegacyFallback() {
+        assertEquals(6, UiTheme.entries.size)
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("midnight-frosted"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("aeroglass"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("obsidian"))
@@ -342,6 +349,7 @@ class StartupSmokeTest {
         assertEquals(UiTheme.UBUNTU_YARU, UiTheme.fromWire("ubuntu-yaru"))
         assertEquals(UiTheme.AMOLED_STEALTH, UiTheme.fromWire("amoled-stealth"))
         assertEquals(UiTheme.FRUTIGER_AERO, UiTheme.fromWire("frutiger-aero"))
+        assertEquals(UiTheme.XMATERIAL_YOU, UiTheme.fromWire("xmaterial-you"))
     }
 
     @Test
@@ -1291,7 +1299,7 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun allFiveThemes_renderUniqueBrandLockupsEmblemsAndPhaseLogos() {
+    fun allSixThemes_renderUniqueBrandLockupsEmblemsAndPhaseLogos() {
         var themeSetter: ((UiTheme) -> Unit)? = null
         var phaseSetter: ((DayTimePhase) -> Unit)? = null
 
@@ -1340,28 +1348,28 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun allFiveOsThemes_provideUniqueBundledFontPacksAndBadges() {
+    fun allSixOsThemes_provideUniqueBundledFontPacksAndBadges() {
         val packs = UiTheme.entries.map { resolveThemeFontPack(it) }
-        assertEquals(5, packs.size)
+        assertEquals(6, packs.size)
         assertEquals(
             "Every theme must have a unique bundled display font",
-            5,
+            6,
             packs.map { it.displayFont }.distinct().size
         )
         assertEquals(
             "Every theme must have a unique font display name",
-            5,
+            6,
             packs.map { it.fontDisplayName }.distinct().size
         )
         assertEquals(
             "Every theme must have a unique OS badge label",
-            5,
+            6,
             packs.map { it.osBadgeLabel }.distinct().size
         )
     }
 
     @Test
-    fun allFiveOsThemes_renderDistinctChromeBackdropsCustomIconsAndMascotOrbs() {
+    fun allSixOsThemes_renderDistinctChromeBackdropsCustomIconsAndMascotOrbs() {
         var themeSetter: ((UiTheme) -> Unit)? = null
         val restFlow = MutableStateFlow(RestTimerDisplayState())
 
@@ -1387,10 +1395,8 @@ class StartupSmokeTest {
                     ) {
                         IronPulseTopBar(
                             activeTab = AppTab.TODAY,
-                            aboutOpen = false,
                             onLogoClick = {},
                             onOpenSettings = {},
-                            onOpenAbout = {},
                             onTestAlarm = {}
                         )
                         MascotOrbFace(
@@ -1414,6 +1420,9 @@ class StartupSmokeTest {
 
             composeRule.onNodeWithTag("os_backdrop_${theme.wireValue}").assertIsDisplayed()
             composeRule.onNodeWithTag("os_top_bar_${theme.wireValue}").assertIsDisplayed()
+            composeRule.onNodeWithTag("topbar_settings_button").assertIsDisplayed()
+            composeRule.onNodeWithTag("topbar_test_alarm_button").assertIsDisplayed()
+            composeRule.onNodeWithContentDescription("Tentang IronPulse").assertDoesNotExist()
             composeRule.onNodeWithTag("os_bottom_nav_${theme.wireValue}").assertIsDisplayed()
             composeRule.onNodeWithTag("mascot_orb_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_settings", useUnmergedTree = true).assertIsDisplayed()
@@ -1553,10 +1562,8 @@ class StartupSmokeTest {
                     ) {
                         IronPulseTopBar(
                             activeTab = AppTab.SETTINGS,
-                            aboutOpen = false,
                             onLogoClick = {},
                             onOpenSettings = {},
-                            onOpenAbout = {},
                             onTestAlarm = {}
                         )
                         ThemeBrandLockup(theme = UiTheme.FRUTIGER_AERO, accentColor = t.accentColor)
@@ -1617,7 +1624,7 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun pulseMascot_allFiveThemesHaveDistinctHarmoniousPalettesAcrossDayPhases() {
+    fun pulseMascot_allSixThemesHaveDistinctHarmoniousPalettesAcrossDayPhases() {
         var themeSetter: ((UiTheme) -> Unit)? = null
         var phaseSetter: ((DayTimePhase) -> Unit)? = null
         val capturedPalettes = linkedMapOf<Pair<UiTheme, DayTimePhase>, List<Color>>()
@@ -1672,7 +1679,7 @@ class StartupSmokeTest {
             }
         }
 
-        // Every one of the 5 OS themes must adapt Pulse's palette distinctly across Morning, Afternoon, and Night
+        // Every one of the 6 OS themes must adapt Pulse's palette distinctly across Morning, Afternoon, and Night
         UiTheme.entries.forEach { theme ->
             val morning = capturedPalettes[theme to DayTimePhase.MORNING]
             val afternoon = capturedPalettes[theme to DayTimePhase.AFTERNOON]
@@ -1814,7 +1821,7 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun themedDialogs_composeCleanlyAcrossAllFiveThemes() {
+    fun themedDialogs_composeCleanlyAcrossAllSixThemes() {
         var themeSetter: ((UiTheme) -> Unit)? = null
         var showConfirm by mutableStateOf(true)
         var showSave by mutableStateOf(false)
@@ -1911,6 +1918,312 @@ class StartupSmokeTest {
         composeRule.onNodeWithTag("summary_back_today_button").performClick()
         assertEquals(1, historyClicks)
         assertEquals(1, todayClicks)
+    }
+
+    @Test
+    fun xMaterialYouTheme_switchesLightDayAndCosmicNightLocksExclusivePalettesAndSyncsPreviewStrip() {
+        fun linearChannel(c: Float): Double {
+            val d = c.toDouble()
+            return if (d <= 0.03928) d / 12.92 else Math.pow((d + 0.055) / 1.055, 2.4)
+        }
+        fun wcagContrast(foreground: Color, background: Color): Double {
+            val lumFg = 0.2126 * linearChannel(foreground.red) +
+                0.7152 * linearChannel(foreground.green) +
+                0.0722 * linearChannel(foreground.blue)
+            val lumBg = 0.2126 * linearChannel(background.red) +
+                0.7152 * linearChannel(background.green) +
+                0.0722 * linearChannel(background.blue)
+            val lighter = maxOf(lumFg, lumBg)
+            val darker = minOf(lumFg, lumBg)
+            return (lighter + 0.05) / (darker + 0.05)
+        }
+
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+        var phaseSetter: ((DayTimePhase) -> Unit)? = null
+        var isLightTheme = false
+        var isXMaterialNight = false
+        var accentLocked = false
+        var accentColor: Color? = null
+        var onSurfaceColor: Color? = null
+        var accentTextColor: Color? = null
+        var canvasBg: Color? = null
+        var cardShape: Shape? = null
+        var buttonShape: Shape? = null
+        var cardRadius = 0.dp
+        var buttonRadius = 0.dp
+        val selectedModes = mutableListOf<DayTimeMode>()
+
+        composeRule.setContent {
+            var activePhase by remember { mutableStateOf(DayTimePhase.MORNING) }
+            var activeMode by remember { mutableStateOf(DayTimeMode.AUTO) }
+            phaseSetter = { activePhase = it }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.XMATERIAL_YOU,
+                    accentColorHex = "#C8FF2E",
+                    materialTintColorHex = "#24192E",
+                    lang = AppLanguage.ID,
+                    todayThemeMode = activeMode,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                ),
+                timePhase = activePhase
+            ) {
+                val t = LocalIronPulseTokens.current
+                isLightTheme = t.isLightTheme
+                isXMaterialNight = t.isXMaterialNight
+                accentLocked = t.accentLocked
+                accentColor = t.accentColor
+                onSurfaceColor = t.palette.onSurface
+                accentTextColor = t.accentTextColor
+                canvasBg = t.canvasBg
+                cardShape = t.cardShape
+                buttonShape = t.buttonShape
+                cardRadius = t.cardRadius
+                buttonRadius = t.buttonRadius
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AmbientPhaseBackdrop()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        IronPulseTopBar(
+                            activeTab = AppTab.SETTINGS,
+                            onLogoClick = {},
+                            onOpenSettings = {},
+                            onTestAlarm = {}
+                        )
+                        ThemeBrandLockup(theme = UiTheme.XMATERIAL_YOU, accentColor = t.accentColor)
+                        AccentAndTintSettingsCard(
+                            accentColorHex = t.accentColor.let { MaterialYouColorEngine.colorToHex(it) },
+                            materialTintColorHex = null,
+                            onSelectAccent = {},
+                            onOpenAccentPicker = {},
+                            onOpenTintPicker = {},
+                            onSelectMaterialTint = {},
+                            selectedDayTimeMode = activeMode,
+                            onSelectDayTimeMode = { mode ->
+                                activeMode = mode
+                                selectedModes.add(mode)
+                            }
+                        )
+                        IronPulseBottomNav(
+                            activeTab = AppTab.SETTINGS,
+                            restTimerFlow = restFlow,
+                            onSelectTab = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        // Phase 1: Morning Dark Obsidian — Fajar Emas (Champagne Gold #DFBE84 + Obsidian #060608)
+        composeRule.waitForIdle()
+        assertFalse("XMaterial You Morning must be rich dark obsidian theme", isLightTheme)
+        assertFalse("XMaterial You Morning must not set isXMaterialNight", isXMaterialNight)
+        assertTrue("XMaterial You must lock exclusive phase palettes", accentLocked)
+        assertTrue(
+            "XMaterial You cards must use distinctive architectural obsidian shapes",
+            cardShape != RoundedCornerShape(cardRadius)
+        )
+        assertTrue(
+            "XMaterial You buttons must use distinctive architectural obsidian shapes",
+            buttonShape != RoundedCornerShape(buttonRadius)
+        )
+        assertEquals(Color(0xFFDFBE84), accentColor)
+        assertEquals(Color(0xFF060608), canvasBg)
+        assertTrue(wcagContrast(onSurfaceColor!!, Color(0xFF0E0F13)) >= 4.5)
+        assertTrue(wcagContrast(accentTextColor!!, Color(0xFF0E0F13)) >= 4.5)
+        composeRule.onNodeWithTag("os_backdrop_xmaterial-you").assertIsDisplayed()
+        composeRule.onNodeWithTag("accent_locked_banner").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Palet Obsidian XMaterial You Terkunci").assertIsDisplayed()
+        composeRule.onNodeWithTag("xmaterial_phase_preview_strip").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Fajar Emas").assertIsDisplayed()
+        composeRule.onNodeWithTag("accent_pick_color_button").assertDoesNotExist()
+
+        // Phase 2: Afternoon Dark Obsidian — Siang Platinum (Platinum Jade #8CC5C2 + Obsidian #060608)
+        composeRule.runOnUiThread { phaseSetter?.invoke(DayTimePhase.AFTERNOON) }
+        composeRule.waitForIdle()
+        assertFalse("XMaterial You Afternoon must be rich dark obsidian theme", isLightTheme)
+        assertFalse(isXMaterialNight)
+        assertEquals(Color(0xFF8CC5C2), accentColor)
+        assertEquals(Color(0xFF060608), canvasBg)
+        assertTrue(wcagContrast(onSurfaceColor!!, Color(0xFF0E0F13)) >= 4.5)
+        assertTrue(wcagContrast(accentTextColor!!, Color(0xFF0E0F13)) >= 4.5)
+        composeRule.onNodeWithText("Siang Platinum").performScrollTo().assertIsDisplayed()
+
+        // Phase 3: Night Dark Obsidian — Malam Moonstone (Moonstone #B0A4E3 + Obsidian #060608)
+        composeRule.runOnUiThread { phaseSetter?.invoke(DayTimePhase.NIGHT) }
+        composeRule.waitForIdle()
+        assertFalse("XMaterial You Night must be rich dark obsidian theme", isLightTheme)
+        assertTrue("XMaterial You Night must enable isXMaterialNight", isXMaterialNight)
+        assertTrue(accentLocked)
+        assertEquals(Color(0xFFB0A4E3), accentColor)
+        assertEquals(Color(0xFF060608), canvasBg)
+        assertTrue(wcagContrast(onSurfaceColor!!, Color(0xFF0E0F13)) >= 4.5)
+        assertTrue(wcagContrast(accentTextColor!!, Color(0xFF0E0F13)) >= 4.5)
+        composeRule.onNodeWithText("Malam Moonstone").performScrollTo().assertIsDisplayed()
+
+        // Verify all 4 XMaterial You quick phase buttons trigger expected callbacks
+        composeRule.onNodeWithTag("xmaterial_phase_btn_morning").performScrollTo().performClick()
+        composeRule.onNodeWithTag("xmaterial_phase_btn_afternoon").performScrollTo().performClick()
+        composeRule.onNodeWithTag("xmaterial_phase_btn_night").performScrollTo().performClick()
+        composeRule.onNodeWithTag("xmaterial_phase_btn_auto").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(
+            listOf(DayTimeMode.MORNING, DayTimeMode.AFTERNOON, DayTimeMode.NIGHT, DayTimeMode.AUTO),
+            selectedModes
+        )
+    }
+
+    @Test
+    fun clockCardTopRightOrb_rendersAndAdaptsPalettesAcrossAllDayPhasesAndThemes() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var phaseSetter: ((DayTimePhase) -> Unit)? = null
+        val capturedOrbs = linkedMapOf<Pair<UiTheme, DayTimePhase>, ClockCornerOrbPalette>()
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            var activePhase by remember { mutableStateOf(DayTimePhase.MORNING) }
+            themeSetter = { activeTheme = it }
+            phaseSetter = { activePhase = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = false, noAmbientGlow = false)
+                ),
+                timePhase = activePhase
+            ) {
+                val t = LocalIronPulseTokens.current
+                capturedOrbs[activeTheme to activePhase] = resolveClockCornerOrbPalette(t)
+
+                CompositionLocalProvider(LocalTabActive provides true) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        HeroAnimatedAtmosphereLayer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(0.dp)
+                                .matchParentSize(),
+                            noAnim = false
+                        )
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("14:32:08")
+                        }
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            DayTimePhase.entries.forEach { phase ->
+                composeRule.runOnUiThread { phaseSetter?.invoke(phase) }
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag("hero_atmosphere_layer").assertIsDisplayed()
+            }
+        }
+
+        UiTheme.entries.forEach { theme ->
+            val morning = capturedOrbs[theme to DayTimePhase.MORNING]
+            val afternoon = capturedOrbs[theme to DayTimePhase.AFTERNOON]
+            val night = capturedOrbs[theme to DayTimePhase.NIGHT]
+            assertNotNull("Missing morning orb palette for $theme", morning)
+            assertNotNull("Missing afternoon orb palette for $theme", afternoon)
+            assertNotNull("Missing night orb palette for $theme", night)
+            assertEquals(
+                "Clock card top-right orb must produce 3 distinct phase palettes for $theme",
+                3,
+                setOf(morning, afternoon, night).size
+            )
+            listOf(morning!!, afternoon!!, night!!).forEach { orb ->
+                assertTrue(
+                    "Expected soft 30-35% core alpha in $theme, was ${orb.orbCoreCenter.alpha}",
+                    orb.orbCoreCenter.alpha in 0.30f..0.38f
+                )
+            }
+        }
+    }
+
+    @Test
+    fun settingsHub_rendersOrderedVerticalListAndNavigatesToAboutSubpageWithBack() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(context)
+        }
+        val viewModel = GymViewModel(context)
+        val uiState = IronPulseUiState(
+            authReady = true,
+            userUid = "u_settings",
+            userDisplayName = "Fathan",
+            userEmail = "fathan@ironpulse.app",
+            appPrefs = AppPreferences(
+                uiTheme = UiTheme.XMATERIAL_YOU,
+                lang = AppLanguage.ID,
+                performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+            )
+        )
+        var hubBackCalls = 0
+
+        composeRule.setContent {
+            IronPulseTheme(prefs = uiState.appPrefs) {
+                CompositionLocalProvider(LocalTabActive provides true) {
+                    SettingsScreen(
+                        state = uiState,
+                        viewModel = viewModel,
+                        contentPadding = PaddingValues(0.dp),
+                        onBack = { hubBackCalls += 1 },
+                        onRequestNotificationPermission = {},
+                        onOpenExactAlarmSettings = {},
+                        onPickCustomRingtone = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        // Verify exact category order in top-to-bottom hub list
+        assertEquals(
+            listOf(
+                SettingsCategory.PROFILE,
+                SettingsCategory.THEME,
+                SettingsCategory.CONFIGURATION,
+                SettingsCategory.ALARM,
+                SettingsCategory.SYSTEM,
+                SettingsCategory.ABOUT
+            ),
+            SettingsCategory.entries
+        )
+        SettingsCategory.entries.forEach { cat ->
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(cat.testTag))
+            composeRule.onNodeWithTag(cat.testTag).assertIsDisplayed()
+        }
+
+        // Open About full sub-page inside Settings
+        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.ABOUT.testTag))
+        composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("About IronPulse").assertIsDisplayed()
+        composeRule.onNodeWithText("v0.0.1 alpha").assertIsDisplayed()
+        composeRule.onNodeWithText("Fathan, and Artificial intelligence").assertIsDisplayed()
+        composeRule.onNodeWithText("fathan.").assertIsDisplayed()
+
+        // Press subpage Back button -> returns to 6-item vertical hub list
+        composeRule.onNodeWithTag("settings_subpage_back_button").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.PROFILE.testTag))
+        composeRule.onNodeWithTag(SettingsCategory.PROFILE.testTag).assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_hub_back_button").performClick()
+        assertEquals(1, hubBackCalls)
     }
 }
 

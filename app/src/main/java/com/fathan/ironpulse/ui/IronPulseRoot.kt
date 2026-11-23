@@ -65,7 +65,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.IronPulseIcon
@@ -84,6 +83,7 @@ import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.ExercisesScreen
 import com.fathan.ironpulse.ui.screens.HistoryScreen
 import com.fathan.ironpulse.ui.screens.ScheduleScreen
+import com.fathan.ironpulse.ui.screens.SettingsCategory
 import com.fathan.ironpulse.ui.screens.SettingsScreen
 import com.fathan.ironpulse.ui.screens.TodayScreen
 import com.fathan.ironpulse.ui.screens.WorkoutScreen
@@ -110,6 +110,7 @@ fun IronPulseRoot(
     val snackbarHostState = remember { SnackbarHostState() }
     val saveableStateHolder = rememberSaveableStateHolder()
     var tabBeforeSettings by remember { mutableStateOf(AppTab.TODAY) }
+    var activeSettingsCategory by remember { mutableStateOf<SettingsCategory?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.snackbarEvents.collect { msg ->
@@ -121,6 +122,7 @@ fun IronPulseRoot(
         if (target == AppTab.SETTINGS) {
             if (state.activeTab != AppTab.SETTINGS) {
                 tabBeforeSettings = state.activeTab
+                activeSettingsCategory = null
             }
             viewModel.selectTab(AppTab.SETTINGS)
         } else {
@@ -130,8 +132,12 @@ fun IronPulseRoot(
 
     BackHandler(enabled = state.isSignedIn && state.activeTab != AppTab.TODAY) {
         if (state.activeTab == AppTab.SETTINGS) {
-            val fallback = if (tabBeforeSettings == AppTab.SETTINGS) AppTab.TODAY else tabBeforeSettings
-            viewModel.selectTab(fallback)
+            if (activeSettingsCategory != null) {
+                activeSettingsCategory = null
+            } else {
+                val fallback = if (tabBeforeSettings == AppTab.SETTINGS) AppTab.TODAY else tabBeforeSettings
+                viewModel.selectTab(fallback)
+            }
         } else {
             viewModel.selectTab(AppTab.TODAY)
         }
@@ -179,12 +185,7 @@ fun IronPulseRoot(
                     val historyListState = rememberLazyListState()
                     val exercisesListState = rememberLazyListState()
                     val settingsSubTabListStates = remember {
-                        mapOf(
-                            "PROFILE" to LazyListState(),
-                            "APPEARANCE" to LazyListState(),
-                            "ALARM" to LazyListState(),
-                            "SYSTEM" to LazyListState()
-                        )
+                        (listOf("HUB") + SettingsCategory.entries.map { it.name }).associateWith { LazyListState() }
                     }
                     val homeOrbBoundsHolder = remember { OrbBoundsHolder() }
                     val spotlightRegistry = remember { TutorialSpotlightRegistry() }
@@ -194,7 +195,6 @@ fun IronPulseRoot(
                     val modalBlocking = state.showNamePrompt ||
                         state.tutorialOpen ||
                         state.cooldownAlertTarget != null ||
-                        state.showAboutDialog ||
                         state.activeTestAlarm != null
 
                     val showFloatingMascot by remember(
@@ -313,12 +313,18 @@ fun IronPulseRoot(
                                             viewModel = viewModel,
                                             contentPadding = innerPadding,
                                             onBack = {
-                                                val fallback = if (tabBeforeSettings == AppTab.SETTINGS) AppTab.TODAY else tabBeforeSettings
-                                                viewModel.selectTab(fallback)
+                                                if (activeSettingsCategory != null) {
+                                                    activeSettingsCategory = null
+                                                } else {
+                                                    val fallback = if (tabBeforeSettings == AppTab.SETTINGS) AppTab.TODAY else tabBeforeSettings
+                                                    viewModel.selectTab(fallback)
+                                                }
                                             },
                                             onRequestNotificationPermission = onRequestNotificationPermission,
                                             onOpenExactAlarmSettings = onOpenExactAlarmSettings,
                                             onPickCustomRingtone = onPickCustomRingtone,
+                                            activeCategory = activeSettingsCategory,
+                                            onSelectCategory = { activeSettingsCategory = it },
                                             subTabListStates = settingsSubTabListStates
                                         )
                                     }
@@ -334,17 +340,16 @@ fun IronPulseRoot(
                         ) {
                             IronPulseTopBar(
                                 activeTab = state.activeTab,
-                                aboutOpen = state.showAboutDialog,
                                 onLogoClick = { navigateToTab(AppTab.TODAY) },
                                 onOpenSettings = {
                                     if (state.activeTab == AppTab.SETTINGS) {
+                                        activeSettingsCategory = null
                                         val fallback = if (tabBeforeSettings == AppTab.SETTINGS) AppTab.TODAY else tabBeforeSettings
                                         viewModel.selectTab(fallback)
                                     } else {
                                         navigateToTab(AppTab.SETTINGS)
                                     }
                                 },
-                                onOpenAbout = { viewModel.openAboutDialog() },
                                 onTestAlarm = { viewModel.triggerInAppTestAlarm() }
                             )
                         }
@@ -504,7 +509,10 @@ fun IronPulseRoot(
                                             AppTab.SCHEDULE -> scheduleListState.scrollToItem(0)
                                             AppTab.EXERCISES -> exercisesListState.scrollToItem(0)
                                             AppTab.HISTORY -> historyListState.scrollToItem(0)
-                                            AppTab.SETTINGS -> settingsSubTabListStates["PROFILE"]?.scrollToItem(0)
+                                            AppTab.SETTINGS -> {
+                                                activeSettingsCategory = null
+                                                settingsSubTabListStates["HUB"]?.scrollToItem(0)
+                                            }
                                             AppTab.WORKOUT -> workoutListState.scrollToItem(0)
                                         }
                                     }
@@ -524,10 +532,6 @@ fun IronPulseRoot(
                                 onBypass = { viewModel.bypassCooldownAndComplete() },
                                 onDismiss = { viewModel.dismissCooldownAlert() }
                             )
-                        }
-
-                        if (state.showAboutDialog) {
-                            AboutDialog(onDismiss = { viewModel.closeAboutDialog() })
                         }
 
                         // Full-Screen In-App Test Alarm Overlay

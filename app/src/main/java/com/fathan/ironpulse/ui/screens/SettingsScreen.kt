@@ -1,7 +1,6 @@
 package com.fathan.ironpulse.ui.screens
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,7 +58,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -80,6 +79,7 @@ import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.UiTheme
+import com.fathan.ironpulse.ui.components.AboutContentCards
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.ThemeBrandEmblem
@@ -107,16 +107,13 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private enum class SettingsSubTab {
-    PROFILE,
-    APPEARANCE,
-    ALARM,
-    SYSTEM
-}
-
-private enum class AppearanceSection {
-    THEMES,
-    PERFORMANCE
+enum class SettingsCategory(val testTag: String) {
+    PROFILE("settings_menu_profile"),
+    THEME("settings_menu_theme"),
+    CONFIGURATION("settings_menu_configuration"),
+    ALARM("settings_menu_alarm"),
+    SYSTEM("settings_menu_system"),
+    ABOUT("settings_menu_about")
 }
 
 @Composable
@@ -128,21 +125,37 @@ fun SettingsScreen(
     onRequestNotificationPermission: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
     onPickCustomRingtone: () -> Unit,
+    activeCategory: SettingsCategory? = null,
+    onSelectCategory: ((SettingsCategory?) -> Unit)? = null,
     subTabListStates: Map<String, LazyListState> = remember {
-        SettingsSubTab.entries.associate { it.name to LazyListState() }
+        (listOf("HUB") + SettingsCategory.entries.map { it.name }).associateWith { LazyListState() }
     }
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
-    var activeSubTab by remember { mutableStateOf(SettingsSubTab.PROFILE) }
-    var appearanceSection by remember { mutableStateOf(AppearanceSection.THEMES) }
+    var localCategory by remember { mutableStateOf(activeCategory) }
+    val currentCategory = if (onSelectCategory != null) activeCategory else localCategory
+    val selectCategory: (SettingsCategory?) -> Unit = { next ->
+        if (onSelectCategory != null) {
+            onSelectCategory(next)
+        } else {
+            localCategory = next
+        }
+    }
+
+    val tabActive = LocalTabActive.current
+    BackHandler(enabled = onSelectCategory == null && tabActive && currentCategory != null) {
+        selectCategory(null)
+    }
+
     var confirmSignOut by remember { mutableStateOf(false) }
     var activeColorPickerMode by remember { mutableStateOf<VisualColorPickerMode?>(null) }
     var pendingDeleteTone by remember { mutableStateOf<CustomRingtone?>(null) }
 
     val fallbackListState = rememberLazyListState()
-    val listState = subTabListStates[activeSubTab.name] ?: fallbackListState
+    val listKey = currentCategory?.name ?: "HUB"
+    val listState = subTabListStates[listKey] ?: fallbackListState
     var headerHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val headerHeightDp = with(density) { headerHeightPx.toDp() }
@@ -155,7 +168,7 @@ fun SettingsScreen(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = contentPadding.calculateTopPadding() + headerHeightDp + 22.dp,
+                top = contentPadding.calculateTopPadding() + headerHeightDp + 18.dp,
                 bottom = contentPadding.calculateBottomPadding() + 40.dp
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -163,9 +176,25 @@ fun SettingsScreen(
                 .align(Alignment.TopCenter)
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
+                .testTag("settings_list")
         ) {
-            when (activeSubTab) {
-                SettingsSubTab.PROFILE -> {
+            when (currentCategory) {
+                null -> {
+                    items(
+                        items = SettingsCategory.entries,
+                        key = { "settings_hub_${it.name}" },
+                        contentType = { "settings_hub_row" }
+                    ) { category ->
+                        SettingsCategoryRow(
+                            category = category,
+                            state = state,
+                            onClick = { selectCategory(category) },
+                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
+                    }
+                }
+
+                SettingsCategory.PROFILE -> {
                     item(key = "profile_hero", contentType = "profile_hero") {
                         ProfileHeroCard(
                             state = state,
@@ -187,62 +216,55 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSubTab.APPEARANCE -> {
-                    item(key = "appearance_switcher", contentType = "appearance_switcher") {
-                        AppearanceSectionSwitcher(
-                            section = appearanceSection,
-                            onSelectSection = { appearanceSection = it },
+                SettingsCategory.THEME -> {
+                    item(key = "themes_grid", contentType = "themes_grid") {
+                        ThemesGridCard(
+                            selectedTheme = state.appPrefs.uiTheme,
+                            onSelectTheme = { viewModel.setUiTheme(it) },
+                            onResetTheme = { viewModel.resetThemeCustomization() },
                             modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
                         )
                     }
-                    if (appearanceSection == AppearanceSection.THEMES) {
-                        item(key = "themes_grid", contentType = "themes_grid") {
-                            ThemesGridCard(
-                                selectedTheme = state.appPrefs.uiTheme,
-                                onSelectTheme = { viewModel.setUiTheme(it) },
-                                onResetTheme = { viewModel.resetThemeCustomization() },
-                                modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                            )
-                        }
-                        item(key = "accent_tint", contentType = "accent_tint") {
-                            AccentAndTintSettingsCard(
-                                accentColorHex = state.appPrefs.accentColorHex,
-                                materialTintColorHex = state.appPrefs.materialTintColorHex,
-                                onSelectAccent = { viewModel.setAccentColor(it) },
-                                onOpenAccentPicker = { activeColorPickerMode = VisualColorPickerMode.ACCENT },
-                                onOpenTintPicker = { activeColorPickerMode = VisualColorPickerMode.SURFACE_TINT },
-                                onSelectMaterialTint = { viewModel.setMaterialTintColor(it) },
-                                selectedDayTimeMode = state.appPrefs.todayThemeMode,
-                                onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
-                                modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                            )
-                        }
-                        item(key = "day_phase_mood", contentType = "day_phase_mood") {
-                            TodayPhaseMoodCard(
-                                selectedMode = state.appPrefs.todayThemeMode,
-                                onSelectMode = { viewModel.setTodayThemeMode(it) },
-                                modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                            )
-                        }
-                    } else {
-                        item(key = "performance_card", contentType = "performance_card") {
-                            PerformanceSettingsCard(
-                                perf = state.appPrefs.performance,
-                                onApplyPreset = { viewModel.applyPerformancePreset(it) },
-                                onUpdatePerf = { noAnimations, noAmbientGlow, staticMascot ->
-                                    viewModel.setPerformance(
-                                        noAnimations = noAnimations,
-                                        noAmbientGlow = noAmbientGlow,
-                                        staticMascot = staticMascot
-                                    )
-                                },
-                                modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                            )
-                        }
+                    item(key = "accent_tint", contentType = "accent_tint") {
+                        AccentAndTintSettingsCard(
+                            accentColorHex = state.appPrefs.accentColorHex,
+                            materialTintColorHex = state.appPrefs.materialTintColorHex,
+                            onSelectAccent = { viewModel.setAccentColor(it) },
+                            onOpenAccentPicker = { activeColorPickerMode = VisualColorPickerMode.ACCENT },
+                            onOpenTintPicker = { activeColorPickerMode = VisualColorPickerMode.SURFACE_TINT },
+                            onSelectMaterialTint = { viewModel.setMaterialTintColor(it) },
+                            selectedDayTimeMode = state.appPrefs.todayThemeMode,
+                            onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
+                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
+                    }
+                    item(key = "day_phase_mood", contentType = "day_phase_mood") {
+                        TodayPhaseMoodCard(
+                            selectedMode = state.appPrefs.todayThemeMode,
+                            onSelectMode = { viewModel.setTodayThemeMode(it) },
+                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
                     }
                 }
 
-                SettingsSubTab.ALARM -> {
+                SettingsCategory.CONFIGURATION -> {
+                    item(key = "performance_card", contentType = "performance_card") {
+                        PerformanceSettingsCard(
+                            perf = state.appPrefs.performance,
+                            onApplyPreset = { viewModel.applyPerformancePreset(it) },
+                            onUpdatePerf = { noAnimations, noAmbientGlow, staticMascot ->
+                                viewModel.setPerformance(
+                                    noAnimations = noAnimations,
+                                    noAmbientGlow = noAmbientGlow,
+                                    staticMascot = staticMascot
+                                )
+                            },
+                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
+                    }
+                }
+
+                SettingsCategory.ALARM -> {
                     item(key = "alarm_audio", contentType = "alarm_audio") {
                         AlarmAudioSettingsCard(
                             state = state,
@@ -335,7 +357,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSubTab.SYSTEM -> {
+                SettingsCategory.SYSTEM -> {
                     item(key = "system_language", contentType = "system_language") {
                         SystemLanguageCard(
                             selectedLang = state.appPrefs.lang,
@@ -358,22 +380,35 @@ fun SettingsScreen(
                             modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
                         )
                     }
-                    item(key = "system_guide_about", contentType = "system_guide_about") {
-                        SystemGuideAndAboutCard(
+                    item(key = "system_guide", contentType = "system_guide") {
+                        SystemGuideCard(
                             onOpenTutorial = { viewModel.openTutorial(startWithLang = false) },
-                            onOpenAbout = { viewModel.openAboutDialog() },
                             modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
+                    }
+                }
+
+                SettingsCategory.ABOUT -> {
+                    item(key = "about_full_page", contentType = "about_full_page") {
+                        AboutContentCards(
+                            wrapHeaderInCard = true,
+                            modifier = if (noAnim) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().animateItem()
                         )
                     }
                 }
             }
         }
 
-        // Pinned Settings Header & Sub-Tab Switcher
+        // Clean Pinned Settings Header (Main List or Focused Sub-Page with Back button)
         SettingsPinnedHeader(
-            activeSubTab = activeSubTab,
-            onSelectSubTab = { activeSubTab = it },
-            onBack = onBack,
+            activeCategory = currentCategory,
+            onBack = {
+                if (currentCategory != null) {
+                    selectCategory(null)
+                } else {
+                    onBack()
+                }
+            },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .widthIn(max = 640.dp)
@@ -453,140 +488,208 @@ fun SettingsScreen(
     }
 }
 
+private fun settingsCategoryTitle(category: SettingsCategory, lang: AppLanguage): String =
+    when (category) {
+        SettingsCategory.PROFILE -> lang.t("Profil", "Profile")
+        SettingsCategory.THEME -> lang.t("Tema", "Themes")
+        SettingsCategory.CONFIGURATION -> lang.t("Konfigurasi", "Configuration")
+        SettingsCategory.ALARM -> lang.t("Alarm", "Alarm")
+        SettingsCategory.SYSTEM -> lang.t("Sistem", "System")
+        SettingsCategory.ABOUT -> "About"
+    }
+
+private fun settingsCategoryIcon(category: SettingsCategory): IronPulseIcon =
+    when (category) {
+        SettingsCategory.PROFILE -> IronPulseIcon.PERSON
+        SettingsCategory.THEME -> IronPulseIcon.PALETTE
+        SettingsCategory.CONFIGURATION -> IronPulseIcon.SPEED
+        SettingsCategory.ALARM -> IronPulseIcon.ALARM
+        SettingsCategory.SYSTEM -> IronPulseIcon.SETTINGS
+        SettingsCategory.ABOUT -> IronPulseIcon.INFO
+    }
+
+@Composable
+private fun SettingsCategoryRow(
+    category: SettingsCategory,
+    state: IronPulseUiState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+    val noAnim = tokens.performance.noAnimations
+    val title = settingsCategoryTitle(category, lang)
+    val icon = settingsCategoryIcon(category)
+    val summary = remember(category, state, lang) {
+        when (category) {
+            SettingsCategory.PROFILE -> {
+                val name = state.profile?.displayName?.takeIf { it.isNotBlank() }
+                    ?: (state.profile?.email ?: state.userEmail)?.substringBefore("@")
+                    ?: lang.t("Atlet", "Athlete")
+                val syncTag = if (state.isOffline) lang.t("Offline", "Offline") else lang.t("Sinkron Cloud", "Cloud Synced")
+                "$name · $syncTag"
+            }
+            SettingsCategory.THEME -> lang.t(state.appPrefs.uiTheme.titleId, state.appPrefs.uiTheme.titleEn)
+            SettingsCategory.CONFIGURATION -> {
+                val perf = state.appPrefs.performance
+                when (perf) {
+                    PerformancePreferences() -> lang.t("Performa: Seimbang", "Performance: Balanced")
+                    PerformancePreferences(noAnimations = false, noAmbientGlow = true, staticMascot = false) ->
+                        lang.t("Performa: Hemat Daya", "Performance: Battery Saver")
+                    PerformancePreferences(noAnimations = true, noAmbientGlow = true, staticMascot = true) ->
+                        lang.t("Performa: Ultra Ringan", "Performance: Ultra Light")
+                    else -> lang.t("Performa: Kustom", "Performance: Custom")
+                }
+            }
+            SettingsCategory.ALARM -> {
+                val vol = ((state.profile?.volume ?: 0.85) * 100).toInt()
+                val snooze = state.profile?.snoozeMinutes ?: 5
+                lang.t("Volume $vol% · Tunda $snooze mnt", "Volume $vol% · Snooze ${snooze}m")
+            }
+            SettingsCategory.SYSTEM -> {
+                val clockLabel = if (state.appPrefs.clockFormat == ClockFormat.H24) "24H" else "12H"
+                "${state.appPrefs.lang.displayName} · $clockLabel"
+            }
+            SettingsCategory.ABOUT -> "IronPulse v0.0.1 alpha"
+        }
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 68.dp)
+            .testTag(category.testTag)
+            .tactilePress(pressedScale = 0.985f, disabledByPerf = noAnim)
+            .ironGlassSurface(tokens)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(tokens.buttonShape)
+                .background(tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.12f else 0.14f))
+                .border(1.dp, tokens.accentColor.copy(alpha = 0.28f), tokens.buttonShape),
+            contentAlignment = Alignment.Center
+        ) {
+            ThemedIcon(
+                icon = icon,
+                contentDescription = null,
+                tint = tokens.accentTextColor,
+                size = 20.dp
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 15.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.palette.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = summary,
+                fontSize = 12.sp,
+                color = tokens.mutedTextColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        ThemedIcon(
+            icon = IronPulseIcon.CHEVRON_RIGHT,
+            contentDescription = null,
+            tint = tokens.mutedTextColor,
+            size = 20.dp
+        )
+    }
+}
+
 @Composable
 private fun SettingsPinnedHeader(
-    activeSubTab: SettingsSubTab,
-    onSelectSubTab: (SettingsSubTab) -> Unit,
+    activeCategory: SettingsCategory?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val headerTitle = if (activeCategory == null) {
+        lang.t("Pengaturan", "Settings")
+    } else {
+        settingsCategoryTitle(activeCategory, lang)
+    }
+    val backButtonTag = if (activeCategory == null) "settings_hub_back_button" else "settings_subpage_back_button"
 
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .ironGlassSurface(tokens = tokens)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Surface(
+            onClick = onBack,
+            shape = tokens.buttonShape,
+            color = tokens.controlBg,
+            border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+            modifier = Modifier
+                .defaultMinSize(minHeight = 40.dp)
+                .testTag(backButtonTag)
+                .tactilePress(disabledByPerf = noAnim)
         ) {
-            Surface(
-                onClick = onBack,
-                shape = RoundedCornerShape(tokens.buttonRadius),
-                color = tokens.controlBg,
-                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    ThemedIcon(
-                        icon = IronPulseIcon.BACK,
-                        contentDescription = lang.t("Kembali", "Back"),
-                        tint = tokens.palette.onSurface,
-                        size = 16.dp
-                    )
-                    Text(
-                        text = lang.t("Kembali", "Back"),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tokens.palette.onSurface
-                    )
-                }
-            }
-
-            Text(
-                text = lang.t("Pengaturan", "Settings"),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = tokens.palette.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = tokens.accentColor.copy(alpha = 0.14f),
-                border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.28f))
-            ) {
+                ThemedIcon(
+                    icon = IronPulseIcon.BACK,
+                    contentDescription = lang.t("Kembali", "Back"),
+                    tint = tokens.palette.onSurface,
+                    size = 16.dp
+                )
                 Text(
-                    text = tokens.fontPack.osBadgeLabel,
-                    fontFamily = tokens.fontPack.monoFont,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.1.sp,
-                    color = tokens.accentColor,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                    text = lang.t("Kembali", "Back"),
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
                 )
             }
         }
 
-        // 4-Tab Segmented Sub-Nav with fluid color crossfade
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(tokens.wellBg)
-                .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(14.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Text(
+            text = headerTitle,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = tokens.palette.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+
+        Surface(
+            shape = RoundedCornerShape(999.dp),
+            color = tokens.accentColor.copy(alpha = 0.13f),
+            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.26f))
         ) {
-            listOf(
-                Triple(SettingsSubTab.PROFILE, lang.t("Profil", "Profile"), IronPulseIcon.PERSON),
-                Triple(SettingsSubTab.APPEARANCE, lang.t("Tampilan", "Themes"), IronPulseIcon.PALETTE),
-                Triple(SettingsSubTab.ALARM, lang.t("Alarm", "Alarm"), IronPulseIcon.ALARM),
-                Triple(SettingsSubTab.SYSTEM, lang.t("Sistem", "System"), IronPulseIcon.SETTINGS)
-            ).forEach { (tab, label, icon) ->
-                val selected = activeSubTab == tab
-                val pillBg by animateColorAsState(
-                    targetValue = if (selected) tokens.accentColor else Color.Transparent,
-                    animationSpec = tween(if (noAnim) 0 else 180),
-                    label = "settingsTabBg"
-                )
-                val pillFg by animateColorAsState(
-                    targetValue = if (selected) tokens.onAccentColor else tokens.mutedTextColor,
-                    animationSpec = tween(if (noAnim) 0 else 180),
-                    label = "settingsTabFg"
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(pillBg)
-                        .clickable { onSelectSubTab(tab) }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        ThemedIcon(
-                            icon = icon,
-                            contentDescription = label,
-                            tint = pillFg,
-                            size = 16.dp
-                        )
-                        Text(
-                            text = label,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = pillFg,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
+            Text(
+                text = if (activeCategory == null) tokens.fontPack.osBadgeLabel else lang.t("Pengaturan", "Settings"),
+                fontFamily = if (activeCategory == null) tokens.fontPack.monoFont else tokens.fontPack.bodyFont,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp,
+                color = tokens.accentTextColor,
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+            )
         }
     }
 }
@@ -739,7 +842,7 @@ private fun ProfileDisplayNameCard(
             },
             label = { Text(lang.t("Nama Panggilan", "Display Name")) },
             singleLine = true,
-            shape = RoundedCornerShape(tokens.inputRadius),
+            shape = tokens.inputShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = tokens.accentColor,
                 unfocusedBorderColor = tokens.surfaceBorderColor,
@@ -757,7 +860,7 @@ private fun ProfileDisplayNameCard(
                 }
             },
             enabled = nameDraft.trim().isNotEmpty(),
-            shape = RoundedCornerShape(tokens.buttonRadius),
+            shape = tokens.buttonShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = tokens.accentColor,
                 contentColor = tokens.onAccentColor
@@ -795,7 +898,7 @@ private fun ProfileSignOutCard(
     ) {
         OutlinedButton(
             onClick = onRequestSignOut,
-            shape = RoundedCornerShape(tokens.buttonRadius),
+            shape = tokens.buttonShape,
             border = BorderStroke(1.dp, tokens.dangerColor.copy(alpha = 0.55f)),
             modifier = Modifier
                 .fillMaxWidth()
@@ -809,68 +912,6 @@ private fun ProfileSignOutCard(
                 fontWeight = FontWeight.Bold,
                 color = tokens.dangerColor
             )
-        }
-    }
-}
-
-@Composable
-private fun AppearanceSectionSwitcher(
-    section: AppearanceSection,
-    onSelectSection: (AppearanceSection) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val tokens = LocalIronPulseTokens.current
-    val lang = tokens.lang
-    val noAnim = tokens.performance.noAnimations
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(
-            Triple(AppearanceSection.THEMES, lang.t("Tema & Warna", "Themes & Colors"), IronPulseIcon.PALETTE),
-            Triple(AppearanceSection.PERFORMANCE, lang.t("Performa", "Performance"), IronPulseIcon.SPEED)
-        ).forEach { (sec, label, icon) ->
-            val active = section == sec
-            val bgColor by animateColorAsState(
-                targetValue = if (active) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
-                animationSpec = tween(if (noAnim) 0 else 180),
-                label = "appSecBg"
-            )
-            val borderColor by animateColorAsState(
-                targetValue = if (active) tokens.accentColor else tokens.surfaceBorderColor,
-                animationSpec = tween(if (noAnim) 0 else 180),
-                label = "appSecBorder"
-            )
-            Surface(
-                onClick = { onSelectSection(sec) },
-                shape = RoundedCornerShape(tokens.buttonRadius),
-                color = bgColor,
-                border = BorderStroke(1.dp, borderColor),
-                modifier = Modifier
-                    .weight(1f)
-                    .tactilePress(pressedScale = 0.96f, disabledByPerf = noAnim)
-            ) {
-                Row(
-                    modifier = Modifier.padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    ThemedIcon(
-                        icon = icon,
-                        contentDescription = null,
-                        tint = if (active) tokens.accentTextColor else tokens.palette.onSurfaceVariant,
-                        size = 16.dp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = label,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (active) tokens.accentTextColor else tokens.palette.onSurface
-                    )
-                }
-            }
         }
     }
 }
@@ -1018,10 +1059,55 @@ fun AccentAndTintSettingsCard(
         }
 
         if (tokens.accentLocked) {
+            val isXMaterialLocked = tokens.uiTheme == UiTheme.XMATERIAL_YOU
+            val lockBadgeShape = if (isXMaterialLocked) {
+                RoundedCornerShape(topStart = 12.dp, topEnd = 4.dp, bottomEnd = 12.dp, bottomStart = 4.dp)
+            } else {
+                CircleShape
+            }
+            val lockBadgeBrush = if (isXMaterialLocked) {
+                when (tokens.timePhase) {
+                    DayTimePhase.MORNING -> Brush.linearGradient(
+                        listOf(Color(0xFFDFBE84), Color(0xFFB39055))
+                    )
+                    DayTimePhase.AFTERNOON -> Brush.linearGradient(
+                        listOf(Color(0xFF8CC5C2), Color(0xFF5D9693))
+                    )
+                    DayTimePhase.NIGHT -> Brush.linearGradient(
+                        listOf(Color(0xFFB0A4E3), Color(0xFF7B6FB3))
+                    )
+                }
+            } else {
+                Brush.verticalGradient(
+                    0.0f to Color(0xFF66DAFF),
+                    0.5f to Color(0xFF0099E5),
+                    1.0f to Color(0xFF006FB8)
+                )
+            }
+            val lockedTitle = if (isXMaterialLocked) {
+                lang.t("Palet Obsidian XMaterial You Terkunci", "XMaterial You Obsidian Palette Locked")
+            } else {
+                lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked")
+            }
+            val lockedDesc = if (isXMaterialLocked) {
+                lang.t(
+                    "XMaterial You memadukan obsidian gelap yang tenang dengan aksen logam fase waktu (Fajar Emas, Siang Platinum, Malam Moonstone). Warna kustommu tetap aman untuk tema lain.",
+                    "XMaterial You pairs calm dark obsidian surfaces with refined phase-metal accents (Obsidian Dawn, Obsidian Day, Obsidian Night). Your custom color stays saved for other themes."
+                )
+            } else {
+                lang.t(
+                    "Tema Frutiger Aero mengunci warna aksen biru langit khas Y2K agar nuansa kaca glossy tetap serasi. Pilihan warna kustommu tetap aman untuk tema lainnya.",
+                    "Frutiger Aero locks its signature Y2K sky-blue accent to keep the glossy glass look cohesive. Your custom color stays saved for other themes."
+                )
+            }
+
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = tokens.accentColor.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.42f)),
+                shape = if (isXMaterialLocked) tokens.subtleCardShape else RoundedCornerShape(14.dp),
+                color = if (isXMaterialLocked) Color(0xFF101218) else tokens.accentColor.copy(alpha = 0.12f),
+                border = BorderStroke(
+                    if (isXMaterialLocked) 0.95.dp else 1.dp,
+                    tokens.accentColor.copy(alpha = if (isXMaterialLocked) 0.42f else 0.42f)
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("accent_locked_banner")
@@ -1034,21 +1120,19 @@ fun AccentAndTintSettingsCard(
                     Box(
                         modifier = Modifier
                             .size(38.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.verticalGradient(
-                                    0.0f to Color(0xFF66DAFF),
-                                    0.5f to Color(0xFF0099E5),
-                                    1.0f to Color(0xFF006FB8)
-                                )
-                            )
-                            .border(1.5.dp, Color.White.copy(alpha = 0.85f), CircleShape),
+                            .clip(lockBadgeShape)
+                            .background(lockBadgeBrush)
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = if (isXMaterialLocked) 0.35f else 0.80f),
+                                lockBadgeShape
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         ThemedIcon(
                             icon = IronPulseIcon.LOCK,
                             contentDescription = lang.t("Warna aksen terkunci", "Accent color locked"),
-                            tint = Color.White,
+                            tint = if (isXMaterialLocked) tokens.onAccentColor else Color.White,
                             size = 18.dp
                         )
                     }
@@ -1057,16 +1141,13 @@ fun AccentAndTintSettingsCard(
                         verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Text(
-                            text = lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked"),
+                            text = lockedTitle,
                             fontSize = 13.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = tokens.palette.onSurface
                         )
                         Text(
-                            text = lang.t(
-                                "Tema Frutiger Aero mengunci warna aksen biru langit khas Y2K agar nuansa kaca glossy tetap serasi. Pilihan warna kustommu tetap aman untuk tema lainnya.",
-                                "Frutiger Aero locks its signature Y2K sky-blue accent to keep the glossy glass look cohesive. Your custom color stays saved for other themes."
-                            ),
+                            text = lockedDesc,
                             fontSize = 11.5.sp,
                             lineHeight = 16.sp,
                             color = tokens.palette.onSurfaceVariant
@@ -1168,6 +1249,99 @@ fun AccentAndTintSettingsCard(
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (isActive) Color.White else tokens.palette.onSurface,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (isXMaterialLocked) {
+                Surface(
+                    shape = tokens.subtleCardShape,
+                    color = tokens.wellBg,
+                    border = BorderStroke(0.95.dp, tokens.accentColor.copy(alpha = 0.32f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("xmaterial_phase_preview_strip")
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = lang.t("Aura Fase Obsidian XMaterial You", "XMaterial You Obsidian Phase"),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface
+                                )
+                                Text(
+                                    text = lang.t(
+                                        "Obsidian gelap tenang dengan Fajar Emas, Siang Platinum & Malam Moonstone (18:00).",
+                                        "Calm dark obsidian with Champagne Gold dawn, Platinum Jade day & Moonstone night (18:00)."
+                                    ),
+                                    fontSize = 11.sp,
+                                    color = tokens.palette.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(topStart = 10.dp, topEnd = 4.dp, bottomEnd = 10.dp, bottomStart = 4.dp),
+                                color = tokens.accentColor.copy(alpha = 0.14f),
+                                border = BorderStroke(0.9.dp, tokens.accentTextColor.copy(alpha = 0.45f))
+                            ) {
+                                Text(
+                                    text = when (tokens.timePhase) {
+                                        DayTimePhase.MORNING -> lang.t("Fajar Emas", "Obsidian Dawn")
+                                        DayTimePhase.AFTERNOON -> lang.t("Siang Platinum", "Obsidian Day")
+                                        DayTimePhase.NIGHT -> lang.t("Malam Moonstone", "Obsidian Night")
+                                    },
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.accentTextColor,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val quickModes = listOf(
+                                Triple(DayTimeMode.AUTO, lang.t("Auto", "Auto"), "xmaterial_phase_btn_auto"),
+                                Triple(DayTimeMode.MORNING, lang.t("Pagi", "Dawn"), "xmaterial_phase_btn_morning"),
+                                Triple(DayTimeMode.AFTERNOON, lang.t("Siang", "Day"), "xmaterial_phase_btn_afternoon"),
+                                Triple(DayTimeMode.NIGHT, lang.t("Malam", "Night"), "xmaterial_phase_btn_night")
+                            )
+                            quickModes.forEach { (mode, label, tag) ->
+                                val isActive = selectedDayTimeMode == mode
+                                Surface(
+                                    onClick = { onSelectDayTimeMode?.invoke(mode) },
+                                    shape = tokens.buttonShape,
+                                    color = if (isActive) tokens.accentColor else tokens.controlBg,
+                                    border = BorderStroke(
+                                        if (isActive) 1.dp else 0.9.dp,
+                                        if (isActive) tokens.accentColor else tokens.surfaceBorderColor
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(38.dp)
+                                        .testTag(tag)
+                                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isActive) tokens.onAccentColor else tokens.palette.onSurface,
                                             maxLines = 1
                                         )
                                     }
@@ -1466,7 +1640,7 @@ private fun PerformanceSettingsCard(
                 val isSelected = activePreset == preset
                 Surface(
                     onClick = { onApplyPreset(preset) },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     color = if (isSelected) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
                     border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
@@ -1535,19 +1709,24 @@ private fun ThemePreviewCard(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val previewAccent = resolvePreviewAccentForTheme(theme, accentColor)
+    val previewAccent = resolvePreviewAccentForTheme(theme, accentColor, tokens.timePhase)
     val readableAccent = remember(previewAccent, tokens.isLightTheme) {
         if (tokens.isLightTheme) MaterialYouColorEngine.readableAccentOnLight(previewAccent) else previewAccent
     }
     val fontPack = remember(theme) { resolveThemeFontPack(theme) }
     val isAeroPreview = theme == UiTheme.FRUTIGER_AERO
     val isAeroNightPreview = isAeroPreview && tokens.timePhase == DayTimePhase.NIGHT
+    val isXMaterialPreview = theme == UiTheme.XMATERIAL_YOU
+    val isXMaterialMorningPreview = isXMaterialPreview && tokens.timePhase == DayTimePhase.MORNING
+    val isXMaterialAfternoonPreview = isXMaterialPreview && tokens.timePhase == DayTimePhase.AFTERNOON
+    val isXMaterialNightPreview = isXMaterialPreview && tokens.timePhase == DayTimePhase.NIGHT
 
     val cardShape = when (theme) {
         UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
         UiTheme.FRUTIGER_AERO -> RoundedCornerShape(18.dp)
+        UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 20.dp, topEnd = 6.dp, bottomEnd = 20.dp, bottomStart = 6.dp)
         UiTheme.MATERIAL_YOU -> RoundedCornerShape(18.dp)
     }
 
@@ -1555,7 +1734,7 @@ private fun ThemePreviewCard(
         onClick = onSelect,
         shape = cardShape,
         color = if (selected) {
-            readableAccent.copy(alpha = if (tokens.isLightTheme) 0.10f else 0.14f)
+            readableAccent.copy(alpha = if (tokens.isLightTheme) 0.10f else 0.16f)
         } else {
             tokens.controlBg
         },
@@ -1580,6 +1759,19 @@ private fun ThemePreviewCard(
                 UiTheme.UBUNTU_YARU -> RoundedCornerShape(8.dp)
                 UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
                 UiTheme.FRUTIGER_AERO -> RoundedCornerShape(14.dp)
+                UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 14.dp, topEnd = 4.dp, bottomEnd = 14.dp, bottomStart = 4.dp)
+            }
+            val xMaterialBorderBrush = remember(tokens.timePhase) {
+                val metal = when (tokens.timePhase) {
+                    DayTimePhase.MORNING -> Color(0xFFDFBE84)
+                    DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2)
+                    DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
+                }
+                Brush.linearGradient(
+                    0.0f to metal.copy(alpha = 0.68f),
+                    0.45f to Color.White.copy(alpha = 0.18f),
+                    1.0f to metal.copy(alpha = 0.34f)
+                )
             }
             Column(
                 modifier = Modifier
@@ -1587,7 +1779,6 @@ private fun ThemePreviewCard(
                     .height(64.dp)
                     .clip(previewShape)
                     .drawWithCache {
-                        val strokePx = 1.dp.toPx()
                         val cellPx = (2.dp.toPx()).roundToInt().coerceIn(4, 8)
                         val grainScale = density.roundToInt().coerceIn(1, 3)
                         val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
@@ -1597,18 +1788,19 @@ private fun ThemePreviewCard(
                             UiTheme.UBUNTU_YARU -> Color(0xFF2A1626)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xFF162A52) else Color(0xFFD6F3FF)
+                            UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B0F)
                         }
                         val shaderBrush = when (theme) {
                             UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
                             UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = true)
                             UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
-                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO -> null
+                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU -> null
                         }
                         val finishBrush = when (theme) {
                             UiTheme.MATERIAL_YOU -> Brush.radialGradient(
                                 colors = listOf(previewAccent.copy(alpha = 0.22f), Color.Transparent),
                                 center = Offset(size.width * 0.85f, size.height * 0.20f),
-                                radius = size.width * 0.85f
+                                radius = (size.width * 0.85f).coerceAtLeast(1f)
                             )
                             UiTheme.CARBON_FORGE -> Brush.verticalGradient(
                                 0.0f to Color.White.copy(alpha = 0.07f),
@@ -1637,6 +1829,18 @@ private fun ThemePreviewCard(
                                     1.0f to Color(0xFFD0FCE4)
                                 )
                             }
+                            UiTheme.XMATERIAL_YOU -> {
+                                val phaseMetal = when (tokens.timePhase) {
+                                    DayTimePhase.MORNING -> Color(0xFFDFBE84)
+                                    DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2)
+                                    DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
+                                }
+                                Brush.radialGradient(
+                                    colors = listOf(phaseMetal.copy(alpha = 0.18f), Color.Transparent),
+                                    center = Offset(size.width * 0.90f, size.height * 0.18f),
+                                    radius = (size.width * 0.78f).coerceAtLeast(1f)
+                                )
+                            }
                         }
                         val aeroHillPath = if (isAeroPreview) {
                             Path().apply {
@@ -1650,6 +1854,13 @@ private fun ThemePreviewCard(
                                 lineTo(0f, size.height)
                                 close()
                             }
+                        } else null
+                        val xMatSheen = if (isXMaterialPreview) {
+                            Brush.linearGradient(
+                                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.06f), Color.Transparent),
+                                start = Offset(0f, 0f),
+                                end = Offset(size.width, size.height)
+                            )
                         } else null
                         onDrawBehind {
                             drawRect(baseBg)
@@ -1666,6 +1877,9 @@ private fun ThemePreviewCard(
                                         }
                                     )
                                 )
+                            }
+                            if (isXMaterialPreview && xMatSheen != null) {
+                                drawRect(xMatSheen)
                             }
                             if (theme == UiTheme.AMOLED_STEALTH) {
                                 val bLen = 5.dp.toPx()
@@ -1685,16 +1899,22 @@ private fun ThemePreviewCard(
                             }
                         }
                     }
-                    .border(
-                        1.dp,
-                        when (theme) {
-                            UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.22f)
-                            UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-                            UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
-                            UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xA65BC6FA) else Color(0xB80082C8)
-                            UiTheme.MATERIAL_YOU -> previewAccent.copy(alpha = 0.30f)
-                        },
-                        previewShape
+                    .then(
+                        if (isXMaterialPreview) {
+                            Modifier.border(0.95.dp, xMaterialBorderBrush, previewShape)
+                        } else {
+                            Modifier.border(
+                                1.dp,
+                                when (theme) {
+                                    UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.22f)
+                                    UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+                                    UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
+                                    UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xA65BC6FA) else Color(0xB80082C8)
+                                    else -> previewAccent.copy(alpha = 0.30f)
+                                },
+                                previewShape
+                            )
+                        }
                     )
             ) {
                 // Dedicated mini OS header strip — zero overlap with emblem/icons below
@@ -1705,6 +1925,7 @@ private fun ThemePreviewCard(
                         .background(
                             when (theme) {
                                 UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xCC1E3D6B) else Color.White.copy(alpha = 0.62f)
+                                UiTheme.XMATERIAL_YOU -> Color(0xFF101218)
                                 UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
                                 UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
                                 UiTheme.CARBON_FORGE -> Color(0xCC181E28)
@@ -1724,6 +1945,9 @@ private fun ThemePreviewCard(
                                 when {
                                     isAeroNightPreview -> Color(0xFF7DD3FC).copy(alpha = 0.85f)
                                     isAeroPreview -> Color(0xFF073B66).copy(alpha = 0.65f)
+                                    isXMaterialMorningPreview -> Color(0xFFDFBE84).copy(alpha = 0.90f)
+                                    isXMaterialAfternoonPreview -> Color(0xFF8CC5C2).copy(alpha = 0.90f)
+                                    isXMaterialNightPreview -> Color(0xFFB0A4E3).copy(alpha = 0.90f)
                                     else -> previewAccent.copy(alpha = 0.85f)
                                 }
                             )
@@ -1737,6 +1961,14 @@ private fun ThemePreviewCard(
                         UiTheme.FRUTIGER_AERO -> Row(horizontalArrangement = Arrangement.spacedBy(2.5.dp)) {
                             Box(Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF38BDF8)))
                             Box(Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF22C55E)))
+                        }
+                        UiTheme.XMATERIAL_YOU -> {
+                            val dotMetal = when (tokens.timePhase) {
+                                DayTimePhase.MORNING -> Color(0xFFDFBE84)
+                                DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2)
+                                DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
+                            }
+                            Box(Modifier.size(4.dp).clip(CircleShape).background(dotMetal))
                         }
                         UiTheme.AMOLED_STEALTH -> Box(Modifier.size(4.dp).background(previewAccent))
                         else -> Box(Modifier.size(4.dp).clip(CircleShape).background(previewAccent.copy(alpha = 0.75f)))
@@ -1770,6 +2002,7 @@ private fun ThemePreviewCard(
                                     when {
                                         isAeroNightPreview -> Color(0xFFE0F2FE).copy(alpha = 0.85f)
                                         isAeroPreview -> Color(0xFF072B4A).copy(alpha = 0.72f)
+                                        isXMaterialPreview -> Color(0xFFF4F2EE).copy(alpha = 0.88f)
                                         else -> Color.White.copy(alpha = 0.75f)
                                     }
                                 )
@@ -1781,6 +2014,9 @@ private fun ThemePreviewCard(
                             val iconTint = when {
                                 isAeroNightPreview -> Color(0xFF38BDF8)
                                 isAeroPreview -> Color(0xFF005F9E)
+                                isXMaterialMorningPreview -> Color(0xFFDFBE84)
+                                isXMaterialAfternoonPreview -> Color(0xFF8CC5C2)
+                                isXMaterialNightPreview -> Color(0xFFB0A4E3)
                                 else -> previewAccent
                             }
                             ThemedIcon(
@@ -1796,6 +2032,7 @@ private fun ThemePreviewCard(
                                 tint = when {
                                     isAeroNightPreview -> Color(0xFFF0F8FF).copy(alpha = 0.90f)
                                     isAeroPreview -> Color(0xFF073257)
+                                    isXMaterialPreview -> Color(0xFFF4F2EE).copy(alpha = 0.92f)
                                     else -> Color.White.copy(alpha = 0.85f)
                                 },
                                 size = 12.dp,
@@ -1978,7 +2215,7 @@ private fun AlarmAudioSettingsCard(
                 val active = snoozeMinutes == mins
                 Surface(
                     onClick = { viewModel.updateProfile(snoozeMinutes = mins) },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     color = if (active) tokens.accentColor else tokens.palette.surfaceContainerLow,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
                     modifier = Modifier
@@ -2167,7 +2404,7 @@ private fun AlarmDiagnosticsCard(
             if (!state.hasNotificationPermission) {
                 Button(
                     onClick = onRequestNotificationPermission,
-                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.accentColor,
                         contentColor = tokens.onAccentColor
@@ -2205,7 +2442,7 @@ private fun AlarmDiagnosticsCard(
             }
             OutlinedButton(
                 onClick = onOpenExactAlarmSettings,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
@@ -2215,7 +2452,7 @@ private fun AlarmDiagnosticsCard(
 
         Button(
             onClick = { viewModel.schedule5SecondNativeTestAlarm() },
-            shape = RoundedCornerShape(tokens.buttonRadius),
+            shape = tokens.buttonShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = tokens.accentColor,
                 contentColor = tokens.onAccentColor
@@ -2269,7 +2506,7 @@ private fun RingtoneManagerHeaderCard(
         OutlinedButton(
             onClick = onPickCustomRingtone,
             enabled = !uploading,
-            shape = RoundedCornerShape(tokens.buttonRadius),
+            shape = tokens.buttonShape,
             border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.55f)),
             modifier = Modifier.fillMaxWidth().height(46.dp)
         ) {
@@ -2697,9 +2934,8 @@ private fun SystemWorkoutDisplayCard(
 }
 
 @Composable
-private fun SystemGuideAndAboutCard(
+private fun SystemGuideCard(
     onOpenTutorial: () -> Unit,
-    onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -2713,7 +2949,7 @@ private fun SystemGuideAndAboutCard(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = lang.t("Panduan & Informasi", "Guide & Information"),
+            text = lang.t("Panduan Aplikasi", "App Guide"),
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = tokens.palette.onSurface
@@ -2724,13 +2960,6 @@ private fun SystemGuideAndAboutCard(
             title = lang.t("Tur Interaktif Bersama Pulse", "Interactive Tour with Pulse"),
             subtitle = lang.t("Pulse memandumu keliling 5 tab, template jadwal & alarm.", "Let Pulse walk you through all 5 tabs, templates & alarms."),
             onClick = onOpenTutorial
-        )
-
-        SystemActionRow(
-            icon = IronPulseIcon.INFO,
-            title = lang.t("Tentang IronPulse & Kredit", "About IronPulse & Credits"),
-            subtitle = lang.t("Versi aplikasi, informasi rilis & kredit pengembang.", "App version, release notes & developer credits."),
-            onClick = onOpenAbout
         )
     }
 }

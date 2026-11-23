@@ -1047,7 +1047,7 @@ private fun PulseSkipBubbleCard(
         ) {
             OutlinedButton(
                 onClick = onConfirmSkip,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 modifier = Modifier
                     .weight(1f)
@@ -1062,7 +1062,7 @@ private fun PulseSkipBubbleCard(
             }
             Button(
                 onClick = onResume,
-                shape = RoundedCornerShape(tokens.buttonRadius),
+                shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = tokens.accentColor,
                     contentColor = tokens.onAccentColor

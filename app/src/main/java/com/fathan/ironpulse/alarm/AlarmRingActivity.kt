@@ -244,7 +244,7 @@ class AlarmRingActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(56.dp),
-                                    shape = RoundedCornerShape(tokens.buttonRadius),
+                                    shape = tokens.buttonShape,
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = tokens.accentColor,
                                         contentColor = tokens.onAccentColor
@@ -278,7 +278,7 @@ class AlarmRingActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(50.dp),
-                                    shape = RoundedCornerShape(tokens.buttonRadius),
+                                    shape = tokens.buttonShape,
                                     border = BorderStroke(1.dp, tokens.surfaceBorderColor)
                                 ) {
                                     Icon(
