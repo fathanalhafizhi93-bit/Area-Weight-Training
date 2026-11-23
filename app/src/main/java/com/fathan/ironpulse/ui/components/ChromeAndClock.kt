@@ -30,20 +30,26 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -1214,6 +1220,67 @@ fun TactileStepperControl(
 }
 
 @Composable
+fun ThemedIronDialog(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    maxWidth: Dp = 460.dp,
+    borderOverride: Color? = null,
+    scrollable: Boolean = false,
+    title: (@Composable () -> Unit)? = null,
+    actions: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val tokens = LocalIronPulseTokens.current
+    val noAnim = tokens.performance.noAnimations
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = modifier
+                    .widthIn(max = maxWidth)
+                    .fillMaxWidth()
+                    .fluidModalEntrance(disabledByPerf = noAnim)
+                    .ironGlassSurface(
+                        tokens = tokens,
+                        borderOverride = borderOverride
+                    )
+                    .heightIn(max = 680.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (title != null) {
+                    title()
+                }
+                if (scrollable) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        content()
+                    }
+                } else {
+                    content()
+                }
+                if (actions != null) {
+                    actions()
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ConfirmDeleteDialog(
     title: String,
     message: String,
@@ -1223,47 +1290,78 @@ fun ConfirmDeleteDialog(
     onDismiss: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
-    AlertDialog(
+    val noAnim = tokens.performance.noAnimations
+
+    ThemedIronDialog(
         onDismissRequest = onDismiss,
-        containerColor = tokens.palette.surfaceContainerHigh,
-        titleContentColor = tokens.palette.onSurface,
-        textContentColor = tokens.palette.onSurfaceVariant,
-        icon = {
-            ThemedIcon(
-                icon = IronPulseIcon.WARNING,
-                contentDescription = null,
-                tint = tokens.dangerColor,
-                size = 24.dp
-            )
-        },
+        maxWidth = 420.dp,
+        borderOverride = tokens.dangerColor.copy(alpha = 0.45f),
+        modifier = Modifier.testTag("confirm_delete_dialog"),
         title = {
-            Text(text = title, fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Text(text = message, style = MaterialTheme.typography.bodyMedium)
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                shape = RoundedCornerShape(tokens.buttonRadius),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFDC2626),
-                    contentColor = Color.White
-                ),
-                modifier = Modifier.tactilePress(disabledByPerf = tokens.performance.noAnimations)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(confirmLabel, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(tokens.dangerColor.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ThemedIcon(
+                        icon = IronPulseIcon.WARNING,
+                        contentDescription = null,
+                        tint = tokens.dangerColor,
+                        size = 20.dp
+                    )
+                }
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = tokens.palette.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
             }
         },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(tokens.buttonRadius),
-                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                modifier = Modifier.tactilePress(disabledByPerf = tokens.performance.noAnimations)
+        actions = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(cancelLabel, color = tokens.palette.onSurface)
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .tactilePress(disabledByPerf = noAnim)
+                ) {
+                    Text(cancelLabel, fontWeight = FontWeight.SemiBold, color = tokens.palette.onSurface)
+                }
+                Button(
+                    onClick = onConfirm,
+                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFDC2626),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .tactilePress(disabledByPerf = noAnim)
+                ) {
+                    Text(confirmLabel, fontWeight = FontWeight.Bold)
+                }
             }
         }
-    )
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = tokens.palette.onSurfaceVariant
+        )
+    }
 }

@@ -282,6 +282,7 @@ fun IronPulseRoot(
                                             onBackToToday = { viewModel.selectTab(AppTab.TODAY) },
                                             onOpenSchedule = { navigateToTab(AppTab.SCHEDULE) },
                                             onOpenExercisesForDay = { day -> viewModel.openExercisesForDay(day) },
+                                            onOpenHistory = { navigateToTab(AppTab.HISTORY) },
                                             listState = workoutListState
                                         )
 

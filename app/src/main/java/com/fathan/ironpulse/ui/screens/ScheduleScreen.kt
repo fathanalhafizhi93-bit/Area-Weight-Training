@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +34,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -77,6 +78,7 @@ import com.fathan.ironpulse.ui.components.SchedulePreviewTarget
 import com.fathan.ironpulse.ui.components.ScheduleProgramPreviewSheet
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
 import com.fathan.ironpulse.ui.components.ThemedIcon
+import com.fathan.ironpulse.ui.components.ThemedIronDialog
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
@@ -250,61 +252,81 @@ fun ScheduleScreen(
             is24Hour = tokens.clockFormat == ClockFormat.H24
         )
 
-        AlertDialog(
+        ThemedIronDialog(
             onDismissRequest = { timePickerDay = null },
-            containerColor = tokens.palette.surfaceContainerHigh,
+            maxWidth = 440.dp,
+            scrollable = true,
+            modifier = Modifier.testTag("schedule_time_picker_dialog"),
             title = {
                 Text(
                     text = "${lang.t("Jam Alarm", "Alarm Time")} — ${editingDay.label(lang)}",
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     color = tokens.palette.onSurface
                 )
             },
-            text = {
-                Box(
+            actions = {
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    TimePicker(
-                        state = pickerState,
-                        colors = TimePickerDefaults.colors(
-                            selectorColor = tokens.accentColor,
-                            clockDialSelectedContentColor = tokens.onAccentColor,
-                            clockDialColor = tokens.palette.surfaceContainerLow,
-                            periodSelectorSelectedContainerColor = tokens.accentColor,
-                            periodSelectorSelectedContentColor = tokens.onAccentColor,
-                            timeSelectorSelectedContainerColor = tokens.accentColor.copy(alpha = 0.22f),
-                            timeSelectorSelectedContentColor = tokens.accentColor
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val hhmm = String.format(Locale.US, "%02d:%02d", pickerState.hour, pickerState.minute)
-                        viewModel.updateScheduleFields(dayKey = editingDay, alarmTime = hhmm)
-                        timePickerDay = null
-                    },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = tokens.accentColor,
-                        contentColor = tokens.onAccentColor
-                    )
-                ) {
-                    Text(lang.t("Simpan", "Save"), fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { timePickerDay = null },
-                    shape = RoundedCornerShape(tokens.buttonRadius),
-                    border = BorderStroke(1.dp, tokens.surfaceBorderColor)
-                ) {
-                    Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
+                    OutlinedButton(
+                        onClick = { timePickerDay = null },
+                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .tactilePress(disabledByPerf = noAnim)
+                    ) {
+                        Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
+                    }
+                    Button(
+                        onClick = {
+                            val hhmm = String.format(Locale.US, "%02d:%02d", pickerState.hour, pickerState.minute)
+                            viewModel.updateScheduleFields(dayKey = editingDay, alarmTime = hhmm)
+                            timePickerDay = null
+                        },
+                        shape = RoundedCornerShape(tokens.buttonRadius),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = tokens.accentColor,
+                            contentColor = tokens.onAccentColor
+                        ),
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .heightIn(min = 48.dp)
+                            .tactilePress(disabledByPerf = noAnim)
+                    ) {
+                        Text(lang.t("Simpan", "Save"), fontWeight = FontWeight.Bold)
+                    }
                 }
             }
-        )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                TimePicker(
+                    state = pickerState,
+                    colors = TimePickerDefaults.colors(
+                        clockDialColor = tokens.wellBg,
+                        clockDialSelectedContentColor = tokens.onAccentColor,
+                        clockDialUnselectedContentColor = tokens.palette.onSurface,
+                        selectorColor = tokens.accentColor,
+                        containerColor = Color.Transparent,
+                        periodSelectorBorderColor = tokens.surfaceBorderColor,
+                        periodSelectorSelectedContainerColor = tokens.accentColor,
+                        periodSelectorUnselectedContainerColor = tokens.controlBg,
+                        periodSelectorSelectedContentColor = tokens.onAccentColor,
+                        periodSelectorUnselectedContentColor = tokens.palette.onSurface,
+                        timeSelectorSelectedContainerColor = tokens.accentColor.copy(alpha = 0.22f),
+                        timeSelectorUnselectedContainerColor = tokens.wellBg,
+                        timeSelectorSelectedContentColor = tokens.accentTextColor,
+                        timeSelectorUnselectedContentColor = tokens.palette.onSurface
+                    )
+                )
+            }
+        }
     }
 
     if (showSaveScheduleDialog) {

@@ -21,16 +21,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -103,12 +100,12 @@ fun VisualColorPickerDialog(
         )
     }
 
-    AlertDialog(
+    ThemedIronDialog(
         onDismissRequest = onDismiss,
-        containerColor = tokens.palette.surfaceContainerHigh,
-        modifier = Modifier
-            .testTag("visual_color_picker_dialog")
-            .fluidModalEntrance(disabledByPerf = noAnim),
+        maxWidth = 460.dp,
+        borderOverride = selectedColor.copy(alpha = 0.45f),
+        scrollable = true,
+        modifier = Modifier.testTag("visual_color_picker_dialog"),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -133,11 +130,46 @@ fun VisualColorPickerDialog(
                 )
             }
         },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+        actions = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .tactilePress(disabledByPerf = noAnim)
+                ) {
+                    Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
+                }
+                Button(
+                    onClick = {
+                        val internalHex = MaterialYouColorEngine.colorToHex(selectedColor)
+                        onApplyHex(internalHex)
+                    },
+                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = selectedColor,
+                        contentColor = onSelectedColor
+                    ),
+                    modifier = Modifier
+                        .weight(1.3f)
+                        .heightIn(min = 48.dp)
+                        .tactilePress(disabledByPerf = noAnim)
+                        .testTag("color_picker_apply_button")
+                ) {
+                    ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, size = 16.dp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(lang.t("Terapkan", "Apply"), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = lang.t(
                         "Geser di kanvas & spektrum pelangi sampai pas di mata — tanpa kode warna.",
@@ -375,36 +407,7 @@ fun VisualColorPickerDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val internalHex = MaterialYouColorEngine.colorToHex(selectedColor)
-                    onApplyHex(internalHex)
-                },
-                shape = RoundedCornerShape(tokens.buttonRadius),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = selectedColor,
-                    contentColor = onSelectedColor
-                ),
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("color_picker_apply_button")
-            ) {
-                ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, size = 16.dp)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(lang.t("Terapkan", "Apply"), fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.heightIn(min = 48.dp)
-            ) {
-                Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurfaceVariant)
-            }
         }
-    )
 }
 
 @Composable

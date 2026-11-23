@@ -1181,6 +1181,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         prefsStore.setWorkoutFocusHudEnabled(enabled)
     }
 
+    fun setKeepScreenOnWorkout(enabled: Boolean) {
+        haptics.toggle()
+        prefsStore.setKeepScreenOnWorkout(enabled)
+    }
+
     // --- Auth ---
 
     fun signInWithGoogleToken(idToken: String) {

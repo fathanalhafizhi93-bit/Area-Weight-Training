@@ -22,9 +22,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +60,7 @@ import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.OfficialProgramTemplate
 import com.fathan.ironpulse.model.SavedCustomSchedule
+import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 
@@ -394,9 +395,12 @@ fun SaveCustomScheduleDialog(
         }
     }
 
-    AlertDialog(
+    val noAnim = tokens.performance.noAnimations
+
+    ThemedIronDialog(
         onDismissRequest = onDismiss,
-        containerColor = tokens.palette.surfaceContainerHigh,
+        maxWidth = 440.dp,
+        modifier = Modifier.testTag("save_custom_schedule_dialog"),
         title = {
             Text(
                 text = if (isRename) {
@@ -404,106 +408,117 @@ fun SaveCustomScheduleDialog(
                 } else {
                     lang.t("Simpan Jadwal Saat Ini", "Save Current Schedule")
                 },
+                fontSize = 19.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = tokens.palette.onSurface
             )
         },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = if (isRename) {
-                        lang.t(
-                            "Masukkan nama baru untuk jadwal tersimpan ini.",
-                            "Enter a new name for this saved schedule."
-                        )
-                    } else {
-                        lang.t(
-                            "Simpan seluruh jadwal Senin–Minggu beserta alarm & gerakannya agar Anda bisa kembali kapan saja.",
-                            "Save all Monday–Sunday days, alarms, and exercises so you can switch back anytime."
-                        )
+        actions = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .tactilePress(disabledByPerf = noAnim)
+                ) {
+                    Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
+                }
+                Button(
+                    onClick = {
+                        val cleaned = nameInput.trim().ifEmpty {
+                            lang.t("Jadwal Kustom", "Custom Schedule")
+                        }
+                        onConfirm(cleaned)
                     },
-                    fontSize = 12.5.sp,
-                    lineHeight = 18.sp,
-                    color = tokens.palette.onSurfaceVariant
-                )
-
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { if (it.length <= 48) nameInput = it },
-                    singleLine = true,
-                    placeholder = {
-                        Text(lang.t("Contoh: Jadwal Kustom Saya", "e.g. My Custom Split"))
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = tokens.accentColor,
-                        unfocusedBorderColor = tokens.surfaceBorderColor,
-                        focusedTextColor = tokens.palette.onSurface,
-                        unfocusedTextColor = tokens.palette.onSurface
+                    shape = RoundedCornerShape(tokens.buttonRadius),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = tokens.accentColor,
+                        contentColor = tokens.onAccentColor
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("custom_schedule_name_input")
-                )
+                        .weight(1.3f)
+                        .heightIn(min = 48.dp)
+                        .tactilePress(disabledByPerf = noAnim)
+                        .testTag("confirm_save_custom_schedule_button")
+                ) {
+                    Text(
+                        text = lang.t("Simpan", "Save"),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = if (isRename) {
+                    lang.t(
+                        "Masukkan nama baru untuk jadwal tersimpan ini.",
+                        "Enter a new name for this saved schedule."
+                    )
+                } else {
+                    lang.t(
+                        "Simpan seluruh jadwal Senin–Minggu beserta alarm & gerakannya agar Anda bisa kembali kapan saja.",
+                        "Save all Monday–Sunday days, alarms, and exercises so you can switch back anytime."
+                    )
+                },
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp,
+                color = tokens.palette.onSurfaceVariant
+            )
 
-                if (!isRename) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        suggestions.forEach { preset ->
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = tokens.wellBg,
-                                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .clickable { nameInput = preset }
-                            ) {
-                                Text(
-                                    text = preset,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = tokens.palette.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
+            OutlinedTextField(
+                value = nameInput,
+                onValueChange = { if (it.length <= 48) nameInput = it },
+                singleLine = true,
+                placeholder = {
+                    Text(lang.t("Contoh: Jadwal Kustom Saya", "e.g. My Custom Split"))
+                },
+                shape = RoundedCornerShape(tokens.inputRadius),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = tokens.accentColor,
+                    unfocusedBorderColor = tokens.surfaceBorderColor,
+                    focusedTextColor = tokens.palette.onSurface,
+                    unfocusedTextColor = tokens.palette.onSurface
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("custom_schedule_name_input")
+            )
+
+            if (!isRename) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    suggestions.forEach { preset ->
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = tokens.wellBg,
+                            border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .clickable { nameInput = preset }
+                        ) {
+                            Text(
+                                text = preset,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = tokens.palette.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val cleaned = nameInput.trim().ifEmpty {
-                        lang.t("Jadwal Kustom", "Custom Schedule")
-                    }
-                    onConfirm(cleaned)
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = tokens.accentColor,
-                    contentColor = tokens.onAccentColor
-                ),
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("confirm_save_custom_schedule_button")
-            ) {
-                Text(
-                    text = lang.t("Simpan", "Save"),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                modifier = Modifier.heightIn(min = 48.dp)
-            ) {
-                Text(lang.t("Batal", "Cancel"))
-            }
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -552,11 +567,39 @@ fun ScheduleProgramPreviewSheet(
         DayKey.entries.count { previewMap[it]?.isGymDay == true }
     }
 
+    val sheetShape = when (tokens.uiTheme) {
+        UiTheme.CARBON_FORGE -> CutCornerShape(topStart = 12.dp, topEnd = 12.dp)
+        UiTheme.AMOLED_STEALTH -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+        UiTheme.UBUNTU_YARU -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        UiTheme.FRUTIGER_AERO, UiTheme.MATERIAL_YOU -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    }
+    val sheetBg = when (tokens.uiTheme) {
+        UiTheme.AMOLED_STEALTH -> Color(0xFF05070B)
+        UiTheme.UBUNTU_YARU -> Color(0xFF2B272D)
+        UiTheme.CARBON_FORGE -> tokens.effectiveTintColor
+        UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xFF14274E) else Color(0xFFF2FAFF)
+        UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerHigh
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = tokens.palette.surfaceContainerHigh,
-        contentColor = tokens.palette.onSurface
+        shape = sheetShape,
+        containerColor = sheetBg,
+        contentColor = tokens.palette.onSurface,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        if (tokens.uiTheme == UiTheme.UBUNTU_YARU) Color(0xFFE95420).copy(alpha = 0.85f)
+                        else tokens.accentColor.copy(alpha = 0.65f)
+                    )
+            )
+        }
     ) {
         Column(
             modifier = Modifier

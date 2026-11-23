@@ -68,12 +68,14 @@ import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
+import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
+import com.fathan.ironpulse.ui.components.SaveCustomScheduleDialog
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
 import com.fathan.ironpulse.ui.components.ThemeBrandLockup
 import com.fathan.ironpulse.ui.components.TodayMascot
@@ -86,6 +88,7 @@ import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
 import com.fathan.ironpulse.ui.screens.TodayScreen
+import com.fathan.ironpulse.ui.screens.WorkoutSessionSummaryCard
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
@@ -1794,6 +1797,120 @@ class StartupSmokeTest {
 
         composeRule.onNodeWithTag("start_workout_cta").performClick()
         assertEquals(1, openWorkoutCalls)
+    }
+
+    @Test
+    fun preferencesStore_keepScreenOnWorkoutDefaultsTrueAndPersistsToggle() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val store = PreferencesStore(context)
+        assertTrue(store.state.value.keepScreenOnWorkout)
+
+        store.setKeepScreenOnWorkout(false)
+        assertFalse(store.state.value.keepScreenOnWorkout)
+        assertFalse(PreferencesStore(context).state.value.keepScreenOnWorkout)
+
+        store.setKeepScreenOnWorkout(true)
+        assertTrue(PreferencesStore(context).state.value.keepScreenOnWorkout)
+    }
+
+    @Test
+    fun themedDialogs_composeCleanlyAcrossAllFiveThemes() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var showConfirm by mutableStateOf(true)
+        var showSave by mutableStateOf(false)
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            themeSetter = { activeTheme = it }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                if (showConfirm) {
+                    ConfirmDeleteDialog(
+                        title = "Hapus Gerakan?",
+                        message = "Konfirmasi penghapusan gerakan.",
+                        confirmLabel = "Hapus",
+                        cancelLabel = "Batal",
+                        onConfirm = {},
+                        onDismiss = {}
+                    )
+                }
+                if (showSave) {
+                    SaveCustomScheduleDialog(
+                        initialName = "",
+                        isRename = false,
+                        onDismiss = {},
+                        onConfirm = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("confirm_delete_dialog").assertIsDisplayed()
+        }
+
+        composeRule.runOnUiThread {
+            showConfirm = false
+            showSave = true
+        }
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("save_custom_schedule_dialog").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun workoutSessionSummaryCard_rendersStatsAndActionsAcrossAllThemes() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var historyClicks = 0
+        var todayClicks = 0
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            themeSetter = { activeTheme = it }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                WorkoutSessionSummaryCard(
+                    focusTitle = "Push Day · Dada & Bahu",
+                    doneExercises = 4,
+                    totalExercises = 4,
+                    completedSets = 12,
+                    totalVolumeKg = 3450.0,
+                    totalTimedSeconds = 0,
+                    onOpenHistory = { historyClicks += 1 },
+                    onBackToToday = { todayClicks += 1 }
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("workout_session_summary_card").assertIsDisplayed()
+            composeRule.onNodeWithText("SESI SELESAI!").assertIsDisplayed()
+            composeRule.onNodeWithText("3450 kg").assertIsDisplayed()
+        }
+
+        composeRule.onNodeWithTag("summary_open_history_button").performClick()
+        composeRule.onNodeWithTag("summary_back_today_button").performClick()
+        assertEquals(1, historyClicks)
+        assertEquals(1, todayClicks)
     }
 }
 

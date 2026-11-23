@@ -26,7 +26,8 @@ data class AppPreferences(
     val performance: PerformancePreferences = PerformancePreferences(),
     val floatingOrbSideRight: Boolean = true,
     val floatingOrbYRatio: Float = 0.72f,
-    val workoutFocusHudEnabled: Boolean = false
+    val workoutFocusHudEnabled: Boolean = false,
+    val keepScreenOnWorkout: Boolean = true
 )
 
 class PreferencesStore(context: Context) {
@@ -57,7 +58,8 @@ class PreferencesStore(context: Context) {
             ),
             floatingOrbSideRight = prefs.getBoolean(KEY_ORB_SIDE_RIGHT, true),
             floatingOrbYRatio = prefs.getFloat(KEY_ORB_Y_RATIO, 0.72f).coerceIn(0.15f, 0.85f),
-            workoutFocusHudEnabled = prefs.getBoolean(KEY_WORKOUT_FOCUS_HUD, false)
+            workoutFocusHudEnabled = prefs.getBoolean(KEY_WORKOUT_FOCUS_HUD, false),
+            keepScreenOnWorkout = prefs.getBoolean(KEY_KEEP_SCREEN_ON_WORKOUT, true)
         )
     }
 
@@ -237,6 +239,11 @@ class PreferencesStore(context: Context) {
         _state.value = _state.value.copy(workoutFocusHudEnabled = enabled)
     }
 
+    fun setKeepScreenOnWorkout(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON_WORKOUT, enabled).apply()
+        _state.value = _state.value.copy(keepScreenOnWorkout = enabled)
+    }
+
     fun isNameConfirmed(uid: String): Boolean =
         prefs.getBoolean("name_confirmed_$uid", false)
 
@@ -269,5 +276,6 @@ class PreferencesStore(context: Context) {
         private const val KEY_ORB_SIDE_RIGHT = "floating_orb_side_right"
         private const val KEY_ORB_Y_RATIO = "floating_orb_y_ratio"
         private const val KEY_WORKOUT_FOCUS_HUD = "workout_focus_hud"
+        private const val KEY_KEEP_SCREEN_ON_WORKOUT = "keep_screen_on_workout"
     }
 }

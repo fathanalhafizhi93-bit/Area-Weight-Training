@@ -351,6 +351,13 @@ fun SettingsScreen(
                             modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
                         )
                     }
+                    item(key = "system_workout_display", contentType = "system_workout_display") {
+                        SystemWorkoutDisplayCard(
+                            keepScreenOnWorkout = state.appPrefs.keepScreenOnWorkout,
+                            onToggleKeepScreenOn = { viewModel.setKeepScreenOnWorkout(it) },
+                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
+                    }
                     item(key = "system_guide_about", contentType = "system_guide_about") {
                         SystemGuideAndAboutCard(
                             onOpenTutorial = { viewModel.openTutorial(startWithLang = false) },
@@ -1877,7 +1884,8 @@ private fun PerformanceSwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    switchModifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     Row(
@@ -1895,7 +1903,8 @@ private fun PerformanceSwitchRow(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = tokens.onAccentColor,
                 checkedTrackColor = tokens.accentColor
-            )
+            ),
+            modifier = switchModifier
         )
     }
 }
@@ -2649,6 +2658,41 @@ private fun SystemClockFormatCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SystemWorkoutDisplayCard(
+    keepScreenOnWorkout: Boolean,
+    onToggleKeepScreenOn: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .ironGlassSurface(tokens)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = lang.t("Layar Saat Latihan", "Workout Screen"),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = tokens.palette.onSurface
+        )
+        PerformanceSwitchRow(
+            title = lang.t("Layar Tetap Menyala di Tab Latihan", "Keep Screen On in Workout"),
+            subtitle = lang.t(
+                "Cegah layar meredup atau mati otomatis selama kamu berada di tab Latihan.",
+                "Prevent the screen from dimming or locking while you are in the Workout tab."
+            ),
+            checked = keepScreenOnWorkout,
+            onCheckedChange = onToggleKeepScreenOn,
+            switchModifier = Modifier.testTag("settings_keep_screen_on_switch")
+        )
     }
 }
 

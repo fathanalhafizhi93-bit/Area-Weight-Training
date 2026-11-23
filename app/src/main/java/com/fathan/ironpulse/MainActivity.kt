@@ -8,11 +8,13 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
@@ -95,6 +97,19 @@ class MainActivity : ComponentActivity() {
                 timePhase = themeUi.timePhase
             ) {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
+                val keepScreenOn = state.isSignedIn &&
+                    state.activeTab == AppTab.WORKOUT &&
+                    state.appPrefs.keepScreenOnWorkout
+                DisposableEffect(keepScreenOn) {
+                    if (keepScreenOn) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    onDispose {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                }
                 IronPulseRoot(
                     state = state,
                     viewModel = viewModel,

@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +49,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -62,6 +64,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +83,7 @@ import com.fathan.ironpulse.ui.components.TactileStepperControl
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
@@ -96,6 +100,7 @@ fun WorkoutScreen(
     onBackToToday: () -> Unit,
     onOpenSchedule: () -> Unit,
     onOpenExercisesForDay: (DayKey) -> Unit,
+    onOpenHistory: () -> Unit = {},
     listState: LazyListState = rememberLazyListState()
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -124,11 +129,35 @@ fun WorkoutScreen(
         }
     }
 
+    val tabActive = LocalTabActive.current
+    val hostView = LocalView.current
+    val keepScreenOnActive = tabActive && state.appPrefs.keepScreenOnWorkout
+    DisposableEffect(hostView, keepScreenOnActive) {
+        hostView.keepScreenOn = keepScreenOnActive
+        onDispose { hostView.keepScreenOn = false }
+    }
+
     val hudEnabled = state.appPrefs.workoutFocusHudEnabled
     val totalSets = remember(todayEntries) { todayEntries.sumOf { it.sets.size } }
     val completedSets = remember(todayEntries) { todayEntries.sumOf { e -> e.sets.count { it.completed } } }
     val progressPct = if (totalSets > 0) (completedSets * 100) / totalSets else 0
     val hasExercises = activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()
+    val sessionComplete = hasExercises && totalSets > 0 && completedSets == totalSets
+    val doneExercisesCount = remember(todayEntries) {
+        todayEntries.count { e -> e.sets.isNotEmpty() && e.sets.all { it.completed } }
+    }
+    val totalVolumeKg = remember(todayEntries) {
+        todayEntries.sumOf { e ->
+            if (!e.usesWeight) 0.0 else e.sets.filter { it.completed }.sumOf { it.weightKg * it.reps }
+        }
+    }
+    val totalTimedSeconds = remember(todayEntries) {
+        todayEntries.sumOf { e ->
+            if (e.trackingMode == ExerciseTrackingMode.TIMER) {
+                e.sets.filter { it.completed }.sumOf { it.durationSeconds }
+            } else 0
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -300,6 +329,22 @@ fun WorkoutScreen(
                             }
                         }
                     }
+                }
+            }
+
+            if (sessionComplete) {
+                item(key = "workout_session_summary", contentType = "session_summary") {
+                    WorkoutSessionSummaryCard(
+                        focusTitle = activeSchedule?.focusTitle ?: lang.t("Sesi Latihan", "Workout Session"),
+                        doneExercises = doneExercisesCount,
+                        totalExercises = todayEntries.size,
+                        completedSets = completedSets,
+                        totalVolumeKg = totalVolumeKg,
+                        totalTimedSeconds = totalTimedSeconds,
+                        onOpenHistory = onOpenHistory,
+                        onBackToToday = onBackToToday,
+                        modifier = if (noAnim) Modifier else Modifier.animateItem()
+                    )
                 }
             }
 
@@ -1490,5 +1535,193 @@ private fun SetCompletePillButton(
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun WorkoutSessionSummaryCard(
+    focusTitle: String,
+    doneExercises: Int,
+    totalExercises: Int,
+    completedSets: Int,
+    totalVolumeKg: Double,
+    totalTimedSeconds: Int,
+    onOpenHistory: () -> Unit,
+    onBackToToday: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+    val noAnim = tokens.performance.noAnimations
+
+    val volumeOrTimeLabel = when {
+        totalVolumeKg > 0.0 -> lang.t("Total Volume", "Total Volume")
+        totalTimedSeconds > 0 -> lang.t("Durasi Aktif", "Active Time")
+        else -> lang.t("Status Sesi", "Session Status")
+    }
+    val volumeOrTimeValue = when {
+        totalVolumeKg > 0.0 -> "${GymModelHelpers.formatWeight(totalVolumeKg)} kg"
+        totalTimedSeconds > 0 -> GymModelHelpers.formatCompactDuration(totalTimedSeconds, lang)
+        else -> "100%"
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .ironGlassSurface(tokens, borderOverride = tokens.successColor.copy(alpha = 0.60f))
+            .padding(16.dp)
+            .testTag("workout_session_summary_card"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(tokens.successColor.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                ThemedIcon(
+                    icon = IronPulseIcon.CHECK_CIRCLE,
+                    contentDescription = null,
+                    tint = tokens.successColor,
+                    size = 24.dp
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = lang.t("SESI SELESAI!", "WORKOUT COMPLETE!"),
+                    fontFamily = tokens.fontPack.monoFont,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.1.sp,
+                    color = tokens.successColor
+                )
+                Text(
+                    text = focusTitle,
+                    fontFamily = tokens.fontPack.displayFont,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = tokens.palette.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SummaryStatPill(
+                label = lang.t("Gerakan", "Exercises"),
+                value = "$doneExercises/$totalExercises",
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatPill(
+                label = lang.t("Total Set", "Sets Done"),
+                value = "$completedSets",
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatPill(
+                label = volumeOrTimeLabel,
+                value = volumeOrTimeValue,
+                modifier = Modifier.weight(1.15f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onBackToToday,
+                shape = RoundedCornerShape(tokens.buttonRadius),
+                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .tactilePress(disabledByPerf = noAnim)
+                    .testTag("summary_back_today_button")
+            ) {
+                ThemedIcon(
+                    icon = IronPulseIcon.TODAY,
+                    contentDescription = null,
+                    tint = tokens.palette.onSurface,
+                    size = 16.dp
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = lang.t("Hari Ini", "Today"),
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+            }
+            Button(
+                onClick = onOpenHistory,
+                shape = RoundedCornerShape(tokens.buttonRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = tokens.accentColor,
+                    contentColor = tokens.onAccentColor
+                ),
+                modifier = Modifier
+                    .weight(1.25f)
+                    .heightIn(min = 48.dp)
+                    .tactilePress(disabledByPerf = noAnim)
+                    .testTag("summary_open_history_button")
+            ) {
+                ThemedIcon(
+                    icon = IronPulseIcon.HISTORY,
+                    contentDescription = null,
+                    tint = tokens.onAccentColor,
+                    size = 16.dp
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = lang.t("Lihat Riwayat", "View History"),
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryStatPill(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(tokens.wellBg)
+            .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 10.5.sp,
+            color = tokens.mutedTextColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = value,
+            fontFamily = tokens.fontPack.monoFont,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = tokens.palette.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
