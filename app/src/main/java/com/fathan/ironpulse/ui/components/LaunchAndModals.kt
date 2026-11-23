@@ -36,26 +36,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Alarm
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayCircle
-import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Snooze
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -76,7 +59,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -193,7 +175,7 @@ fun NamePromptModal(
             )
             if (errorMsg != null) {
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(text = errorMsg ?: "", fontSize = 12.sp, color = Color(0xFFFCA5A5))
+                Text(text = errorMsg ?: "", fontSize = 12.sp, color = tokens.dangerColor)
             }
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -215,7 +197,7 @@ fun NamePromptModal(
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(lang.t("Simpan & Lanjutkan", "Save & Continue"), fontWeight = FontWeight.Bold)
             }
@@ -259,7 +241,7 @@ fun CooldownAlertModal(
                 .fluidModalEntrance(tokens.performance.noAnimations)
                 .ironGlassSurface(
                     tokens = tokens,
-                    borderOverride = Color(0x73F59E0B)
+                    borderOverride = tokens.warningColor.copy(alpha = 0.48f)
                 )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -273,13 +255,13 @@ fun CooldownAlertModal(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(Icons.Rounded.Warning, contentDescription = null, tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
+                ThemedIcon(IronPulseIcon.WARNING, contentDescription = null, tint = tokens.warningColor, size = 16.dp)
                 Text(
                     text = lang.t("PENGAMAN SALAH KLIK · 30 DETIK", "ANTI-MISCLICK GUARD · 30S"),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.9.sp,
-                    color = Color(0xFFFBBF24)
+                    color = tokens.warningColor
                 )
             }
 
@@ -288,14 +270,14 @@ fun CooldownAlertModal(
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val stroke = 7.dp.toPx()
                     drawArc(
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = tokens.dividerColor,
                         startAngle = 0f,
                         sweepAngle = 360f,
                         useCenter = false,
                         style = Stroke(stroke)
                     )
                     drawArc(
-                        color = Color(0xFFF59E0B),
+                        color = tokens.warningColor,
                         startAngle = -90f,
                         sweepAngle = 360f * progress,
                         useCenter = false,
@@ -308,7 +290,7 @@ fun CooldownAlertModal(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 40.sp,
-                        color = tokens.accentColor
+                        color = tokens.accentTextColor
                     )
                     Text(
                         text = lang.t("d", "s"),
@@ -348,7 +330,7 @@ fun CooldownAlertModal(
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
-                    Icon(Icons.Rounded.Schedule, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                    ThemedIcon(IronPulseIcon.TIMER, contentDescription = null, tint = tokens.infoColor, size = 18.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(lang.t("Tunggu ($cooldownRemaining d)", "Wait (${cooldownRemaining}s)"), color = tokens.palette.onSurface)
                 }
@@ -362,7 +344,7 @@ fun CooldownAlertModal(
                     ),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
-                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(lang.t("Tetap Centang (Lewati)", "Confirm Anyway"), fontWeight = FontWeight.Bold)
                 }
@@ -419,23 +401,44 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "About IronPulse",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = tokens.palette.onSurface
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    ThemeBrandEmblem(
+                        theme = tokens.uiTheme,
+                        accentOverride = tokens.accentColor,
+                        size = 44.dp
                     )
-                    Text(
-                        text = appVersionLabel,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = FontFamily.Monospace,
-                        color = tokens.accentColor
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        ThemeBrandWordmark(
+                            theme = tokens.uiTheme,
+                            accentColor = tokens.accentColor,
+                            fontSize = 19.sp
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "About IronPulse",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = tokens.palette.onSurfaceVariant
+                            )
+                            Text(
+                                text = appVersionLabel,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = FontFamily.Monospace,
+                                color = tokens.accentColor
+                            )
+                        }
+                    }
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant)
+                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant, size = 20.dp)
                 }
             }
 
@@ -454,7 +457,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     letterSpacing = 1.6.sp,
                     color = tokens.accentColor
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                HorizontalDivider(color = tokens.subtleBorderColor)
                 AboutCreditRow(
                     label = "scripter",
                     value = "Fathan, and Artificial intelligence",
@@ -491,7 +494,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     lineHeight = 20.sp,
                     color = tokens.palette.onSurfaceVariant
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                HorizontalDivider(color = tokens.subtleBorderColor)
                 Text(
                     text = listOf(
                         lang.t("Jadwal Mingguan", "Weekly Schedule"),
@@ -604,11 +607,11 @@ fun ActiveAlarmOverlay(
                                 .background(tokens.accentColor, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Alarm,
+                            ThemedIcon(
+                                icon = IronPulseIcon.ALARM,
                                 contentDescription = null,
                                 tint = tokens.onAccentColor,
-                                modifier = Modifier.size(46.dp)
+                                size = 46.dp
                             )
                         }
                     }
@@ -631,7 +634,7 @@ fun ActiveAlarmOverlay(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(14.dp))
+                            ThemedIcon(IronPulseIcon.MUSIC, contentDescription = null, tint = tokens.accentColor, size = 14.dp)
                             Text(alarm.ringtoneName, fontSize = 12.sp, color = tokens.palette.onSurface)
                         }
                     }
@@ -650,7 +653,7 @@ fun ActiveAlarmOverlay(
                         ),
                         modifier = Modifier.fillMaxWidth().height(54.dp)
                     ) {
-                        Icon(Icons.Rounded.FitnessCenter, contentDescription = null)
+                        ThemedIcon(IronPulseIcon.EXERCISES, contentDescription = null, tint = tokens.onAccentColor, size = 20.dp)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(lang.t("Matikan & Mulai Latihan", "Dismiss & Start Workout"), fontWeight = FontWeight.Bold)
                     }
@@ -660,7 +663,7 @@ fun ActiveAlarmOverlay(
                         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
-                        Icon(Icons.Rounded.Snooze, contentDescription = null, tint = tokens.palette.onSurface)
+                        ThemedIcon(IronPulseIcon.SNOOZE, contentDescription = null, tint = tokens.palette.onSurface, size = 18.dp)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (lang == AppLanguage.EN) "Snooze $snoozeMinutes Min" else "Tunda $snoozeMinutes Menit",

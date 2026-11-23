@@ -64,12 +64,14 @@ object MaterialYouColorEngine {
     const val DEFAULT_ACCENT_COLOR = "#C8FF2E"
     const val YARU_ORANGE_ACCENT = "#E95420"
     const val AMOLED_STEALTH_CYAN_ACCENT = "#00E5FF"
+    const val AERO_SKY_ACCENT = "#0099E5"
 
     fun defaultTintForTheme(theme: UiTheme): String = when (theme) {
         UiTheme.MATERIAL_YOU -> "#1C1B22"
         UiTheme.CARBON_FORGE -> "#12151B"
         UiTheme.UBUNTU_YARU -> "#2C2C2C"
         UiTheme.AMOLED_STEALTH -> "#07080B"
+        UiTheme.FRUTIGER_AERO -> "#DDF5FF"
     }
 
     fun normalizeHexColor(hex: String?, fallback: String = DEFAULT_ACCENT_COLOR): String {
@@ -234,10 +236,31 @@ object MaterialYouColorEngine {
         }
     }
 
+    /**
+     * Ensures any theme accent (including bright neon lime or cyan) remains crisp and
+     * WCAG AA readable when rendered as text, icons, or badges on light Frutiger Aero surfaces.
+     */
+    fun readableAccentOnLight(color: Color): Color {
+        val hex = colorToHex(color)
+        if (contrastRatio(hex, "#F5FBFF") >= 4.6) return color
+        val (r, g, b) = hexToRgb(hex)
+        val (h, s, l) = rgbToHsl(r, g, b)
+        val targetSat = s.coerceIn(42.0, 88.0)
+        var targetLight = min(l, 38.0)
+        while (targetLight > 18.0 && contrastRatio(hslToHex(h, targetSat, targetLight), "#F5FBFF") < 5.0) {
+            targetLight -= 3.0
+        }
+        return parseColor(hslToHex(h, targetSat, targetLight), Color(0xFF005F9E))
+    }
+
     fun generateMaterialYouPalette(
         seedHex: String,
-        surfaceTintOverrideHex: String? = null
+        surfaceTintOverrideHex: String? = null,
+        isLight: Boolean = false
     ): MaterialYouPalette {
+        if (isLight) {
+            return buildFrutigerAeroLightPalette(normalizeHexColor(seedHex, AERO_SKY_ACCENT))
+        }
         val seed = normalizeHexColor(seedHex, DEFAULT_ACCENT_COLOR)
         val (r, g, b) = hexToRgb(seed)
         val (seedH, seedS, _) = rgbToHsl(r, g, b)
@@ -318,6 +341,79 @@ object MaterialYouColorEngine {
 
         return MaterialYouPalette(
             seed = seed,
+            primaryHex = primaryHex,
+            onPrimaryHex = onPrimaryHex,
+            primaryContainerHex = primaryContainerHex,
+            onPrimaryContainerHex = onPrimaryContainerHex,
+            secondaryHex = secondaryHex,
+            onSecondaryHex = onSecondaryHex,
+            secondaryContainerHex = secondaryContainerHex,
+            onSecondaryContainerHex = onSecondaryContainerHex,
+            tertiaryHex = tertiaryHex,
+            onTertiaryHex = onTertiaryHex,
+            tertiaryContainerHex = tertiaryContainerHex,
+            onTertiaryContainerHex = onTertiaryContainerHex,
+            surfaceHex = surfaceHex,
+            surfaceContainerLowestHex = surfaceContainerLowestHex,
+            surfaceContainerLowHex = surfaceContainerLowHex,
+            surfaceContainerHex = surfaceContainerHex,
+            surfaceContainerHighHex = surfaceContainerHighHex,
+            surfaceContainerHighestHex = surfaceContainerHighestHex,
+            onSurfaceHex = onSurfaceHex,
+            onSurfaceVariantHex = onSurfaceVariantHex,
+            outlineHex = outlineHex,
+            outlineVariantHex = outlineVariantHex,
+            primary = parseColor(primaryHex),
+            onPrimary = parseColor(onPrimaryHex),
+            primaryContainer = parseColor(primaryContainerHex),
+            onPrimaryContainer = parseColor(onPrimaryContainerHex),
+            secondary = parseColor(secondaryHex),
+            onSecondary = parseColor(onSecondaryHex),
+            secondaryContainer = parseColor(secondaryContainerHex),
+            onSecondaryContainer = parseColor(onSecondaryContainerHex),
+            tertiary = parseColor(tertiaryHex),
+            onTertiary = parseColor(onTertiaryHex),
+            tertiaryContainer = parseColor(tertiaryContainerHex),
+            onTertiaryContainer = parseColor(onTertiaryContainerHex),
+            surface = parseColor(surfaceHex),
+            surfaceContainerLowest = parseColor(surfaceContainerLowestHex),
+            surfaceContainerLow = parseColor(surfaceContainerLowHex),
+            surfaceContainer = parseColor(surfaceContainerHex),
+            surfaceContainerHigh = parseColor(surfaceContainerHighHex),
+            surfaceContainerHighest = parseColor(surfaceContainerHighestHex),
+            onSurface = parseColor(onSurfaceHex),
+            onSurfaceVariant = parseColor(onSurfaceVariantHex),
+            outline = parseColor(outlineHex),
+            outlineVariant = parseColor(outlineVariantHex)
+        )
+    }
+
+    private fun buildFrutigerAeroLightPalette(primaryHex: String): MaterialYouPalette {
+        val onPrimaryHex = "#FFFFFF"
+        val primaryContainerHex = "#CBEFFF"
+        val onPrimaryContainerHex = "#022D4A"
+        val secondaryHex = "#0F9D58"
+        val onSecondaryHex = "#FFFFFF"
+        val secondaryContainerHex = "#D2F6E2"
+        val onSecondaryContainerHex = "#063C21"
+        val tertiaryHex = "#0369A1"
+        val onTertiaryHex = "#FFFFFF"
+        val tertiaryContainerHex = "#D6F1FF"
+        val onTertiaryContainerHex = "#042E4A"
+
+        val surfaceHex = "#DFF4FF"
+        val surfaceContainerLowestHex = "#FFFFFF"
+        val surfaceContainerLowHex = "#F5FBFF"
+        val surfaceContainerHex = "#ECF8FF"
+        val surfaceContainerHighHex = "#DCEFFF"
+        val surfaceContainerHighestHex = "#C8E6FF"
+        val onSurfaceHex = "#071E36"
+        val onSurfaceVariantHex = "#24496A"
+        val outlineHex = "#4C87B2"
+        val outlineVariantHex = "#8EC6E8"
+
+        return MaterialYouPalette(
+            seed = primaryHex,
             primaryHex = primaryHex,
             onPrimaryHex = onPrimaryHex,
             primaryContainerHex = primaryContainerHex,

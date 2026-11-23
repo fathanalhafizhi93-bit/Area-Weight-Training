@@ -41,10 +41,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.VolumeUp
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,10 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -71,6 +69,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInRoot
@@ -88,6 +87,7 @@ import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.TimePhasePose
+import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
@@ -300,14 +300,18 @@ fun MascotOrbFace(
     val pathA = remember { Path() }
     val pathB = remember { Path() }
 
+    val theme = tokens.uiTheme
+    val accent = tokens.accentColor
+
     Box(
         modifier = modifier
             .size(size)
+            .testTag("mascot_orb_${theme.wireValue}")
             .graphicsLayer { },
         contentAlignment = Alignment.Center
     ) {
-        // Outer breathing pulse ring (GPU graphicsLayer — reads State inside draw/layer only)
-        Box(
+        // OS-distinct outer breathing halo / bezel ring
+        Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -315,10 +319,97 @@ fun MascotOrbFace(
                     scaleX = s
                     scaleY = s
                 }
-                .border(2.dp, ringBorderColor, CircleShape)
-        )
+        ) {
+            val cx = this.size.width * 0.5f
+            val cy = this.size.height * 0.5f
+            val r = this.size.minDimension * 0.48f
+            val sw = 2.dp.toPx()
+            when (theme) {
+                UiTheme.FRUTIGER_AERO -> {
+                    // Luminous Y2K crystal water bubble aura
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0x557CE8FF), Color(0x334ADE80), Color.Transparent),
+                            center = Offset(cx, cy),
+                            radius = r * 1.06f
+                        ),
+                        radius = r,
+                        center = Offset(cx, cy)
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.88f),
+                        radius = r * 0.96f,
+                        center = Offset(cx, cy),
+                        style = Stroke(sw * 0.9f)
+                    )
+                }
+                UiTheme.CARBON_FORGE -> {
+                    // Brushed titanium mechanical bezel ring with 4 cardinal machined ticks
+                    drawCircle(
+                        brush = Brush.linearGradient(
+                            listOf(Color(0xFFE2E8F0), Color(0xFF475569), accent)
+                        ),
+                        radius = r * 0.97f,
+                        center = Offset(cx, cy),
+                        style = Stroke(sw * 1.15f)
+                    )
+                    for (deg in listOf(0.0, 90.0, 180.0, 270.0)) {
+                        val rad = Math.toRadians(deg)
+                        val c = kotlin.math.cos(rad).toFloat()
+                        val s = kotlin.math.sin(rad).toFloat()
+                        drawLine(
+                            color = Color(0xFFE2E8F0),
+                            start = Offset(cx + r * 0.84f * c, cy + r * 0.84f * s),
+                            end = Offset(cx + r * 1.01f * c, cy + r * 1.01f * s),
+                            strokeWidth = sw * 1.1f,
+                            cap = StrokeCap.Square
+                        )
+                    }
+                }
+                UiTheme.UBUNTU_YARU -> {
+                    // Ubuntu orbital ring with 3 signature Yaru orange nodes
+                    drawCircle(
+                        color = Color(0xFFE95420).copy(alpha = 0.65f),
+                        radius = r * 0.96f,
+                        center = Offset(cx, cy),
+                        style = Stroke(sw * 0.95f)
+                    )
+                    for (deg in listOf(-90.0, 30.0, 150.0)) {
+                        val rad = Math.toRadians(deg)
+                        val nx = cx + (r * 0.96f * kotlin.math.cos(rad)).toFloat()
+                        val ny = cy + (r * 0.96f * kotlin.math.sin(rad)).toFloat()
+                        drawCircle(Color(0xFF231D22), sw * 1.6f, Offset(nx, ny))
+                        drawCircle(Color(0xFFE95420), sw * 1.15f, Offset(nx, ny))
+                    }
+                }
+                UiTheme.AMOLED_STEALTH -> {
+                    // Tactical HUD segmented holographic scan arcs + reticle pips
+                    val hudColor = accent.copy(alpha = 0.82f)
+                    for (start in listOf(-32f, 58f, 148f, 238f)) {
+                        drawArc(
+                            color = hudColor,
+                            startAngle = start,
+                            sweepAngle = 54f,
+                            useCenter = false,
+                            topLeft = Offset(cx - r * 0.97f, cy - r * 0.97f),
+                            size = Size(r * 1.94f, r * 1.94f),
+                            style = Stroke(sw * 0.85f, cap = StrokeCap.Square)
+                        )
+                    }
+                }
+                UiTheme.MATERIAL_YOU -> {
+                    // Expressive M3 tonal breathing aura ring
+                    drawCircle(
+                        color = ringBorderColor,
+                        radius = r * 0.96f,
+                        center = Offset(cx, cy),
+                        style = Stroke(sw)
+                    )
+                }
+            }
+        }
 
-        // Core dark circular orb (GPU graphicsLayer: bob + squash/stretch + natural head tilt)
+        // Core OS-styled circular orb chassis (GPU graphicsLayer: bob + squash/stretch + natural head tilt)
         Box(
             modifier = Modifier
                 .size(size * 0.875f)
@@ -330,8 +421,117 @@ fun MascotOrbFace(
                     rotationZ = headTiltState.value
                 }
                 .clip(CircleShape)
-                .background(Color(0xF2121620))
-                .border(2.dp, phaseColor, CircleShape),
+                .drawBehind {
+                    val cx = this.size.width * 0.5f
+                    val cy = this.size.height * 0.5f
+                    val r = this.size.minDimension * 0.5f
+                    when (theme) {
+                        UiTheme.FRUTIGER_AERO -> {
+                            // 3D Glossy Aqua Crystal Water-Droplet Orb (deep ocean center keeps white eyes crisp!)
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to Color(0xFF0B6BB8),
+                                        0.58f to Color(0xFF004C8C),
+                                        0.92f to Color(0xFF003262),
+                                        1.0f to Color(0xFF00244A)
+                                    ),
+                                    center = Offset(cx * 0.92f, cy * 0.82f),
+                                    radius = r * 1.12f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            // Fresh Aero mint-aqua lower refraction bounce
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(Color(0x8834D399), Color.Transparent),
+                                    center = Offset(cx, cy * 1.62f),
+                                    radius = r * 0.85f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            // Iconic Y2K glossy white gel upper dome reflection
+                            drawOval(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.White.copy(alpha = 0.62f), Color.Transparent)
+                                ),
+                                topLeft = Offset(cx - r * 0.68f, cy - r * 0.88f),
+                                size = Size(r * 1.36f, r * 0.58f)
+                            )
+                        }
+                        UiTheme.CARBON_FORGE -> {
+                            // Anodized forged titanium core with diagonal metallic sheen
+                            drawCircle(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(Color(0xFF232936), Color(0xFF101319), Color(0xFF080A0E)),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(this.size.width, this.size.height)
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(accent.copy(alpha = 0.22f), Color.Transparent),
+                                    center = Offset(cx, cy * 1.45f),
+                                    radius = r * 0.9f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                        }
+                        UiTheme.UBUNTU_YARU -> {
+                            // Warm aubergine-to-charcoal GNOME matte orb
+                            drawCircle(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF3E1C35), Color(0xFF261F25), Color(0xFF1A171B))
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                        }
+                        UiTheme.AMOLED_STEALTH -> {
+                            // Pitch-black tactical stealth visor
+                            drawCircle(Color(0xFF000000), r, Offset(cx, cy))
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(accent.copy(alpha = 0.14f), Color.Transparent),
+                                    center = Offset(cx, cy),
+                                    radius = r
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                        }
+                        UiTheme.MATERIAL_YOU -> {
+                            // Expressive M3 tonal frosted core
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        tokens.palette.surfaceContainerHighest,
+                                        Color(0xF5141824)
+                                    ),
+                                    center = Offset(cx * 0.78f, cy * 0.68f),
+                                    radius = r * 1.15f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                        }
+                    }
+                }
+                .border(
+                    width = if (theme == UiTheme.FRUTIGER_AERO) 2.2.dp else 2.dp,
+                    color = when (theme) {
+                        UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.92f)
+                        UiTheme.UBUNTU_YARU -> Color(0xFFE95420)
+                        UiTheme.AMOLED_STEALTH -> accent
+                        else -> phaseColor
+                    },
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(size * 0.72f)) {
@@ -836,7 +1036,7 @@ fun TodayMascot(
                         text = line.headline,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF4F5F7),
+                        color = tokens.palette.onSurface,
                         lineHeight = 18.sp
                     )
                     if (line.subline.isNotEmpty()) {
@@ -859,11 +1059,11 @@ fun TodayMascot(
                     .size(36.dp)
                     .tactilePress(disabledByPerf = tokens.performance.noAnimations)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.VolumeUp,
+                ThemedIcon(
+                    icon = IronPulseIcon.VOLUME,
                     contentDescription = "Speak mascot line",
                     tint = phaseColor,
-                    modifier = Modifier.size(18.dp)
+                    size = 18.dp
                 )
             }
         }
@@ -1041,7 +1241,7 @@ fun FloatingMascotDock(
                                 text = line.headline,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF4F5F7),
+                                color = tokens.palette.onSurface,
                                 lineHeight = 17.sp
                             )
                             if (line.subline.isNotEmpty()) {
@@ -1055,13 +1255,13 @@ fun FloatingMascotDock(
                             }
                         }
                     }
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
+                    ThemedIcon(
+                        icon = IronPulseIcon.CLOSE,
                         contentDescription = "Tutup",
                         tint = tokens.mutedTextColor,
+                        size = 18.dp,
                         modifier = Modifier
                             .padding(start = 6.dp)
-                            .size(18.dp)
                             .clickable { bubbleOpen = false }
                     )
                 }

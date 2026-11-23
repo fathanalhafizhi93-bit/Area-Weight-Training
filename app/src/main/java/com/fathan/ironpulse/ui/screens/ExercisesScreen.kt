@@ -31,22 +31,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.LibraryAdd
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -86,6 +73,8 @@ import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
+import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
@@ -186,7 +175,7 @@ fun ExercisesScreen(
                                 .tactilePress(disabledByPerf = noAnim),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Icon(Icons.Rounded.LibraryAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 18.dp)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = lang.t("Pustaka", "Library"),
@@ -205,7 +194,7 @@ fun ExercisesScreen(
                                 .tactilePress(disabledByPerf = noAnim),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Icon(Icons.Rounded.Add, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+                            ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = lang.t("Buat Baru", "Custom"),
@@ -320,7 +309,7 @@ fun ExercisesScreen(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (exercises.size >= 30) Color(0xFFFBBF24) else tokens.accentColor,
+                        color = if (exercises.size >= 30) tokens.warningColor else tokens.accentTextColor,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
@@ -346,11 +335,11 @@ fun ExercisesScreen(
                             .border(1.dp, tokens.accentColor.copy(alpha = 0.35f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.FitnessCenter,
+                        ThemedIcon(
+                            icon = IronPulseIcon.EXERCISES,
                             contentDescription = null,
                             tint = tokens.accentColor,
-                            modifier = Modifier.size(26.dp)
+                            size = 26.dp
                         )
                     }
                     Text(
@@ -379,7 +368,7 @@ fun ExercisesScreen(
                             contentColor = tokens.onAccentColor
                         )
                     ) {
-                        Icon(Icons.Rounded.LibraryAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                        ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 18.dp)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(lang.t("Buka Pustaka Gerakan", "Open Exercise Library"), fontWeight = FontWeight.Bold)
                     }
@@ -508,7 +497,7 @@ private fun ScheduledExerciseManageCard(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
-                        color = tokens.accentColor
+                        color = tokens.accentTextColor
                     )
                 }
 
@@ -526,26 +515,26 @@ private fun ScheduledExerciseManageCard(
                     ) {
                         SmallMetaBadge(
                             text = exercise.muscleGroup.label(lang),
-                            color = tokens.accentColor,
+                            color = tokens.accentTextColor,
                             fill = tokens.accentColor.copy(alpha = 0.12f)
                         )
                         SmallMetaBadge(
                             text = exercise.equipment,
                             color = tokens.palette.onSurfaceVariant,
-                            fill = Color.White.copy(alpha = 0.06f)
+                            fill = tokens.subtleChipBg
                         )
                         if (isTimer) {
                             SmallMetaBadge(
                                 text = if (exercise.timerDirection == TimerDirection.COUNTUP) "COUNT-UP" else "COUNTDOWN",
-                                color = Color(0xFF38BDF8),
-                                fill = Color(0x1E38BDF8)
+                                color = tokens.infoColor,
+                                fill = tokens.infoColor.copy(alpha = 0.14f)
                             )
                         }
                         if (!exercise.usesWeight) {
                             SmallMetaBadge(
                                 text = lang.t("Tanpa Beban", "Bodyweight"),
-                                color = Color(0xFF34D399),
-                                fill = Color(0x1E34D399)
+                                color = tokens.successColor,
+                                fill = tokens.successColor.copy(alpha = 0.14f)
                             )
                         }
                     }
@@ -559,11 +548,11 @@ private fun ScheduledExerciseManageCard(
                     enabled = index > 0,
                     modifier = Modifier.size(32.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowUp,
+                    ThemedIcon(
+                        icon = IronPulseIcon.EXPAND_LESS,
                         contentDescription = lang.t("Naik", "Move up"),
                         tint = if (index > 0) tokens.palette.onSurface else tokens.palette.onSurfaceVariant.copy(alpha = 0.3f),
-                        modifier = Modifier.size(18.dp)
+                        size = 18.dp
                     )
                 }
                 IconButton(
@@ -571,27 +560,27 @@ private fun ScheduledExerciseManageCard(
                     enabled = index < total - 1,
                     modifier = Modifier.size(32.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                    ThemedIcon(
+                        icon = IronPulseIcon.EXPAND_MORE,
                         contentDescription = lang.t("Turun", "Move down"),
                         tint = if (index < total - 1) tokens.palette.onSurface else tokens.palette.onSurfaceVariant.copy(alpha = 0.3f),
-                        modifier = Modifier.size(18.dp)
+                        size = 18.dp
                     )
                 }
                 IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.Edit,
+                    ThemedIcon(
+                        icon = IronPulseIcon.EDIT,
                         contentDescription = lang.t("Ubah", "Edit"),
-                        tint = tokens.accentColor,
-                        modifier = Modifier.size(17.dp)
+                        tint = tokens.accentTextColor,
+                        size = 17.dp
                     )
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.DeleteOutline,
+                    ThemedIcon(
+                        icon = IronPulseIcon.DELETE,
                         contentDescription = lang.t("Hapus", "Delete"),
-                        tint = Color(0xFFF87171),
-                        modifier = Modifier.size(17.dp)
+                        tint = tokens.dangerColor,
+                        size = 17.dp
                     )
                 }
             }
@@ -761,7 +750,7 @@ private fun ExerciseLibraryModal(
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant)
+                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant, size = 18.dp)
                 }
             }
 
@@ -770,11 +759,11 @@ private fun ExerciseLibraryModal(
                 value = query,
                 onValueChange = { query = it },
                 placeholder = { Text(lang.t("Cari nama gerakan, otot, atau alat...", "Search movement, muscle, or gear...")) },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = tokens.accentColor) },
+                leadingIcon = { ThemedIcon(IronPulseIcon.SEARCH, contentDescription = null, tint = tokens.accentColor, size = 18.dp) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Rounded.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                            ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Clear", size = 18.dp)
                         }
                     }
                 },
@@ -910,11 +899,11 @@ private fun ExerciseLibraryModal(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (isChecked) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Check,
+                                            ThemedIcon(
+                                                icon = IronPulseIcon.CHECK,
                                                 contentDescription = null,
                                                 tint = tokens.onAccentColor,
-                                                modifier = Modifier.size(16.dp)
+                                                size = 16.dp
                                             )
                                         }
                                     }
@@ -963,10 +952,11 @@ private fun ExerciseLibraryModal(
                                         enabled = remainingSlots > 0,
                                         modifier = Modifier.size(34.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Add,
+                                        ThemedIcon(
+                                            icon = IronPulseIcon.ADD,
                                             contentDescription = lang.t("Tambah", "Add"),
-                                            tint = if (remainingSlots > 0) tokens.accentColor else tokens.palette.onSurfaceVariant
+                                            tint = if (remainingSlots > 0) tokens.accentColor else tokens.palette.onSurfaceVariant,
+                                            size = 18.dp
                                         )
                                     }
                                 }
@@ -990,7 +980,7 @@ private fun ExerciseLibraryModal(
                     ),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    ThemedIcon(IronPulseIcon.ADD, contentDescription = null, size = 18.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = lang.t(
@@ -1091,7 +1081,7 @@ private fun ExerciseFormModal(
                     color = tokens.palette.onSurface
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant)
+                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant, size = 18.dp)
                 }
             }
 
@@ -1101,8 +1091,8 @@ private fun ExerciseFormModal(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
-                    Triple(ExerciseTrackingMode.REPS, lang.t("Repetisi & Set", "Reps & Sets"), Icons.Rounded.FitnessCenter),
-                    Triple(ExerciseTrackingMode.TIMER, lang.t("Timer / Durasi", "Timer / Duration"), Icons.Rounded.Timer)
+                    Triple(ExerciseTrackingMode.REPS, lang.t("Repetisi & Set", "Reps & Sets"), IronPulseIcon.EXERCISES),
+                    Triple(ExerciseTrackingMode.TIMER, lang.t("Timer / Durasi", "Timer / Duration"), IronPulseIcon.TIMER)
                 ).forEach { (mode, label, icon) ->
                     val active = trackingMode == mode
                     Surface(
@@ -1123,11 +1113,11 @@ private fun ExerciseFormModal(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                imageVector = icon,
+                            ThemedIcon(
+                                icon = icon,
                                 contentDescription = null,
                                 tint = if (active) tokens.accentColor else tokens.palette.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
+                                size = 16.dp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -1373,10 +1363,10 @@ private fun ExerciseFormModal(
             )
 
             if (errorMsg != null) {
-                Text(text = errorMsg ?: "", fontSize = 12.sp, color = Color(0xFFFCA5A5))
+                Text(text = errorMsg ?: "", fontSize = 12.sp, color = tokens.dangerColor)
             }
 
-            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+            HorizontalDivider(color = tokens.dividerColor)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1438,7 +1428,7 @@ private fun ExerciseFormModal(
                     ),
                     modifier = Modifier.weight(1.4f).height(46.dp)
                 ) {
-                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, size = 18.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(lang.t("Simpan Gerakan", "Save Movement"), fontWeight = FontWeight.Bold)
                 }

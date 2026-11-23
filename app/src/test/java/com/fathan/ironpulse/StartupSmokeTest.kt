@@ -72,6 +72,7 @@ import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
+import com.fathan.ironpulse.ui.components.ThemeBrandLockup
 import com.fathan.ironpulse.ui.components.TodayMascot
 import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
@@ -85,6 +86,7 @@ import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.resolveThemeFontPack
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
@@ -321,8 +323,8 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun uiTheme_hasFourLightweightThemesAndLegacyWireFallback() {
-        assertEquals(4, UiTheme.entries.size)
+    fun uiTheme_hasFiveThemesIncludingFrutigerAeroAndLegacyFallback() {
+        assertEquals(5, UiTheme.entries.size)
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("midnight-frosted"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("aeroglass"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("obsidian"))
@@ -330,6 +332,7 @@ class StartupSmokeTest {
         assertEquals(UiTheme.CARBON_FORGE, UiTheme.fromWire("carbon-forge"))
         assertEquals(UiTheme.UBUNTU_YARU, UiTheme.fromWire("ubuntu-yaru"))
         assertEquals(UiTheme.AMOLED_STEALTH, UiTheme.fromWire("amoled-stealth"))
+        assertEquals(UiTheme.FRUTIGER_AERO, UiTheme.fromWire("frutiger-aero"))
     }
 
     @Test
@@ -1021,4 +1024,463 @@ class StartupSmokeTest {
         assertTrue(GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.NIGHT) >= 240_000L)
         assertTrue(GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.MORNING) < GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.NIGHT))
     }
+
+    @Test
+    fun preferencesStore_persistsWorkoutFocusHudEnabled() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val store = PreferencesStore(context)
+        store.setWorkoutFocusHudEnabled(false)
+        assertFalse(store.state.value.workoutFocusHudEnabled)
+
+        store.setWorkoutFocusHudEnabled(true)
+        assertTrue(store.state.value.workoutFocusHudEnabled)
+
+        val reloaded = PreferencesStore(context)
+        assertTrue(reloaded.state.value.workoutFocusHudEnabled)
+
+        store.setWorkoutFocusHudEnabled(false)
+        assertFalse(PreferencesStore(context).state.value.workoutFocusHudEnabled)
+    }
+
+    @Test
+    fun gymFocusHudStage_switchesExercisesAdjustsMetricsAndControlsRestRing() {
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+        val timersFlow = MutableStateFlow(emptyMap<String, com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState>())
+        val cooldownFlow = MutableStateFlow(0)
+
+        val entries = listOf(
+            WorkoutLogEntry(
+                exerciseId = "ex_bench",
+                name = "Bench Press",
+                muscleGroup = MuscleGroup.DADA,
+                usesWeight = true,
+                sets = listOf(
+                    WorkoutSetLog(setNumber = 1, weightKg = 60.0, reps = 10, completed = false),
+                    WorkoutSetLog(setNumber = 2, weightKg = 60.0, reps = 10, completed = false)
+                )
+            ),
+            WorkoutLogEntry(
+                exerciseId = "ex_plank",
+                name = "Plank Hold",
+                muscleGroup = MuscleGroup.CORE,
+                trackingMode = com.fathan.ironpulse.model.ExerciseTrackingMode.TIMER,
+                usesWeight = false,
+                targetDurationSeconds = 45,
+                sets = listOf(
+                    WorkoutSetLog(setNumber = 1, weightKg = 0.0, reps = 1, durationSeconds = 45, completed = false)
+                )
+            )
+        )
+        val specs = listOf(
+            com.fathan.ironpulse.model.ExerciseItem(
+                id = "ex_bench",
+                name = "Bench Press",
+                muscleGroup = MuscleGroup.DADA,
+                targetSets = 2,
+                targetReps = "8-10",
+                targetWeightKg = 60.0,
+                restSeconds = 90,
+                equipment = "Barbell",
+                notes = "Kunci bahu ke belakang"
+            ),
+            com.fathan.ironpulse.model.ExerciseItem(
+                id = "ex_plank",
+                name = "Plank Hold",
+                muscleGroup = MuscleGroup.CORE,
+                equipment = "Bodyweight",
+                targetSets = 1,
+                targetReps = "45d",
+                targetWeightKg = 0.0,
+                restSeconds = 45,
+                notes = "Pertahankan pinggul sejajar",
+                trackingMode = com.fathan.ironpulse.model.ExerciseTrackingMode.TIMER,
+                usesWeight = false,
+                targetDurationSeconds = 45
+            )
+        )
+
+        var activeIdx by mutableStateOf(0)
+        var currentEntries by mutableStateOf(entries)
+        var completedTriggerCount = 0
+        val adjustDeltas = mutableListOf<Int>()
+        var restToggledCount = 0
+        var restSkippedCount = 0
+        var restDismissed by mutableStateOf(false)
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.AMOLED_STEALTH,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                )
+            ) {
+                Box(modifier = Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
+                    val entry = currentEntries[activeIdx]
+                    com.fathan.ironpulse.ui.screens.GymFocusHudStage(
+                        index = activeIdx,
+                        totalExercises = currentEntries.size,
+                        entry = entry,
+                        spec = specs[activeIdx],
+                        notesExpanded = false,
+                        onToggleNotes = {},
+                        restBarDismissed = restDismissed,
+                        restTimerFlow = restFlow,
+                        exerciseTimersFlow = timersFlow,
+                        cooldownSecondsFlow = cooldownFlow,
+                        onPrevExercise = { if (activeIdx > 0) activeIdx -= 1 },
+                        onNextExercise = { if (activeIdx < currentEntries.lastIndex) activeIdx += 1 },
+                        onStartRest = { secs ->
+                            restDismissed = false
+                            restFlow.value = RestTimerDisplayState(
+                                isActive = true,
+                                remainingSeconds = secs,
+                                totalSeconds = secs,
+                                exerciseName = entry.name
+                            )
+                        },
+                        onAdjustRest = { delta -> adjustDeltas.add(delta) },
+                        onToggleRestPause = { restToggledCount += 1 },
+                        onDismissRest = {
+                            restDismissed = true
+                            restSkippedCount += 1
+                        },
+                        onUndismissRest = { restDismissed = false },
+                        onToggleSetComplete = { setNum ->
+                            completedTriggerCount += 1
+                            currentEntries = currentEntries.map { e ->
+                                if (e.exerciseId == entry.exerciseId) {
+                                    e.copy(sets = e.sets.map { s ->
+                                        if (s.setNumber == setNum) s.copy(completed = !s.completed) else s
+                                    })
+                                } else e
+                            }
+                        },
+                        onUpdateSetMetrics = { setNum, w, r ->
+                            currentEntries = currentEntries.map { e ->
+                                if (e.exerciseId == entry.exerciseId) {
+                                    e.copy(sets = e.sets.map { s ->
+                                        if (s.setNumber == setNum) s.copy(weightKg = w, reps = r) else s
+                                    })
+                                } else e
+                            }
+                        },
+                        onUpdateSetDuration = { _, _ -> },
+                        onToggleExerciseTimer = {},
+                        onResetExerciseTimer = {},
+                        onSelectExerciseTimerSet = {},
+                        onChangeTimerDirection = {},
+                        onSaveExerciseTimer = {},
+                        onAddSet = {},
+                        onRemoveSet = {},
+                        secUnit = "d"
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("gym_focus_hud_stage").assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_exercise_title").assertIsDisplayed()
+        composeRule.onNodeWithText("Bench Press").assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_rest_idle_strip").assertIsDisplayed()
+
+        // Adjust weight (+2.5 kg) and reps (+1) via giant steppers
+        composeRule.onNodeWithTag("hud_weight_inc").performScrollTo().performClick()
+        composeRule.onNodeWithTag("hud_reps_inc").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("62.5").assertIsDisplayed()
+        composeRule.onNodeWithText("11").assertIsDisplayed()
+
+        // Complete Set #1 via oversized full-width CTA
+        composeRule.onNodeWithTag("hud_complete_set_button").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(1, completedTriggerCount)
+
+        // Start Rest Timer via recommended preset pill (90d) -> large countdown ring appears with -15d / +15d
+        composeRule.onNodeWithTag("hud_rest_preset_90").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("hud_rest_ring_card").assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_rest_ring_visual").assertIsDisplayed()
+        composeRule.onNodeWithText("01:30").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("hud_rest_minus_15").performScrollTo().performClick()
+        composeRule.onNodeWithTag("hud_rest_plus_15").performScrollTo().performClick()
+        composeRule.onNodeWithTag("hud_rest_toggle").performScrollTo().performClick()
+        assertEquals(listOf(-15, 15), adjustDeltas)
+        assertEquals(1, restToggledCount)
+
+        composeRule.onNodeWithTag("hud_rest_skip").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(1, restSkippedCount)
+        composeRule.onNodeWithTag("hud_rest_idle_strip").performScrollTo().assertIsDisplayed()
+
+        // Switch to Next Exercise (Plank Hold - Timer Mode) and verify timer clock + Prev back
+        composeRule.onNodeWithTag("hud_next_exercise").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Plank Hold").assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_exercise_timer_clock").performScrollTo().assertIsDisplayed()
+
+        composeRule.onNodeWithTag("hud_prev_exercise").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Bench Press").assertIsDisplayed()
+    }
+
+    @Test
+    fun frutigerAeroTheme_usesLightSchemeLocksBlueAccentAndShowsLockedBanner() {
+        var resolvedIsLight = false
+        var resolvedAccentLocked = false
+        var resolvedAccent: Color? = null
+        var resolvedOnSurface: Color? = null
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.FRUTIGER_AERO,
+                    accentColorHex = "#FF4D8D",
+                    materialTintColorHex = "#24192E",
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                )
+            ) {
+                val t = LocalIronPulseTokens.current
+                resolvedIsLight = t.isLightTheme
+                resolvedAccentLocked = t.accentLocked
+                resolvedAccent = t.accentColor
+                resolvedOnSurface = t.palette.onSurface
+
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    AccentAndTintSettingsCard(
+                        accentColorHex = "#FF4D8D",
+                        materialTintColorHex = "#24192E",
+                        onSelectAccent = {},
+                        onOpenAccentPicker = {},
+                        onOpenTintPicker = {},
+                        onSelectMaterialTint = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertTrue("Frutiger Aero must use light theme tokens", resolvedIsLight)
+        assertTrue("Frutiger Aero must lock accent customization", resolvedAccentLocked)
+        assertEquals(
+            "Frutiger Aero accent must stay permanently locked to Aero Sky Blue",
+            Color(0xFF0099E5),
+            resolvedAccent
+        )
+        assertEquals(
+            "Frutiger Aero must use deep oceanic dark text on bright glass",
+            Color(0xFF071E36),
+            resolvedOnSurface
+        )
+        composeRule.onNodeWithTag("accent_locked_banner").assertIsDisplayed()
+        composeRule.onNodeWithText("Biru Aero Terkunci").assertIsDisplayed()
+        composeRule.onNodeWithTag("accent_pick_color_button").assertDoesNotExist()
+        composeRule.onNodeWithTag("tint_pick_color_button").assertDoesNotExist()
+    }
+
+    @Test
+    fun allFiveThemes_renderUniqueBrandLockupsEmblemsAndPhaseLogos() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var phaseSetter: ((DayTimePhase) -> Unit)? = null
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            var activePhase by remember { mutableStateOf(DayTimePhase.MORNING) }
+            themeSetter = { activeTheme = it }
+            phaseSetter = { activePhase = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                ),
+                timePhase = activePhase
+            ) {
+                val t = LocalIronPulseTokens.current
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ThemeBrandLockup(
+                        theme = t.uiTheme,
+                        accentColor = t.accentColor
+                    )
+                    PhaseLogoEmblem(timePhase = activePhase)
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            DayTimePhase.entries.forEach { phase ->
+                composeRule.runOnUiThread { phaseSetter?.invoke(phase) }
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag("theme_brand_lockup_${theme.wireValue}").assertIsDisplayed()
+                composeRule.onNodeWithTag("theme_brand_emblem_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
+                composeRule.onNodeWithTag("theme_brand_wordmark_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
+                composeRule.onNodeWithTag("phase_emblem_${theme.wireValue}_${phase.name.lowercase(Locale.US)}").assertIsDisplayed()
+            }
+        }
+    }
+
+    @Test
+    fun allFiveOsThemes_provideUniqueBundledFontPacksAndBadges() {
+        val packs = UiTheme.entries.map { resolveThemeFontPack(it) }
+        assertEquals(5, packs.size)
+        assertEquals(
+            "Every theme must have a unique bundled display font",
+            5,
+            packs.map { it.displayFont }.distinct().size
+        )
+        assertEquals(
+            "Every theme must have a unique font display name",
+            5,
+            packs.map { it.fontDisplayName }.distinct().size
+        )
+        assertEquals(
+            "Every theme must have a unique OS badge label",
+            5,
+            packs.map { it.osBadgeLabel }.distinct().size
+        )
+    }
+
+    @Test
+    fun allFiveOsThemes_renderDistinctChromeBackdropsCustomIconsAndMascotOrbs() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            themeSetter = { activeTheme = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                ),
+                timePhase = DayTimePhase.MORNING
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AmbientPhaseBackdrop()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IronPulseTopBar(
+                            activeTab = AppTab.TODAY,
+                            aboutOpen = false,
+                            onLogoClick = {},
+                            onOpenSettings = {},
+                            onOpenAbout = {},
+                            onTestAlarm = {}
+                        )
+                        MascotOrbFace(
+                            mascot = MascotUiState(),
+                            size = 64.dp
+                        )
+                        IronPulseBottomNav(
+                            activeTab = AppTab.TODAY,
+                            restTimerFlow = restFlow,
+                            onSelectTab = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag("os_backdrop_${theme.wireValue}").assertIsDisplayed()
+            composeRule.onNodeWithTag("os_top_bar_${theme.wireValue}").assertIsDisplayed()
+            composeRule.onNodeWithTag("os_bottom_nav_${theme.wireValue}").assertIsDisplayed()
+            composeRule.onNodeWithTag("mascot_orb_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_settings", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_today", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_schedule", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_history", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_exercises", useUnmergedTree = true).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun frutigerAeroAndAllThemes_exposeHighContrastSemanticTokensAndReadableLightAccents() {
+        fun linearChannel(c: Float): Double {
+            val d = c.toDouble()
+            return if (d <= 0.03928) d / 12.92 else Math.pow((d + 0.055) / 1.055, 2.4)
+        }
+        fun wcagContrastOnAeroLight(color: Color): Double {
+            val lumInk = 0.2126 * linearChannel(color.red) +
+                0.7152 * linearChannel(color.green) +
+                0.0722 * linearChannel(color.blue)
+            val aeroGlass = Color(0xFFF5FBFF)
+            val lumBg = 0.2126 * linearChannel(aeroGlass.red) +
+                0.7152 * linearChannel(aeroGlass.green) +
+                0.0722 * linearChannel(aeroGlass.blue)
+            return (lumBg + 0.05) / (lumInk + 0.05)
+        }
+
+        // Bright neon accents must darken to WCAG AA (>= 4.6:1) on light Aero surfaces
+        val limeLightInk = MaterialYouColorEngine.readableAccentOnLight(Color(0xFFC8FF2E))
+        val cyanLightInk = MaterialYouColorEngine.readableAccentOnLight(Color(0xFF00E5FF))
+        val limeRatio = wcagContrastOnAeroLight(limeLightInk)
+        val cyanRatio = wcagContrastOnAeroLight(cyanLightInk)
+        assertTrue("Expected lime ink WCAG contrast >= 4.6 on Aero light glass, was $limeRatio", limeRatio >= 4.6)
+        assertTrue("Expected cyan ink WCAG contrast >= 4.6 on Aero light glass, was $cyanRatio", cyanRatio >= 4.6)
+
+        var aeroAccentLocked = false
+        var aeroAccentColor: Color? = null
+        var aeroAccentTextColor: Color? = null
+        var aeroWarningColor: Color? = null
+        var aeroDangerColor: Color? = null
+        var aeroSuccessColor: Color? = null
+        var aeroDividerColor: Color? = null
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.FRUTIGER_AERO,
+                    accentColorHex = "#C8FF2E",
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                val t = LocalIronPulseTokens.current
+                aeroAccentLocked = t.accentLocked
+                aeroAccentColor = t.accentColor
+                aeroAccentTextColor = t.accentTextColor
+                aeroWarningColor = t.warningColor
+                aeroDangerColor = t.dangerColor
+                aeroSuccessColor = t.successColor
+                aeroDividerColor = t.dividerColor
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertTrue("Frutiger Aero accent must remain locked", aeroAccentLocked)
+        assertEquals(Color(0xFF0099E5), aeroAccentColor)
+        assertEquals(Color(0xFF005F9E), aeroAccentTextColor)
+        assertEquals(Color(0xFFB45309), aeroWarningColor)
+        assertEquals(Color(0xFFB91C1C), aeroDangerColor)
+        assertEquals(Color(0xFF15803D), aeroSuccessColor)
+        assertTrue(wcagContrastOnAeroLight(aeroAccentTextColor!!) >= 4.5)
+        assertTrue(wcagContrastOnAeroLight(aeroWarningColor!!) >= 4.5)
+        assertTrue(wcagContrastOnAeroLight(aeroDangerColor!!) >= 4.5)
+        assertTrue(wcagContrastOnAeroLight(aeroSuccessColor!!) >= 4.5)
+        assertNotNull(aeroDividerColor)
+        assertTrue("Frutiger Aero divider must be tinted dark-sky, not white", aeroDividerColor!!.red < 0.2f)
+    }
 }
+

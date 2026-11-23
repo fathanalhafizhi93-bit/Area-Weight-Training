@@ -35,12 +35,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -73,6 +68,8 @@ import androidx.compose.ui.zIndex
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
+import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.CooldownAlertModal
 import com.fathan.ironpulse.ui.components.FloatingMascotDock
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
@@ -379,11 +376,11 @@ fun IronPulseRoot(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.CloudOff,
+                                            ThemedIcon(
+                                                icon = IronPulseIcon.CLOUD_OFF,
                                                 contentDescription = null,
                                                 tint = Color(0xFFFBBF24),
-                                                modifier = Modifier.size(16.dp)
+                                                size = 16.dp
                                             )
                                             Text(
                                                 text = lang.t(
@@ -412,11 +409,11 @@ fun IronPulseRoot(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Warning,
+                                            ThemedIcon(
+                                                icon = IronPulseIcon.WARNING,
                                                 contentDescription = null,
                                                 tint = Color(0xFFFCA5A5),
-                                                modifier = Modifier.size(16.dp)
+                                                size = 16.dp
                                             )
                                             Text(
                                                 text = syncErr,
@@ -428,7 +425,7 @@ fun IronPulseRoot(
                                                 onClick = { viewModel.retrySync() },
                                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                                             ) {
-                                                Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                                ThemedIcon(IronPulseIcon.REFRESH, contentDescription = null, tint = Color.White, size = 14.dp)
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(lang.t("Coba Lagi", "Retry"), fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             }

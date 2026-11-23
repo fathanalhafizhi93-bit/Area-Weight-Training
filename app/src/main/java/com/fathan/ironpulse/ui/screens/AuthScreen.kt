@@ -24,12 +24,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +53,10 @@ import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MascotSpeechLine
 import com.fathan.ironpulse.model.TimePhasePose
+import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.MascotOrbFace
+import com.fathan.ironpulse.ui.components.ThemeBrandLockup
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
@@ -134,7 +134,7 @@ fun AuthScreen(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(0.42f)
+                    .alpha(if (tokens.isLightTheme) 0.12f else 0.42f)
             )
         }
 
@@ -180,17 +180,11 @@ fun AuthScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = Color(0xFFF4F5F7), fontWeight = FontWeight.ExtraBold)) {
-                            append("Iron")
-                        }
-                        withStyle(SpanStyle(color = tokens.accentColor, fontWeight = FontWeight.ExtraBold)) {
-                            append("Pulse")
-                        }
-                    },
-                    fontSize = 24.sp,
-                    letterSpacing = (-0.5).sp
+                ThemeBrandLockup(
+                    theme = tokens.uiTheme,
+                    accentColor = tokens.accentColor,
+                    emblemSize = 30.dp,
+                    fontSize = 22.sp
                 )
 
                 Surface(
@@ -272,7 +266,7 @@ fun AuthScreen(
                             text = displayMascot.activeLine.subline,
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
-                            color = Color(0xFFD5DCE6)
+                            color = tokens.palette.onSurfaceVariant
                         )
                     }
                 }
@@ -297,7 +291,7 @@ fun AuthScreen(
                     lineHeight = 38.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.8).sp,
-                    color = Color(0xFFF4F5F7)
+                    color = tokens.palette.onSurface
                 )
 
                 Text(
@@ -307,7 +301,7 @@ fun AuthScreen(
                     ),
                     fontSize = 14.5.sp,
                     lineHeight = 22.sp,
-                    color = Color(0xFFB5BCC9)
+                    color = tokens.palette.onSurfaceVariant
                 )
 
                 FlowRow(
@@ -358,10 +352,10 @@ fun AuthScreen(
                             fontSize = 14.sp
                         )
                     } else {
-                        Icon(
-                            imageVector = Icons.Rounded.AccountCircle,
+                        ThemedIcon(
+                            icon = IronPulseIcon.PERSON,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            size = 20.dp
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
@@ -390,7 +384,7 @@ fun AuthScreen(
                 ),
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
-                color = Color(0xFF6B7280)
+                color = tokens.mutedTextColor
             )
         }
     }

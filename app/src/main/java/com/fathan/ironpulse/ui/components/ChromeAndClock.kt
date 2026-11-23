@@ -36,24 +36,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.PlayCircle
-import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -75,7 +67,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -125,39 +116,216 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
+            .testTag("os_backdrop_${tokens.uiTheme.wireValue}")
             .drawWithCache {
                 val canvasColor = tokens.canvasBg
+                val strokePx = 1.dp.toPx()
                 val baseGradient = when (tokens.uiTheme) {
                     UiTheme.UBUNTU_YARU -> Brush.verticalGradient(
-                        0.0f to tokens.canvasSecondaryBg,
-                        0.45f to tokens.canvasBg,
-                        1.0f to Color(0xFF171717)
+                        0.0f to Color(0xFF47163B),
+                        0.32f to Color(0xFF2D1628),
+                        0.68f to Color(0xFF1E1B20),
+                        1.0f to Color(0xFF151317)
                     )
                     UiTheme.CARBON_FORGE -> Brush.radialGradient(
-                        colors = listOf(tokens.canvasSecondaryBg, tokens.canvasBg),
-                        center = Offset(size.width * 0.5f, size.height * 0.25f),
+                        colors = listOf(Color(0xFF171C26), Color(0xFF0A0C10), Color(0xFF050608)),
+                        center = Offset(size.width * 0.5f, size.height * 0.18f),
                         radius = size.height.coerceAtLeast(800f) * 0.85f
                     )
-                    UiTheme.MATERIAL_YOU, UiTheme.AMOLED_STEALTH -> null
+                    UiTheme.FRUTIGER_AERO -> Brush.verticalGradient(
+                        0.0f to Color(0xFF66CCFF),
+                        0.30f to Color(0xFFAEE9FF),
+                        0.66f to Color(0xFFE4FAFF),
+                        0.86f to Color(0xFFD7FDE6),
+                        1.0f to Color(0xFFB3F4C9)
+                    )
+                    UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
+                        0.0f to tokens.palette.surfaceContainerLow,
+                        0.45f to tokens.palette.surface,
+                        1.0f to tokens.palette.surfaceContainerLowest
+                    )
+                    UiTheme.AMOLED_STEALTH -> null
                 }
                 val topGlow = when {
                     suppressGlow -> null
-                    tokens.uiTheme == UiTheme.CARBON_FORGE || tokens.uiTheme == UiTheme.AMOLED_STEALTH -> null
+                    tokens.uiTheme == UiTheme.AMOLED_STEALTH -> null
+                    tokens.uiTheme == UiTheme.CARBON_FORGE -> Brush.radialGradient(
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.09f), Color.Transparent),
+                        center = Offset(size.width * 0.88f, size.height * 0.12f),
+                        radius = size.width.coerceAtLeast(480f) * 0.78f
+                    )
                     tokens.uiTheme == UiTheme.UBUNTU_YARU -> Brush.radialGradient(
-                        colors = listOf(Color(0x28E95420), Color.Transparent),
-                        center = Offset(size.width * 0.14f, size.height * 0.06f),
-                        radius = size.width.coerceAtLeast(500f) * 0.92f
+                        colors = listOf(Color(0x3AE95420), Color(0x1A77216F), Color.Transparent),
+                        center = Offset(size.width * 0.14f, size.height * 0.08f),
+                        radius = size.width.coerceAtLeast(520f) * 0.96f
+                    )
+                    tokens.uiTheme == UiTheme.FRUTIGER_AERO -> Brush.radialGradient(
+                        colors = listOf(Color(0xB8FFFFFF), Color(0x3C7CE8FF), Color.Transparent),
+                        center = Offset(size.width * 0.18f, size.height * 0.05f),
+                        radius = size.width.coerceAtLeast(520f) * 0.90f
                     )
                     else -> Brush.radialGradient(
-                        colors = listOf(tokens.accentColor.copy(alpha = 0.09f), Color.Transparent),
-                        center = Offset(size.width * 0.5f, 0f),
-                        radius = size.width.coerceAtLeast(600f) * 0.95f
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.12f), Color.Transparent),
+                        center = Offset(size.width * 0.20f, size.height * 0.06f),
+                        radius = size.width.coerceAtLeast(560f) * 0.88f
                     )
                 }
+                val secondaryGlow = when {
+                    suppressGlow -> null
+                    tokens.uiTheme == UiTheme.MATERIAL_YOU -> Brush.radialGradient(
+                        colors = listOf(tokens.palette.tertiary.copy(alpha = 0.09f), Color.Transparent),
+                        center = Offset(size.width * 0.86f, size.height * 0.72f),
+                        radius = size.width.coerceAtLeast(520f) * 0.85f
+                    )
+                    tokens.uiTheme == UiTheme.UBUNTU_YARU -> Brush.radialGradient(
+                        colors = listOf(Color(0x26E95420), Color.Transparent),
+                        center = Offset(size.width * 0.88f, size.height * 0.84f),
+                        radius = size.width.coerceAtLeast(460f) * 0.75f
+                    )
+                    tokens.uiTheme == UiTheme.FRUTIGER_AERO -> Brush.radialGradient(
+                        colors = listOf(Color(0x484ADE80), Color.Transparent),
+                        center = Offset(size.width * 0.86f, size.height * 0.92f),
+                        radius = size.width.coerceAtLeast(520f) * 0.88f
+                    )
+                    else -> null
+                }
+                val carbonBgTwill = if (tokens.uiTheme == UiTheme.CARBON_FORGE) {
+                    com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache.getCarbonTwillBrush(
+                        cellPx = (3.dp.toPx()).toInt().coerceIn(5, 10),
+                        subtle = true
+                    )
+                } else null
+
+                val aeroHillBack = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
+                    Path().apply {
+                        moveTo(0f, size.height * 0.82f)
+                        cubicTo(
+                            size.width * 0.28f, size.height * 0.74f,
+                            size.width * 0.64f, size.height * 0.87f,
+                            size.width, size.height * 0.78f
+                        )
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                        close()
+                    }
+                } else null
+                val aeroHillFront = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
+                    Path().apply {
+                        moveTo(0f, size.height * 0.89f)
+                        cubicTo(
+                            size.width * 0.35f, size.height * 0.82f,
+                            size.width * 0.72f, size.height * 0.93f,
+                            size.width, size.height * 0.85f
+                        )
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                        close()
+                    }
+                } else null
+                val aeroHillBackBrush = Brush.verticalGradient(
+                    colors = listOf(Color(0x3D34D399), Color(0x2210B981)),
+                    startY = size.height * 0.74f,
+                    endY = size.height
+                )
+                val aeroHillFrontBrush = Brush.verticalGradient(
+                    colors = listOf(Color(0x4A4ADE80), Color(0x3016A34A)),
+                    startY = size.height * 0.82f,
+                    endY = size.height
+                )
+                val yaruWave = if (tokens.uiTheme == UiTheme.UBUNTU_YARU && !suppressGlow) {
+                    Path().apply {
+                        moveTo(0f, size.height * 0.38f)
+                        cubicTo(
+                            size.width * 0.32f, size.height * 0.26f,
+                            size.width * 0.68f, size.height * 0.48f,
+                            size.width, size.height * 0.32f
+                        )
+                    }
+                } else null
+
+                val hudGridColor = tokens.accentColor.copy(alpha = 0.038f)
+                val hudStepPx = 44.dp.toPx().coerceAtLeast(48f)
+
                 onDrawBehind {
                     drawRect(canvasColor)
                     if (baseGradient != null) drawRect(baseGradient)
+                    if (carbonBgTwill != null) drawRect(carbonBgTwill)
                     if (topGlow != null) drawRect(topGlow)
+                    if (secondaryGlow != null) drawRect(secondaryGlow)
+
+                    when (tokens.uiTheme) {
+                        UiTheme.FRUTIGER_AERO -> {
+                            if (aeroHillBack != null) drawPath(aeroHillBack, aeroHillBackBrush)
+                            if (aeroHillFront != null) drawPath(aeroHillFront, aeroHillFrontBrush)
+                            if (!suppressGlow) {
+                                // Calm, luminous Y2K floating glass bubbles that stay gracefully behind cards
+                                val bubbles = listOf(
+                                    Triple(Offset(size.width * 0.86f, size.height * 0.14f), size.width * 0.13f, Color.White.copy(alpha = 0.22f)),
+                                    Triple(Offset(size.width * 0.11f, size.height * 0.36f), size.width * 0.08f, Color(0x2460D8FF)),
+                                    Triple(Offset(size.width * 0.82f, size.height * 0.62f), size.width * 0.065f, Color(0x224ADE80)),
+                                    Triple(Offset(size.width * 0.22f, size.height * 0.74f), size.width * 0.045f, Color.White.copy(alpha = 0.20f))
+                                )
+                                bubbles.forEach { (center, rad, fill) ->
+                                    drawCircle(fill, rad, center)
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.48f),
+                                        radius = rad,
+                                        center = center,
+                                        style = Stroke(strokePx * 1.1f)
+                                    )
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.65f),
+                                        radius = rad * 0.16f,
+                                        center = Offset(center.x - rad * 0.34f, center.y - rad * 0.34f)
+                                    )
+                                }
+                            }
+                        }
+                        UiTheme.AMOLED_STEALTH -> {
+                            if (!suppressGlow) {
+                                var x = hudStepPx
+                                while (x < size.width) {
+                                    drawLine(hudGridColor, Offset(x, 0f), Offset(x, size.height), strokePx * 0.65f)
+                                    x += hudStepPx
+                                }
+                                var y = hudStepPx
+                                while (y < size.height) {
+                                    drawLine(hudGridColor, Offset(0f, y), Offset(size.width, y), strokePx * 0.65f)
+                                    y += hudStepPx
+                                }
+                            }
+                        }
+                        UiTheme.UBUNTU_YARU -> {
+                            if (yaruWave != null) {
+                                drawPath(
+                                    path = yaruWave,
+                                    color = Color(0x22E95420),
+                                    style = Stroke(strokePx * 1.4f)
+                                )
+                            }
+                        }
+                        UiTheme.CARBON_FORGE -> {
+                            if (!suppressGlow) {
+                                val diagColor = Color.White.copy(alpha = 0.026f)
+                                drawLine(diagColor, Offset(0f, size.height * 0.22f), Offset(size.width * 0.42f, 0f), strokePx * 1.8f)
+                                drawLine(diagColor, Offset(size.width * 0.60f, size.height), Offset(size.width, size.height * 0.72f), strokePx * 1.8f)
+                            }
+                        }
+                        UiTheme.MATERIAL_YOU -> {
+                            if (!suppressGlow) {
+                                drawCircle(
+                                    color = tokens.palette.primary.copy(alpha = 0.05f),
+                                    radius = size.width * 0.34f,
+                                    center = Offset(size.width * 0.90f, size.height * 0.18f)
+                                )
+                                drawCircle(
+                                    color = tokens.palette.secondary.copy(alpha = 0.04f),
+                                    radius = size.width * 0.26f,
+                                    center = Offset(size.width * 0.08f, size.height * 0.78f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
     )
@@ -174,32 +342,35 @@ fun IronPulseTopBar(
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
-    val iconShape = RoundedCornerShape(
-        when (tokens.uiTheme) {
-            UiTheme.MATERIAL_YOU -> 999.dp
-            UiTheme.UBUNTU_YARU -> 10.dp
-            UiTheme.CARBON_FORGE -> 8.dp
-            UiTheme.AMOLED_STEALTH -> 12.dp
+    val theme = tokens.uiTheme
+    val isAero = theme == UiTheme.FRUTIGER_AERO
+    val isYaru = theme == UiTheme.UBUNTU_YARU
+    val isCarbon = theme == UiTheme.CARBON_FORGE
+    val isStealth = theme == UiTheme.AMOLED_STEALTH
+
+    val iconShape = remember(theme) {
+        when (theme) {
+            UiTheme.MATERIAL_YOU -> RoundedCornerShape(999.dp)
+            UiTheme.UBUNTU_YARU -> RoundedCornerShape(9.dp)
+            UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
+            UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
+            UiTheme.FRUTIGER_AERO -> CircleShape
         }
-    )
-    val headerBorder = when (tokens.uiTheme) {
+    }
+    val headerBorder = when (theme) {
         UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
-        UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.14f)
-        UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-        UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.12f)
+        UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.45f)
+        UiTheme.UBUNTU_YARU -> Color(0xFF141216)
+        UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.45f)
+        UiTheme.FRUTIGER_AERO -> Color(0x990099E5)
     }
 
     val settingsActive = activeTab == AppTab.SETTINGS && !aboutOpen
-    val metallicIronBrush = remember {
-        Brush.verticalGradient(
-            colors = listOf(Color(0xFFFFFFFF), Color(0xFFB5BDC9))
-        )
-    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("os_top_bar_${theme.wireValue}")
             .ironGlassBar(tokens = tokens, bottomHairlineColor = headerBorder)
             .statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -208,77 +379,165 @@ fun IronPulseTopBar(
             modifier = Modifier
                 .widthIn(max = 840.dp)
                 .fillMaxWidth()
-                .height(60.dp)
-                .padding(horizontal = 16.dp),
+                .height(58.dp)
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Dual-tone brand wordmark: Metallic gradient "Iron" + glowing accent "Pulse"
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(
-                        SpanStyle(
-                            brush = metallicIronBrush,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    ) {
-                        append("Iron")
+            BoxWithConstraints(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                val showMicroBadge = maxWidth >= 172.dp
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    ThemeBrandLockup(
+                        theme = theme,
+                        accentColor = tokens.accentColor,
+                        emblemSize = 26.dp,
+                        fontSize = 18.5.sp,
+                        onClick = onLogoClick
+                    )
+                    if (showMicroBadge) {
+                        when {
+                            isYaru -> {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(3.5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(Color(0xFF1A161C))
+                                        .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(999.dp))
+                                        .padding(horizontal = 5.dp, vertical = 3.5.dp)
+                                ) {
+                                    Box(Modifier.size(4.5.dp).clip(CircleShape).background(Color(0xFFE95420)))
+                                    Box(Modifier.size(4.5.dp).clip(CircleShape).background(Color(0xFF9A9599)))
+                                    Box(Modifier.size(4.5.dp).clip(CircleShape).background(Color(0xFF5A555B)))
+                                }
+                            }
+                            isStealth -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    modifier = Modifier
+                                        .border(1.dp, tokens.accentColor.copy(alpha = 0.50f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
+                                ) {
+                                    Box(Modifier.size(4.5.dp).clip(CircleShape).background(tokens.accentColor))
+                                    Text(
+                                        text = "HUD",
+                                        fontSize = 8.5.sp,
+                                        fontFamily = tokens.fontPack.monoFont,
+                                        fontWeight = FontWeight.Bold,
+                                        color = tokens.accentColor,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            isCarbon -> {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CutCornerShape(3.dp))
+                                        .background(tokens.accentColor.copy(alpha = 0.16f))
+                                        .border(1.dp, tokens.accentColor.copy(alpha = 0.50f), CutCornerShape(3.dp))
+                                        .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
+                                ) {
+                                    Text(
+                                        text = "GT",
+                                        fontSize = 8.5.sp,
+                                        fontFamily = tokens.fontPack.displayFont,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 0.6.sp,
+                                        color = tokens.accentColor,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            else -> Unit
+                        }
                     }
-                    withStyle(
-                        SpanStyle(
-                            color = tokens.accentColor,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    ) {
-                        append("Pulse")
-                    }
-                },
-                fontSize = 23.sp,
-                letterSpacing = (-0.6).sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .tactilePress(disabledByPerf = tokens.performance.noAnimations)
-                    .clickable(onClick = onLogoClick)
-                    .padding(vertical = 4.dp, horizontal = 2.dp)
-            )
+                }
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 TopBarIconButton(
-                    icon = Icons.Rounded.Settings,
+                    icon = IronPulseIcon.SETTINGS,
                     contentDescription = lang.t("Buka pengaturan", "Open settings"),
                     active = settingsActive,
                     shape = iconShape,
                     onClick = onOpenSettings
                 )
                 TopBarIconButton(
-                    icon = Icons.Rounded.Info,
+                    icon = IronPulseIcon.INFO,
                     contentDescription = lang.t("Tentang IronPulse", "About IronPulse"),
                     active = aboutOpen,
                     shape = iconShape,
                     onClick = onOpenAbout
                 )
 
-                val ctaShape = RoundedCornerShape(tokens.buttonRadius)
+                val ctaShape = remember(theme, tokens.buttonRadius) {
+                    if (isCarbon) CutCornerShape(6.dp) else RoundedCornerShape(tokens.buttonRadius)
+                }
                 Box(
                     modifier = Modifier
-                        .height(40.dp)
+                        .height(38.dp)
                         .tactilePress(disabledByPerf = tokens.performance.noAnimations)
                         .clip(ctaShape)
-                        .background(tokens.accentColor, ctaShape)
+                        .then(
+                            when {
+                                isAero -> Modifier
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color(0xFF39B9F5),
+                                            0.46f to Color(0xFF0088D4),
+                                            0.52f to Color(0xFF0072B8),
+                                            1.0f to Color(0xFF005B99)
+                                        ),
+                                        ctaShape
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.78f), ctaShape)
+                                isStealth -> Modifier
+                                    .background(Color(0xFF000000), ctaShape)
+                                    .border(1.1.dp, tokens.accentColor, ctaShape)
+                                isCarbon -> Modifier
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(tokens.accentColor, tokens.accentColor.copy(alpha = 0.84f))
+                                        ),
+                                        ctaShape
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.30f), ctaShape)
+                                else -> Modifier.background(tokens.accentColor, ctaShape)
+                            }
+                        )
                         .clickable(onClick = onTestAlarm)
-                        .padding(horizontal = 14.dp),
+                        .padding(horizontal = 11.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = lang.t("Tes Alarm", "Test Alarm"),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tokens.onAccentColor,
-                        maxLines = 1
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        ThemedIcon(
+                            icon = IronPulseIcon.ALARM,
+                            contentDescription = null,
+                            tint = if (isStealth) tokens.accentColor else tokens.onAccentColor,
+                            size = 14.dp
+                        )
+                        Text(
+                            text = lang.t("Tes Alarm", "Test Alarm"),
+                            fontSize = 11.sp,
+                            fontFamily = tokens.fontPack.displayFont,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isStealth) tokens.accentColor else tokens.onAccentColor,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
@@ -287,30 +546,41 @@ fun IronPulseTopBar(
 
 @Composable
 private fun TopBarIconButton(
-    icon: ImageVector,
+    icon: IronPulseIcon,
     contentDescription: String,
     active: Boolean,
-    shape: RoundedCornerShape,
+    shape: androidx.compose.ui.graphics.Shape,
     onClick: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
     val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
+    val isAero = tokens.uiTheme == UiTheme.FRUTIGER_AERO
+    val isStealth = tokens.uiTheme == UiTheme.AMOLED_STEALTH
     val containerColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
-        active -> tokens.accentColor.copy(alpha = 0.18f)
+        active && isAero -> Color(0xFF0084CE)
+        active && isStealth -> tokens.accentColor.copy(alpha = 0.16f)
+        active -> tokens.accentColor.copy(alpha = 0.22f)
+        isAero -> Color(0xF5FFFFFF)
+        isStealth -> Color(0xFF05070A)
         isMaterialYou -> tokens.palette.surfaceContainerHigh
         else -> tokens.controlBg
     }
     val borderColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
-        active -> tokens.accentColor.copy(alpha = 0.65f)
+        active && isAero -> Color(0xFF005F9E)
+        active -> tokens.accentColor
+        isAero -> Color(0x990082C8)
+        isStealth -> tokens.accentColor.copy(alpha = 0.42f)
         isMaterialYou -> tokens.palette.outlineVariant
-        tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141414)
+        tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141216)
         else -> Color.White.copy(alpha = 0.18f)
     }
     val tint = when {
         active && isMaterialYou -> tokens.palette.onSecondaryContainer
+        active && isAero -> Color.White
         active -> tokens.accentColor
+        isAero -> Color(0xFF073B66)
         else -> tokens.palette.onSurfaceVariant
     }
 
@@ -320,27 +590,33 @@ private fun TopBarIconButton(
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
         modifier = Modifier
-            .size(40.dp)
+            .size(38.dp)
             .tactilePress(disabledByPerf = tokens.performance.noAnimations)
     ) {
         Box(
-            modifier = if (tokens.uiTheme == UiTheme.UBUNTU_YARU || tokens.uiTheme == UiTheme.CARBON_FORGE) {
-                Modifier.background(
+            modifier = when (tokens.uiTheme) {
+                UiTheme.FRUTIGER_AERO -> Modifier.background(
                     Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = 0.08f),
+                        0.0f to Color.White.copy(alpha = if (active) 0.34f else 0.72f),
                         0.45f to Color.Transparent
                     )
                 )
-            } else {
-                Modifier
+                UiTheme.UBUNTU_YARU, UiTheme.CARBON_FORGE -> Modifier.background(
+                    Brush.verticalGradient(
+                        0.0f to Color.White.copy(alpha = 0.09f),
+                        0.45f to Color.Transparent
+                    )
+                )
+                else -> Modifier
             },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            ThemedIcon(
+                icon = icon,
                 contentDescription = contentDescription,
                 tint = tint,
-                modifier = Modifier.size(19.dp)
+                size = 19.dp,
+                filledBadge = false
             )
         }
     }
@@ -354,16 +630,19 @@ fun IronPulseBottomNav(
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    val isMaterialYou = tokens.uiTheme == UiTheme.MATERIAL_YOU
-    val isCarbon = tokens.uiTheme == UiTheme.CARBON_FORGE
-    val isYaru = tokens.uiTheme == UiTheme.UBUNTU_YARU
+    val theme = tokens.uiTheme
+    val isMaterialYou = theme == UiTheme.MATERIAL_YOU
+    val isCarbon = theme == UiTheme.CARBON_FORGE
+    val isYaru = theme == UiTheme.UBUNTU_YARU
+    val isStealth = theme == UiTheme.AMOLED_STEALTH
+    val isAero = theme == UiTheme.FRUTIGER_AERO
 
     val items = remember(lang) {
         listOf(
-            Triple(AppTab.TODAY, lang.t("Hari Ini", "Today"), Icons.Rounded.PlayCircle),
-            Triple(AppTab.SCHEDULE, lang.t("Jadwal", "Schedule"), Icons.Rounded.CalendarMonth),
-            Triple(AppTab.HISTORY, lang.t("Riwayat", "History"), Icons.Rounded.History),
-            Triple(AppTab.EXERCISES, lang.t("Gerakan", "Exercises"), Icons.Rounded.FitnessCenter)
+            Triple(AppTab.TODAY, lang.t("Hari Ini", "Today"), IronPulseIcon.TODAY),
+            Triple(AppTab.SCHEDULE, lang.t("Jadwal", "Schedule"), IronPulseIcon.SCHEDULE),
+            Triple(AppTab.HISTORY, lang.t("Riwayat", "History"), IronPulseIcon.HISTORY),
+            Triple(AppTab.EXERCISES, lang.t("Gerakan", "Exercises"), IronPulseIcon.EXERCISES)
         )
     }
 
@@ -375,31 +654,55 @@ fun IronPulseBottomNav(
         AppTab.SETTINGS -> -1
     }
 
-    val topBorder = when (tokens.uiTheme) {
+    val topBorder = when (theme) {
         UiTheme.MATERIAL_YOU -> tokens.palette.outlineVariant.copy(alpha = 0.75f)
-        UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.16f)
-        UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-        UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.12f)
+        UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.45f)
+        UiTheme.UBUNTU_YARU -> Color(0xFF141216)
+        UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.48f)
+        UiTheme.FRUTIGER_AERO -> Color(0xAA0099E5)
     }
 
+    // Outer wrapper differs per OS: Ubuntu Dock floats subtly, Aero has glossy taskbar rail,
+    // Carbon Forge has cockpit rocker bar, Stealth has pure black HUD rail, Material You has expressive M3 bar.
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .ironGlassBar(tokens, topHairlineColor = topBorder)
-            .navigationBarsPadding(),
+            .testTag("os_bottom_nav_${theme.wireValue}")
+            .then(
+                if (isYaru) {
+                    Modifier
+                        .background(Color(0xEC161318))
+                        .navigationBarsPadding()
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                } else {
+                    Modifier
+                        .ironGlassBar(tokens, topHairlineColor = topBorder)
+                        .navigationBarsPadding()
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = if (isYaru) 8.dp else 4.dp)
+                .then(
+                    if (isYaru) {
+                        Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF2B252C))
+                            .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(16.dp))
+                    } else {
+                        Modifier
+                    }
+                )
+                .height(68.dp)
+                .padding(horizontal = if (isYaru || isAero) 8.dp else 4.dp)
         ) {
             val slotWidth = maxWidth / items.size
             val slotWidthPx = with(LocalDensity.current) { slotWidth.toPx() }
 
-            // Zero-relayout gliding GPU spring indicator behind active tab
+            // Exact-aligned gliding GPU spring indicator customized per OS
             if (activeIdx >= 0) {
                 val indicatorIndexState = animateFloatAsState(
                     targetValue = activeIdx.toFloat(),
@@ -418,48 +721,99 @@ fun IronPulseBottomNav(
                         }
                         .width(slotWidth)
                         .fillMaxHeight()
-                        .padding(vertical = if (isYaru) 5.dp else 0.dp, horizontal = 3.dp),
-                    contentAlignment = if (isYaru) Alignment.BottomCenter else Alignment.TopCenter
+                        .padding(vertical = if (isYaru || isCarbon) 5.dp else 0.dp, horizontal = 3.dp),
+                    contentAlignment = when {
+                        isYaru -> Alignment.BottomCenter
+                        isStealth -> Alignment.Center
+                        else -> Alignment.TopCenter
+                    }
                 ) {
                     when {
                         isYaru -> {
+                            // Ubuntu Dock tile highlight + clean bottom orange pill dash with generous label clearance
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color.White.copy(alpha = 0.07f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(10.dp)),
+                                    .clip(RoundedCornerShape(11.dp))
+                                    .background(Color.White.copy(alpha = 0.085f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(11.dp)),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .padding(bottom = 2.dp)
-                                        .width(24.dp)
-                                        .height(3.dp)
+                                        .width(18.dp)
+                                        .height(2.5.dp)
                                         .clip(RoundedCornerShape(999.dp))
+                                        .background(Color(0xFFE95420))
+                                )
+                            }
+                        }
+                        isAero -> {
+                            // Vista / Aqua Glossy Crystal Pill centered precisely on the 32dp icon stage
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .width(62.dp)
+                                    .height(32.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color(0xFF56C8FF),
+                                            0.46f to Color(0xFF008FD9),
+                                            0.52f to Color(0xFF0076BD),
+                                            1.0f to Color(0xFF005C99)
+                                        )
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(999.dp))
+                            )
+                        }
+                        isCarbon -> {
+                            // Industrial Rocker Plate + sleek top LED bar safely clear of icon
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CutCornerShape(6.dp))
+                                    .background(tokens.accentColor.copy(alpha = 0.12f))
+                                    .border(1.dp, tokens.accentColor.copy(alpha = 0.42f), CutCornerShape(6.dp)),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(26.dp)
+                                        .height(2.5.dp)
                                         .background(tokens.accentColor)
                                 )
+                            }
+                        }
+                        isStealth -> {
+                            // Crisp single-layer Tactical HUD corner brackets around active slot
+                            Canvas(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 6.dp, horizontal = 5.dp)
+                            ) {
+                                val arm = 7.dp.toPx()
+                                val sw = 1.4.dp.toPx()
+                                val c = tokens.accentColor
+                                drawLine(c, Offset(0f, 0f), Offset(arm, 0f), sw)
+                                drawLine(c, Offset(0f, 0f), Offset(0f, arm), sw)
+                                drawLine(c, Offset(size.width, 0f), Offset(size.width - arm, 0f), sw)
+                                drawLine(c, Offset(size.width, 0f), Offset(size.width, arm), sw)
+                                drawLine(c, Offset(0f, size.height), Offset(arm, size.height), sw)
+                                drawLine(c, Offset(0f, size.height), Offset(0f, size.height - arm), sw)
+                                drawLine(c, Offset(size.width, size.height), Offset(size.width - arm, size.height), sw)
+                                drawLine(c, Offset(size.width, size.height), Offset(size.width, size.height - arm), sw)
                             }
                         }
                         isMaterialYou -> {
                             Box(
                                 modifier = Modifier
-                                    .padding(top = 7.dp)
-                                    .width(58.dp)
-                                    .height(30.dp)
+                                    .padding(top = 8.dp)
+                                    .width(62.dp)
+                                    .height(32.dp)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(tokens.palette.secondaryContainer)
-                            )
-                        }
-                        else -> {
-                            Box(
-                                modifier = Modifier
-                                    .width(if (isCarbon) 42.dp else 34.dp)
-                                    .height(if (isCarbon) 3.dp else 2.5.dp)
-                                    .background(
-                                        tokens.accentColor,
-                                        if (isCarbon) RoundedCornerShape(0.dp) else RoundedCornerShape(999.dp)
-                                    )
                             )
                         }
                     }
@@ -468,7 +822,7 @@ fun IronPulseBottomNav(
 
             Row(
                 modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 items.forEachIndexed { idx, (tab, label, icon) ->
                     val isActive = idx == activeIdx
@@ -476,14 +830,16 @@ fun IronPulseBottomNav(
                     val itemContentColor by animateColorAsState(
                         targetValue = when {
                             isActive && isMaterialYou -> tokens.palette.onSurface
+                            isActive && isAero -> Color(0xFF004B80)
                             isActive -> tokens.accentColor
+                            isAero -> Color(0xFF1E496E)
                             else -> tokens.mutedTextColor
                         },
                         animationSpec = tween(if (tokens.performance.noAnimations) 0 else 180),
                         label = "navTint"
                     )
                     val iconScaleState = animateFloatAsState(
-                        targetValue = if (isActive && !tokens.performance.noAnimations) 1.09f else 1f,
+                        targetValue = if (isActive && !tokens.performance.noAnimations) 1.07f else 1f,
                         animationSpec = IronPulseMotion.PressSpring,
                         label = "navIconScale"
                     )
@@ -497,50 +853,52 @@ fun IronPulseBottomNav(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) { onSelectTab(tab) },
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.TopCenter
                     ) {
                         Column(
+                            modifier = Modifier.padding(top = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            verticalArrangement = Arrangement.Top
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .width(58.dp)
-                                    .height(30.dp),
+                                    .width(60.dp)
+                                    .height(32.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = icon,
+                                ThemedIcon(
+                                    icon = icon,
                                     contentDescription = label,
-                                    tint = if (isActive && isMaterialYou) {
-                                        tokens.palette.onSecondaryContainer
-                                    } else {
-                                        itemContentColor
+                                    tint = when {
+                                        isActive && isMaterialYou -> tokens.palette.onSecondaryContainer
+                                        isActive && isAero -> Color.White
+                                        else -> itemContentColor
                                     },
-                                    modifier = Modifier
-                                        .size(21.dp)
-                                        .graphicsLayer {
-                                            val s = iconScaleState.value
-                                            scaleX = s
-                                            scaleY = s
-                                        }
+                                    size = 21.dp,
+                                    filledBadge = false,
+                                    modifier = Modifier.graphicsLayer {
+                                        val s = iconScaleState.value
+                                        scaleX = s
+                                        scaleY = s
+                                    }
                                 )
                             }
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(3.dp))
                             if (tab == AppTab.TODAY && activeTab != AppTab.WORKOUT) {
                                 BottomNavTodayLabel(
                                     defaultLabel = label,
                                     isActive = isActive,
                                     defaultColor = itemContentColor,
-                                    accentColor = tokens.accentColor,
+                                    accentColor = tokens.accentTextColor,
                                     restTimerFlow = restTimerFlow
                                 )
                             } else {
                                 Text(
-                                    text = label,
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.SansSerif,
+                                    text = if (isStealth) label.uppercase() else label,
+                                    fontSize = if (isStealth) 9.5.sp else 11.sp,
+                                    fontFamily = tokens.fontPack.displayFont,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                    letterSpacing = if (isStealth || isCarbon) 0.4.sp else 0.sp,
                                     color = itemContentColor,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -562,6 +920,8 @@ private fun BottomNavTodayLabel(
     accentColor: Color,
     restTimerFlow: StateFlow<RestTimerDisplayState>
 ) {
+    val tokens = LocalIronPulseTokens.current
+    val isStealth = tokens.uiTheme == UiTheme.AMOLED_STEALTH
     val labelFlow = remember(restTimerFlow) {
         restTimerFlow
             .map { if (it.isActive) GymModelHelpers.formatRestDuration(it.remainingSeconds) else null }
@@ -569,11 +929,13 @@ private fun BottomNavTodayLabel(
     }
     val compactRestText by labelFlow.collectAsStateWithLifecycle(initialValue = null)
     val showCompactRest = compactRestText != null
+    val renderedText = compactRestText ?: if (isStealth) defaultLabel.uppercase() else defaultLabel
     Text(
-        text = compactRestText ?: defaultLabel,
-        fontSize = 11.sp,
-        fontFamily = if (showCompactRest) FontFamily.Monospace else FontFamily.SansSerif,
+        text = renderedText,
+        fontSize = if (isStealth) 10.sp else 11.sp,
+        fontFamily = if (showCompactRest) tokens.fontPack.monoFont else tokens.fontPack.displayFont,
         fontWeight = if (showCompactRest || isActive) FontWeight.Bold else FontWeight.Medium,
+        letterSpacing = if (isStealth || tokens.uiTheme == UiTheme.CARBON_FORGE) 0.5.sp else 0.sp,
         color = if (showCompactRest) accentColor else defaultColor,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
@@ -586,121 +948,11 @@ fun PhaseLogoEmblem(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val accent = tokens.phaseTokens.accentBright
-    val softAccent = tokens.phaseTokens.accent
-    val cornerRadius = when (tokens.uiTheme) {
-        UiTheme.MATERIAL_YOU -> 16.dp
-        UiTheme.CARBON_FORGE -> 10.dp
-        UiTheme.UBUNTU_YARU -> 12.dp
-        UiTheme.AMOLED_STEALTH -> 14.dp
-    }
-    val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius) }
-
-    Box(
+    ThemedPhaseLogoEmblem(
+        timePhase = timePhase,
+        theme = tokens.uiTheme,
         modifier = modifier
-            .size(52.dp)
-            .clip(shape)
-            .background(softAccent.copy(alpha = 0.14f), shape),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.size(30.dp)) {
-            val w = size.width
-            val h = size.height
-            when (timePhase) {
-                DayTimePhase.MORNING -> {
-                    val cx = w * 0.5f
-                    val horizonY = h * 0.72f
-                    val r = w * 0.26f
-                    // Flat rising sun half-disc
-                    drawArc(
-                        color = accent,
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = true,
-                        topLeft = Offset(cx - r, horizonY - r),
-                        size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f)
-                    )
-                    // Flat horizon pill bar
-                    drawLine(
-                        color = softAccent.copy(alpha = 0.88f),
-                        start = Offset(w * 0.16f, horizonY + 2.5.dp.toPx()),
-                        end = Offset(w * 0.84f, horizonY + 2.5.dp.toPx()),
-                        strokeWidth = 2.6.dp.toPx(),
-                        cap = StrokeCap.Round
-                    )
-                    // 3 minimal flat ray dots above rising sun
-                    listOf(
-                        Offset(cx, h * 0.18f),
-                        Offset(w * 0.24f, h * 0.32f),
-                        Offset(w * 0.76f, h * 0.32f)
-                    ).forEach { center ->
-                        drawCircle(
-                            color = accent,
-                            radius = 2.dp.toPx(),
-                            center = center
-                        )
-                    }
-                }
-                DayTimePhase.AFTERNOON -> {
-                    val cx = w * 0.5f
-                    val cy = h * 0.5f
-                    // Flat core solar disc
-                    drawCircle(
-                        color = accent,
-                        radius = w * 0.23f,
-                        center = Offset(cx, cy)
-                    )
-                    // 8 crisp flat short capsule rays around disc
-                    for (i in 0 until 8) {
-                        val angle = Math.toRadians((i * 45).toDouble())
-                        val r1 = w * 0.34f
-                        val r2 = w * 0.43f
-                        drawLine(
-                            color = accent,
-                            start = Offset(
-                                (cx + r1 * kotlin.math.cos(angle)).toFloat(),
-                                (cy + r1 * kotlin.math.sin(angle)).toFloat()
-                            ),
-                            end = Offset(
-                                (cx + r2 * kotlin.math.cos(angle)).toFloat(),
-                                (cy + r2 * kotlin.math.sin(angle)).toFloat()
-                            ),
-                            strokeWidth = 2.5.dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
-                    }
-                }
-                DayTimePhase.NIGHT -> {
-                    // Clean flat crescent moon silhouette
-                    val moonPath = Path().apply {
-                        moveTo(w * 0.58f, h * 0.16f)
-                        cubicTo(w * 0.31f, h * 0.18f, w * 0.20f, h * 0.52f, w * 0.38f, h * 0.75f)
-                        cubicTo(w * 0.52f, h * 0.90f, w * 0.77f, h * 0.84f, w * 0.84f, h * 0.67f)
-                        cubicTo(w * 0.61f, h * 0.73f, w * 0.45f, h * 0.55f, w * 0.49f, h * 0.35f)
-                        cubicTo(w * 0.51f, h * 0.26f, w * 0.55f, h * 0.20f, w * 0.58f, h * 0.16f)
-                        close()
-                    }
-                    drawPath(moonPath, color = accent)
-                    // Minimal flat diamond star
-                    val sx = w * 0.74f
-                    val sy = h * 0.28f
-                    val sr = 3.2.dp.toPx()
-                    val starPath = Path().apply {
-                        moveTo(sx, sy - sr)
-                        lineTo(sx + sr * 0.36f, sy - sr * 0.36f)
-                        lineTo(sx + sr, sy)
-                        lineTo(sx + sr * 0.36f, sy + sr * 0.36f)
-                        lineTo(sx, sy + sr)
-                        lineTo(sx - sr * 0.36f, sy + sr * 0.36f)
-                        lineTo(sx - sr, sy)
-                        lineTo(sx - sr * 0.36f, sy - sr * 0.36f)
-                        close()
-                    }
-                    drawPath(starPath, color = accent.copy(alpha = 0.9f))
-                }
-            }
-        }
-    }
+    )
 }
 
 /**
@@ -757,9 +1009,10 @@ fun LiveFluidClockSlot(
     }
 
     val accentBright = tokens.phaseTokens.accentBright
+    val clockMainColor = tokens.palette.onSurface
     val periodPillBg = remember(tokens.phaseTokens.accent) { tokens.phaseTokens.accent.copy(alpha = 0.16f) }
     val periodPillBorder = remember(accentBright) { BorderStroke(1.dp, accentBright.copy(alpha = 0.35f)) }
-    val colonMainColor = remember { Color(0xFFF8FAFC).copy(alpha = 0.65f) }
+    val colonMainColor = remember(clockMainColor) { clockMainColor.copy(alpha = 0.65f) }
     val colonSecColor = remember(accentBright) { accentBright.copy(alpha = 0.72f) }
     val periodPillShape = remember { RoundedCornerShape(999.dp) }
 
@@ -777,18 +1030,18 @@ fun LiveFluidClockSlot(
             else -> 38.sp
         }
         val clockLineHeight = clockFontSize * 1.08f
-        val mainDigitStyle = remember(clockFontSize) {
+        val mainDigitStyle = remember(clockFontSize, clockMainColor, tokens.fontPack.monoFont) {
             TextStyle(
-                fontFamily = FontFamily.Monospace,
+                fontFamily = tokens.fontPack.monoFont,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = clockFontSize,
                 lineHeight = clockLineHeight,
                 letterSpacing = (-0.8).sp,
                 fontFeatureSettings = "tnum",
-                color = Color(0xFFF8FAFC)
+                color = clockMainColor
             )
         }
-        val secondsDigitStyle = remember(clockFontSize, accentBright) {
+        val secondsDigitStyle = remember(clockFontSize, accentBright, clockMainColor, tokens.fontPack.monoFont) {
             mainDigitStyle.copy(color = accentBright)
         }
 
@@ -802,7 +1055,7 @@ fun LiveFluidClockSlot(
                     if (ch == ':') {
                         Text(
                             text = ":",
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = tokens.fontPack.monoFont,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = clockFontSize,
                             lineHeight = clockLineHeight,
@@ -820,7 +1073,7 @@ fun LiveFluidClockSlot(
 
                 Text(
                     text = ":",
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = tokens.fontPack.monoFont,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = clockFontSize,
                     lineHeight = clockLineHeight,
@@ -920,11 +1173,11 @@ fun TactileStepperControl(
                     .clickable(onClick = onDecrement),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Remove,
+                ThemedIcon(
+                    icon = IronPulseIcon.REMOVE,
                     contentDescription = "-",
                     tint = tokens.palette.onSurface,
-                    modifier = Modifier.size(16.dp)
+                    size = 16.dp
                 )
             }
 
@@ -947,19 +1200,19 @@ fun TactileStepperControl(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         textStyle = TextStyle(
-                            color = tokens.accentColor,
-                            fontFamily = FontFamily.Monospace,
+                            color = tokens.accentTextColor,
+                            fontFamily = tokens.fontPack.monoFont,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
                         ),
-                        cursorBrush = SolidColor(tokens.accentColor),
+                        cursorBrush = SolidColor(tokens.accentTextColor),
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
                     Text(
                         text = valueText,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = tokens.fontPack.monoFont,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         color = tokens.palette.onSurface,
@@ -977,11 +1230,11 @@ fun TactileStepperControl(
                     .clickable(onClick = onIncrement),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
+                ThemedIcon(
+                    icon = IronPulseIcon.ADD,
                     contentDescription = "+",
-                    tint = tokens.accentColor,
-                    modifier = Modifier.size(16.dp)
+                    tint = tokens.accentTextColor,
+                    size = 16.dp
                 )
             }
         }
@@ -1004,10 +1257,11 @@ fun ConfirmDeleteDialog(
         titleContentColor = tokens.palette.onSurface,
         textContentColor = tokens.palette.onSurfaceVariant,
         icon = {
-            Icon(
-                imageVector = Icons.Rounded.Warning,
+            ThemedIcon(
+                icon = IronPulseIcon.WARNING,
                 contentDescription = null,
-                tint = Color(0xFFF87171)
+                tint = tokens.dangerColor,
+                size = 24.dp
             )
         },
         title = {

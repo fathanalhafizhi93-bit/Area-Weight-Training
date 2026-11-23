@@ -25,15 +25,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -333,11 +327,11 @@ fun VisualColorPickerDialog(
                                     .background(previewAccent.copy(alpha = 0.18f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.FitnessCenter,
+                                ThemedIcon(
+                                    icon = IronPulseIcon.EXERCISES,
                                     contentDescription = null,
                                     tint = previewAccent,
-                                    modifier = Modifier.size(16.dp)
+                                    size = 16.dp
                                 )
                             }
                             Column {
@@ -364,11 +358,11 @@ fun VisualColorPickerDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.AutoAwesome,
+                                ThemedIcon(
+                                    icon = IronPulseIcon.SPARKLE,
                                     contentDescription = null,
                                     tint = previewOnAccent,
-                                    modifier = Modifier.size(12.dp)
+                                    size = 12.dp
                                 )
                                 Text(
                                     text = lang.t("Aktif", "Active"),
@@ -397,7 +391,7 @@ fun VisualColorPickerDialog(
                     .heightIn(min = 48.dp)
                     .testTag("color_picker_apply_button")
             ) {
-                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, size = 16.dp)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(lang.t("Terapkan", "Apply"), fontWeight = FontWeight.Bold)
             }
@@ -458,11 +452,11 @@ fun VisualPickColorPill(
                     .background(tokens.palette.surfaceContainerLow),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Palette,
+                ThemedIcon(
+                    icon = IronPulseIcon.PALETTE,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.fillMaxSize()
+                    size = 10.dp
                 )
             }
             Text(

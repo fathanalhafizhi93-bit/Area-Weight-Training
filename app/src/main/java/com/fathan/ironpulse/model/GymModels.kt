@@ -84,6 +84,13 @@ enum class UiTheme(
         titleEn = "AMOLED Stealth",
         subtitleId = "Hitam pekat OLED sejati hemat baterai dengan shader mikro-dot 120 FPS",
         subtitleEn = "True pitch-black OLED battery saver with crisp 120 FPS micro-dot texture"
+    ),
+    FRUTIGER_AERO(
+        wireValue = "frutiger-aero",
+        titleId = "Frutiger Aero (Y2K)",
+        titleEn = "Frutiger Aero (Y2K)",
+        subtitleId = "Langit biru cerah, kaca glossy ringan 120 FPS, dan aksen biru Aero terkunci",
+        subtitleEn = "Bright sky-blue translucent gloss at 120 FPS with signature locked Aero blue"
     );
 
     companion object {
@@ -92,6 +99,7 @@ enum class UiTheme(
             CARBON_FORGE.wireValue -> CARBON_FORGE
             UBUNTU_YARU.wireValue -> UBUNTU_YARU
             AMOLED_STEALTH.wireValue -> AMOLED_STEALTH
+            FRUTIGER_AERO.wireValue -> FRUTIGER_AERO
             // Legacy removed heavy glass themes map seamlessly to lightweight Material You
             else -> MATERIAL_YOU
         }

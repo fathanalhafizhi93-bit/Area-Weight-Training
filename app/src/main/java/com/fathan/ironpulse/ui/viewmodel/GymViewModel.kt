@@ -1176,6 +1176,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         prefsStore.setFloatingOrbAnchor(sideRight, yRatio)
     }
 
+    fun setWorkoutFocusHudEnabled(enabled: Boolean) {
+        haptics.toggle()
+        prefsStore.setWorkoutFocusHudEnabled(enabled)
+    }
+
     // --- Auth ---
 
     fun signInWithGoogleToken(idToken: String) {
@@ -1628,12 +1633,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         haptics.timerAdjust()
         val rest = RestTimerService.state.value
         if (rest.isActive) {
-            if (deltaSeconds > 0) {
-                RestTimerService.add15Seconds(getApplication())
-            } else {
-                val next = (rest.remainingSeconds + deltaSeconds).coerceAtLeast(5)
-                RestTimerService.start(getApplication(), next, rest.exerciseName)
-            }
+            RestTimerService.adjust(getApplication(), deltaSeconds)
         } else {
             val base = if (_restIdleRemaining.value > 0) _restIdleRemaining.value else _restIdleTotal.value
             val next = (base + deltaSeconds).coerceIn(5, 600)

@@ -25,7 +25,8 @@ data class AppPreferences(
     val mascotVoiceEnabled: Boolean = true,
     val performance: PerformancePreferences = PerformancePreferences(),
     val floatingOrbSideRight: Boolean = true,
-    val floatingOrbYRatio: Float = 0.72f
+    val floatingOrbYRatio: Float = 0.72f,
+    val workoutFocusHudEnabled: Boolean = false
 )
 
 class PreferencesStore(context: Context) {
@@ -55,7 +56,8 @@ class PreferencesStore(context: Context) {
                 staticMascot = prefs.getBoolean(KEY_PERF_STATIC_MASCOT, false)
             ),
             floatingOrbSideRight = prefs.getBoolean(KEY_ORB_SIDE_RIGHT, true),
-            floatingOrbYRatio = prefs.getFloat(KEY_ORB_Y_RATIO, 0.72f).coerceIn(0.15f, 0.85f)
+            floatingOrbYRatio = prefs.getFloat(KEY_ORB_Y_RATIO, 0.72f).coerceIn(0.15f, 0.85f),
+            workoutFocusHudEnabled = prefs.getBoolean(KEY_WORKOUT_FOCUS_HUD, false)
         )
     }
 
@@ -230,6 +232,11 @@ class PreferencesStore(context: Context) {
         )
     }
 
+    fun setWorkoutFocusHudEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_WORKOUT_FOCUS_HUD, enabled).apply()
+        _state.value = _state.value.copy(workoutFocusHudEnabled = enabled)
+    }
+
     fun isNameConfirmed(uid: String): Boolean =
         prefs.getBoolean("name_confirmed_$uid", false)
 
@@ -261,5 +268,6 @@ class PreferencesStore(context: Context) {
         private const val KEY_PERF_STATIC_MASCOT = "perf_static_mascot"
         private const val KEY_ORB_SIDE_RIGHT = "floating_orb_side_right"
         private const val KEY_ORB_Y_RATIO = "floating_orb_y_ratio"
+        private const val KEY_WORKOUT_FOCUS_HUD = "workout_focus_hud"
     }
 }

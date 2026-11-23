@@ -25,19 +25,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +51,8 @@ import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.WorkoutLog
+import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
@@ -211,7 +202,7 @@ fun HistoryScreen(
                                 .fillMaxWidth()
                                 .height(46.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.06f))
+                                .background(tokens.subtleChipBg)
                         )
                     }
                 }
@@ -224,24 +215,24 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     HistoryKpiCard(
-                        icon = Icons.Rounded.CheckCircle,
+                        icon = IronPulseIcon.CHECK_CIRCLE,
                         label = lang.t("Sesi Selesai", "Sessions"),
                         value = "$completedSessions",
-                        accent = tokens.accentColor,
+                        accent = tokens.accentTextColor,
                         modifier = Modifier.weight(1f)
                     )
                     HistoryKpiCard(
-                        icon = Icons.Rounded.LocalFireDepartment,
+                        icon = IronPulseIcon.FLAME,
                         label = lang.t("Streak Mgg", "Wk Streak"),
                         value = "$weeklyStreak${lang.t("m", "w")}",
-                        accent = Color(0xFFFBBF24),
+                        accent = tokens.warningColor,
                         modifier = Modifier.weight(1f)
                     )
                     HistoryKpiCard(
-                        icon = Icons.Rounded.FitnessCenter,
+                        icon = IronPulseIcon.EXERCISES,
                         label = lang.t("Vol. Bulan", "Mo. Vol"),
                         value = formattedMonthlyVolume,
-                        accent = Color(0xFF38BDF8),
+                        accent = tokens.infoColor,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -273,7 +264,7 @@ fun HistoryScreen(
                             },
                             modifier = Modifier.tactilePress(disabledByPerf = noAnim)
                         ) {
-                            Icon(Icons.Rounded.ChevronLeft, contentDescription = "Prev", tint = tokens.palette.onSurface)
+                            ThemedIcon(IronPulseIcon.CHEVRON_LEFT, contentDescription = "Prev", tint = tokens.palette.onSurface, size = 20.dp)
                         }
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -288,7 +279,7 @@ fun HistoryScreen(
                                     text = lang.t("Kembali ke Bulan Ini", "Back to This Month"),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = tokens.accentColor,
+                                    color = tokens.accentTextColor,
                                     modifier = Modifier
                                         .tactilePress(disabledByPerf = noAnim)
                                         .clip(RoundedCornerShape(999.dp))
@@ -313,7 +304,7 @@ fun HistoryScreen(
                             },
                             modifier = Modifier.tactilePress(disabledByPerf = noAnim)
                         ) {
-                            Icon(Icons.Rounded.ChevronRight, contentDescription = "Next", tint = tokens.palette.onSurface)
+                            ThemedIcon(IronPulseIcon.CHEVRON_RIGHT, contentDescription = "Next", tint = tokens.palette.onSurface, size = 20.dp)
                         }
                     }
 
@@ -352,16 +343,16 @@ fun HistoryScreen(
                                         val isSelected = cell.dateKey == selectedDateKey
 
                                         val bg = when {
-                                            isFull -> tokens.accentColor.copy(alpha = 0.20f)
-                                            isPartial -> Color(0x2838BDF8)
+                                            isFull -> tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.16f else 0.20f)
+                                            isPartial -> tokens.infoColor.copy(alpha = 0.16f)
                                             isToday -> tokens.subtleChipBg
                                             else -> tokens.wellBg
                                         }
                                         val border = when {
                                             isSelected -> tokens.accentColor
-                                            isToday -> Color.White.copy(alpha = 0.45f)
-                                            isFull -> tokens.accentColor.copy(alpha = 0.45f)
-                                            isPartial -> Color(0x6638BDF8)
+                                            isToday -> tokens.palette.onSurface.copy(alpha = 0.45f)
+                                            isFull -> tokens.accentColor.copy(alpha = 0.48f)
+                                            isPartial -> tokens.infoColor.copy(alpha = 0.48f)
                                             else -> tokens.subtleBorderColor
                                         }
 
@@ -383,8 +374,8 @@ fun HistoryScreen(
                                                     fontSize = 13.sp,
                                                     fontWeight = if (isSelected || isToday || isFull) FontWeight.ExtraBold else FontWeight.Medium,
                                                     color = when {
-                                                        isFull -> tokens.accentColor
-                                                        isPartial -> Color(0xFF7DD3FC)
+                                                        isFull -> tokens.accentTextColor
+                                                        isPartial -> tokens.infoColor
                                                         else -> tokens.palette.onSurface
                                                     }
                                                 )
@@ -394,7 +385,7 @@ fun HistoryScreen(
                                                         modifier = Modifier
                                                             .size(5.dp)
                                                             .clip(CircleShape)
-                                                            .background(if (isFull) tokens.accentColor else Color(0xFF38BDF8))
+                                                            .background(if (isFull) tokens.accentColor else tokens.infoColor)
                                                     )
                                                 }
                                             }
@@ -406,15 +397,15 @@ fun HistoryScreen(
                     }
 
                     // Legend Row
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = tokens.dividerColor)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CalendarLegendItem(tokens.accentColor, lang.t("Selesai Penuh", "Completed"))
-                        CalendarLegendItem(Color(0xFF38BDF8), lang.t("Sebagian", "Partial"))
-                        CalendarLegendItem(Color.White.copy(alpha = 0.55f), lang.t("Hari Ini", "Today"))
+                        CalendarLegendItem(tokens.accentTextColor, lang.t("Selesai Penuh", "Completed"))
+                        CalendarLegendItem(tokens.infoColor, lang.t("Sebagian", "Partial"))
+                        CalendarLegendItem(tokens.palette.onSurface.copy(alpha = 0.55f), lang.t("Hari Ini", "Today"))
                     }
                 }
             }
@@ -441,11 +432,11 @@ fun HistoryScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.CalendarMonth,
+                            ThemedIcon(
+                                icon = IronPulseIcon.SCHEDULE,
                                 contentDescription = null,
                                 tint = tokens.accentColor,
-                                modifier = Modifier.size(18.dp)
+                                size = 18.dp
                             )
                             Text(
                                 text = readableDate,
@@ -461,17 +452,17 @@ fun HistoryScreen(
                             val full = selectedLog.completed || (totalSets > 0 && doneSets == totalSets)
                             Surface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = if (full) tokens.accentColor.copy(alpha = 0.16f) else Color(0x2838BDF8),
+                                color = if (full) tokens.accentColor.copy(alpha = 0.16f) else tokens.infoColor.copy(alpha = 0.16f),
                                 border = BorderStroke(
                                     1.dp,
-                                    if (full) tokens.accentColor.copy(alpha = 0.45f) else Color(0x6638BDF8)
+                                    if (full) tokens.accentColor.copy(alpha = 0.45f) else tokens.infoColor.copy(alpha = 0.45f)
                                 )
                             ) {
                                 Text(
                                     text = if (full) lang.t("Selesai Penuh", "Completed") else "$doneSets/$totalSets set",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (full) tokens.accentColor else Color(0xFF7DD3FC),
+                                    color = if (full) tokens.accentTextColor else tokens.infoColor,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
                             }
@@ -503,7 +494,7 @@ fun HistoryScreen(
                                         contentColor = tokens.onAccentColor
                                     )
                                 ) {
-                                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    ThemedIcon(IronPulseIcon.PLAY, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = lang.t("Mulai Catat Latihan Hari Ini", "Start Logging Today"),
@@ -534,20 +525,20 @@ fun HistoryScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             SessionStatPill(
-                                icon = Icons.Rounded.CheckCircle,
+                                icon = IronPulseIcon.CHECK_CIRCLE,
                                 text = "$doneSets/$totalSets set",
                                 modifier = Modifier.weight(1f)
                             )
                             if (totalVolume > 0) {
                                 SessionStatPill(
-                                    icon = Icons.Rounded.FitnessCenter,
+                                    icon = IronPulseIcon.EXERCISES,
                                     text = "${NumberFormat.getNumberInstance(Locale.US).format(totalVolume.toInt())} kg",
                                     modifier = Modifier.weight(1f)
                                 )
                             }
                             if (totalTimedSeconds > 0) {
                                 SessionStatPill(
-                                    icon = Icons.Rounded.Schedule,
+                                    icon = IronPulseIcon.TIMER,
                                     text = GymModelHelpers.formatCompactDuration(totalTimedSeconds, lang),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -579,7 +570,7 @@ fun HistoryScreen(
                                             text = entry.muscleGroup.label(lang),
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = tokens.accentColor
+                                            color = tokens.accentTextColor
                                         )
                                     }
 
@@ -602,12 +593,12 @@ fun HistoryScreen(
                                                     .clip(RoundedCornerShape(8.dp))
                                                     .background(
                                                         if (s.completed) tokens.accentColor.copy(alpha = 0.14f)
-                                                        else Color.White.copy(alpha = 0.04f)
+                                                        else tokens.wellBg
                                                     )
                                                     .border(
                                                         1.dp,
                                                         if (s.completed) tokens.accentColor.copy(alpha = 0.45f)
-                                                        else Color.White.copy(alpha = 0.08f),
+                                                        else tokens.subtleBorderColor,
                                                         RoundedCornerShape(8.dp)
                                                     )
                                                     .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -617,7 +608,7 @@ fun HistoryScreen(
                                                     fontFamily = FontFamily.Monospace,
                                                     fontSize = 11.sp,
                                                     fontWeight = if (s.completed) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (s.completed) tokens.accentColor else tokens.palette.onSurfaceVariant
+                                                    color = if (s.completed) tokens.accentTextColor else tokens.palette.onSurfaceVariant
                                                 )
                                             }
                                         }
@@ -635,7 +626,7 @@ fun HistoryScreen(
 
 @Composable
 private fun HistoryKpiCard(
-    icon: ImageVector,
+    icon: IronPulseIcon,
     label: String,
     value: String,
     accent: Color,
@@ -648,10 +639,10 @@ private fun HistoryKpiCard(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+        ThemedIcon(icon = icon, contentDescription = null, tint = accent, size = 20.dp, filledBadge = true)
         Text(
             text = value,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = tokens.fontPack.monoFont,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = tokens.palette.onSurface
@@ -687,7 +678,7 @@ private fun CalendarLegendItem(
 
 @Composable
 private fun SessionStatPill(
-    icon: ImageVector,
+    icon: IronPulseIcon,
     text: String,
     modifier: Modifier = Modifier
 ) {
@@ -701,10 +692,10 @@ private fun SessionStatPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(14.dp))
+        ThemedIcon(icon = icon, contentDescription = null, tint = tokens.accentColor, size = 14.dp)
         Text(
             text = text,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = tokens.fontPack.monoFont,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = tokens.palette.onSurface

@@ -1,5 +1,6 @@
 package com.fathan.ironpulse.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -12,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -40,23 +42,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -75,6 +62,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,7 +75,9 @@ import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.model.WorkoutLogEntry
+import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.TactileStepperControl
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -134,6 +124,7 @@ fun WorkoutScreen(
         }
     }
 
+    val hudEnabled = state.appPrefs.workoutFocusHudEnabled
     val totalSets = remember(todayEntries) { todayEntries.sumOf { it.sets.size } }
     val completedSets = remember(todayEntries) { todayEntries.sumOf { e -> e.sets.count { it.completed } } }
     val progressPct = if (totalSets > 0) (completedSets * 100) / totalSets else 0
@@ -146,7 +137,7 @@ fun WorkoutScreen(
                 start = 16.dp,
                 end = 16.dp,
                 top = contentPadding.calculateTopPadding() + 14.dp,
-                bottom = contentPadding.calculateBottomPadding() + if (hasExercises) 148.dp else 92.dp
+                bottom = contentPadding.calculateBottomPadding() + if (hasExercises && !hudEnabled) 148.dp else 92.dp
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
@@ -156,63 +147,148 @@ fun WorkoutScreen(
         ) {
             // 1. TOP WORKOUT COCKPIT BAR
             item(key = "workout_header", contentType = "header") {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Surface(
-                        onClick = onBackToToday,
-                        shape = RoundedCornerShape(tokens.buttonRadius),
-                        color = tokens.controlBg,
-                        border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                        modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Surface(
+                            onClick = onBackToToday,
+                            shape = RoundedCornerShape(tokens.buttonRadius),
+                            color = tokens.controlBg,
+                            border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                            modifier = Modifier.tactilePress(disabledByPerf = noAnim)
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ArrowBack,
-                                contentDescription = null,
-                                tint = tokens.palette.onSurface,
-                                modifier = Modifier.size(16.dp)
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                ThemedIcon(
+                                    icon = IronPulseIcon.BACK,
+                                    contentDescription = null,
+                                    tint = tokens.palette.onSurface,
+                                    size = 16.dp
+                                )
+                                Text(
+                                    text = lang.t("Hari Ini", "Today"),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface
+                                )
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Quick HUD Focus Toggle Switch
+                            Surface(
+                                onClick = { viewModel.setWorkoutFocusHudEnabled(!hudEnabled) },
+                                shape = RoundedCornerShape(999.dp),
+                                color = if (hudEnabled) tokens.accentColor else tokens.wellBg,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (hudEnabled) tokens.accentColor else tokens.surfaceBorderColor
+                                ),
+                                modifier = Modifier
+                                    .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+                                    .testTag("workout_hud_toggle")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    ThemedIcon(
+                                        icon = IronPulseIcon.FOCUS_HUD,
+                                        contentDescription = null,
+                                        tint = if (hudEnabled) tokens.onAccentColor else tokens.accentColor,
+                                        size = 16.dp
+                                    )
+                                    Text(
+                                        text = lang.t("HUD Fokus", "Focus HUD"),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (hudEnabled) tokens.onAccentColor else tokens.palette.onSurface
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (hudEnabled) tokens.onAccentColor else tokens.mutedTextColor.copy(alpha = 0.55f)
+                                            )
+                                    )
+                                }
+                            }
+
+                            // Mini Progress Ring
+                            val animProgress by animateFloatAsState(
+                                targetValue = progressPct / 100f,
+                                animationSpec = if (noAnim) tween(0) else tween(260),
+                                label = "workoutRing"
                             )
-                            Text(
-                                text = lang.t("Hari Ini", "Today"),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.palette.onSurface
-                            )
+                            val miniTrack = if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.16f) else Color.White.copy(alpha = 0.1f)
+                            Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val stroke = 3.5.dp.toPx()
+                                    drawArc(
+                                        color = miniTrack,
+                                        startAngle = 0f,
+                                        sweepAngle = 360f,
+                                        useCenter = false,
+                                        style = Stroke(stroke)
+                                    )
+                                    drawArc(
+                                        color = if (progressPct == 100) Color(0xFF16A34A) else tokens.accentColor,
+                                        startAngle = -90f,
+                                        sweepAngle = 360f * animProgress,
+                                        useCenter = false,
+                                        style = Stroke(stroke, cap = StrokeCap.Round)
+                                    )
+                                }
+                                Text(
+                                    text = "$completedSets/$totalSets",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface
+                                )
+                            }
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Focus / All Mode Segmented Toggle
+                    if (hasExercises && !hudEnabled) {
+                        // Focus / All Mode Segmented Toggle for Standard Cockpit
                         Row(
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .clip(RoundedCornerShape(999.dp))
                                 .background(tokens.wellBg)
                                 .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(999.dp))
                                 .padding(3.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             listOf(
-                                true to lang.t("Fokus", "Focus"),
-                                false to lang.t("Semua", "All")
+                                true to lang.t("Fokus 1 Gerakan", "Focus 1 Exercise"),
+                                false to lang.t("Semua Gerakan", "All Exercises")
                             ).forEach { (isFocus, label) ->
                                 val selected = viewModeFocus == isFocus
                                 Box(
                                     modifier = Modifier
-                                        .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+                                        .weight(1f)
+                                        .tactilePress(pressedScale = 0.96f, disabledByPerf = noAnim)
                                         .clip(RoundedCornerShape(999.dp))
                                         .background(if (selected) tokens.accentColor else Color.Transparent)
                                         .clickable { viewModeFocus = isFocus }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = label,
@@ -222,39 +298,6 @@ fun WorkoutScreen(
                                     )
                                 }
                             }
-                        }
-
-                        // Mini Progress Ring
-                        val animProgress by animateFloatAsState(
-                            targetValue = progressPct / 100f,
-                            animationSpec = if (noAnim) tween(0) else tween(260),
-                            label = "workoutRing"
-                        )
-                        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                val stroke = 3.5.dp.toPx()
-                                drawArc(
-                                    color = Color.White.copy(alpha = 0.1f),
-                                    startAngle = 0f,
-                                    sweepAngle = 360f,
-                                    useCenter = false,
-                                    style = Stroke(stroke)
-                                )
-                                drawArc(
-                                    color = if (progressPct == 100) Color(0xFF16A34A) else tokens.accentColor,
-                                    startAngle = -90f,
-                                    sweepAngle = 360f * animProgress,
-                                    useCenter = false,
-                                    style = Stroke(stroke, cap = StrokeCap.Round)
-                                )
-                            }
-                            Text(
-                                text = "$completedSets/$totalSets",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF4F5F7)
-                            )
                         }
                     }
                 }
@@ -270,11 +313,11 @@ fun WorkoutScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.FitnessCenter,
+                        ThemedIcon(
+                            icon = IronPulseIcon.EXERCISES,
                             contentDescription = null,
                             tint = tokens.mutedTextColor,
-                            modifier = Modifier.size(36.dp)
+                            size = 36.dp
                         )
                         Text(
                             text = if (activeSchedule?.isGymDay == false) {
@@ -284,7 +327,7 @@ fun WorkoutScreen(
                             },
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFF4F5F7)
+                            color = tokens.palette.onSurface
                         )
                         Button(
                             onClick = {
@@ -307,6 +350,93 @@ fun WorkoutScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+                }
+            } else if (hudEnabled) {
+                val activeIdx = todayEntries.indexOfFirst { it.exerciseId == selectedExerciseId }.coerceAtLeast(0)
+                val activeEntry = todayEntries[activeIdx]
+                item(key = "gym_focus_hud_stage", contentType = "hud_stage") {
+                    AnimatedContent(
+                        targetState = activeIdx to activeEntry.exerciseId,
+                        transitionSpec = {
+                            if (noAnim) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                fadeIn(tween(180)) togetherWith fadeOut(tween(120))
+                            }
+                        },
+                        label = "hudExerciseSwap"
+                    ) { (idx, _) ->
+                        val entry = todayEntries.getOrNull(idx) ?: activeEntry
+                        val spec = specById[entry.exerciseId]
+                        GymFocusHudStage(
+                            index = idx,
+                            totalExercises = todayEntries.size,
+                            entry = entry,
+                            spec = spec,
+                            notesExpanded = expandedNotes[entry.exerciseId] == true,
+                            onToggleNotes = {
+                                expandedNotes[entry.exerciseId] = !(expandedNotes[entry.exerciseId] ?: false)
+                            },
+                            restBarDismissed = restBarDismissed,
+                            restTimerFlow = viewModel.restTimerDisplayFlow,
+                            exerciseTimersFlow = viewModel.exerciseTimersFlow,
+                            cooldownSecondsFlow = viewModel.cooldownSecondsFlow,
+                            onPrevExercise = {
+                                if (idx > 0) {
+                                    selectedExerciseId = todayEntries[idx - 1].exerciseId
+                                }
+                            },
+                            onNextExercise = {
+                                if (idx < todayEntries.lastIndex) {
+                                    selectedExerciseId = todayEntries[idx + 1].exerciseId
+                                }
+                            },
+                            onStartRest = { secs ->
+                                restBarDismissed = false
+                                viewModel.startManualRestTimer(secs, entry.name)
+                            },
+                            onAdjustRest = { delta ->
+                                viewModel.adjustRestTimer(delta)
+                            },
+                            onToggleRestPause = {
+                                viewModel.toggleRestPauseOrStart()
+                            },
+                            onDismissRest = {
+                                restBarDismissed = true
+                                viewModel.stopRestTimer()
+                            },
+                            onUndismissRest = {
+                                restBarDismissed = false
+                            },
+                            onToggleSetComplete = { setNumber ->
+                                viewModel.requestToggleSetComplete(entry.exerciseId, setNumber)
+                            },
+                            onUpdateSetMetrics = { setNumber, w, r ->
+                                viewModel.updateSetMetrics(entry.exerciseId, setNumber, w, r)
+                            },
+                            onUpdateSetDuration = { setNumber, dur ->
+                                viewModel.updateSetDuration(entry.exerciseId, setNumber, dur)
+                            },
+                            onToggleExerciseTimer = { setNumber ->
+                                viewModel.toggleExerciseTimer(entry, setNumber)
+                            },
+                            onResetExerciseTimer = {
+                                viewModel.resetExerciseTimer(entry)
+                            },
+                            onSelectExerciseTimerSet = { setNumber ->
+                                viewModel.selectExerciseTimerSet(entry, setNumber)
+                            },
+                            onChangeTimerDirection = { dir ->
+                                viewModel.changeExerciseTimerDirection(entry, dir)
+                            },
+                            onSaveExerciseTimer = {
+                                viewModel.finishAndSaveExerciseTimer(entry)
+                            },
+                            onAddSet = { viewModel.addSetToExercise(entry.exerciseId) },
+                            onRemoveSet = { viewModel.removeSetFromExercise(entry.exerciseId) },
+                            secUnit = secUnit
+                        )
                     }
                 }
             } else {
@@ -383,8 +513,8 @@ fun WorkoutScreen(
             }
         }
 
-        // STICKY FLOATING REST BAR (isolated flow collection so WorkoutScreen doesn't recompose 1Hz)
-        if (hasExercises) {
+        // STICKY FLOATING REST BAR (isolated flow collection; hidden when HUD renders large rest ring)
+        if (hasExercises && !hudEnabled) {
             WorkoutFloatingRestBar(
                 restTimerFlow = viewModel.restTimerDisplayFlow,
                 restBarDismissed = restBarDismissed,
@@ -459,16 +589,16 @@ private fun ExerciseSwitcherRail(
                         text = entry.name,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) tokens.onAccentColor else Color(0xFFF4F5F7),
+                        color = if (isSelected) tokens.onAccentColor else tokens.palette.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (allDone) {
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
+                        ThemedIcon(
+                            icon = IronPulseIcon.CHECK_CIRCLE,
                             contentDescription = null,
-                            tint = if (isSelected) tokens.onAccentColor else Color(0xFF4ADE80),
-                            modifier = Modifier.size(14.dp)
+                            tint = if (isSelected) tokens.onAccentColor else if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80),
+                            size = 14.dp
                         )
                     } else if (timerRunning) {
                         Box(
@@ -536,7 +666,9 @@ private fun WorkoutFloatingRestBar(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(modifier = Modifier.size(38.dp), contentAlignment = Alignment.Center) {
-                val ringColor = if (restRemaining == 0) Color(0xFF4ADE80) else tokens.accentColor
+                val doneGreen = if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
+                val ringColor = if (restRemaining == 0) doneGreen else tokens.accentColor
+                val ringTrack = if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.16f) else Color.White.copy(alpha = 0.1f)
                 val frac by animateFloatAsState(
                     targetValue = (restRemaining.toFloat() / restTotal.toFloat()).coerceIn(0f, 1f),
                     animationSpec = if (noAnim) tween(0) else tween(220),
@@ -544,7 +676,7 @@ private fun WorkoutFloatingRestBar(
                 )
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val stroke = 3.dp.toPx()
-                    drawArc(Color.White.copy(alpha = 0.1f), 0f, 360f, false, style = Stroke(stroke))
+                    drawArc(ringTrack, 0f, 360f, false, style = Stroke(stroke))
                     drawArc(
                         ringColor,
                         -90f,
@@ -553,11 +685,11 @@ private fun WorkoutFloatingRestBar(
                         style = Stroke(stroke, cap = StrokeCap.Round)
                     )
                 }
-                Icon(
-                    imageVector = Icons.Rounded.Timer,
+                ThemedIcon(
+                    icon = IronPulseIcon.TIMER,
                     contentDescription = null,
                     tint = ringColor,
-                    modifier = Modifier.size(16.dp)
+                    size = 16.dp
                 )
             }
 
@@ -567,7 +699,11 @@ private fun WorkoutFloatingRestBar(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (restRemaining == 0) Color(0xFF4ADE80) else Color(0xFFF4F5F7)
+                    color = if (restRemaining == 0) {
+                        if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
+                    } else {
+                        tokens.palette.onSurface
+                    }
                 )
                 Text(
                     text = restLabel.ifBlank { lang.t("Istirahat antar set", "Between-set rest") },
@@ -590,7 +726,7 @@ private fun WorkoutFloatingRestBar(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF4F5F7),
+                    color = tokens.palette.onSurface,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
                 )
             }
@@ -602,11 +738,11 @@ private fun WorkoutFloatingRestBar(
                 modifier = Modifier.tactilePress(disabledByPerf = noAnim)
             ) {
                 Box(modifier = Modifier.padding(8.dp)) {
-                    Icon(
-                        imageVector = if (restRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    ThemedIcon(
+                        icon = if (restRunning) IronPulseIcon.PAUSE else IronPulseIcon.PLAY,
                         contentDescription = null,
                         tint = tokens.onAccentColor,
-                        modifier = Modifier.size(18.dp)
+                        size = 18.dp
                     )
                 }
             }
@@ -618,11 +754,11 @@ private fun WorkoutFloatingRestBar(
                 modifier = Modifier.tactilePress(disabledByPerf = noAnim)
             ) {
                 Box(modifier = Modifier.padding(6.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
+                    ThemedIcon(
+                        icon = IronPulseIcon.CLOSE,
                         contentDescription = lang.t("Lewati", "Skip"),
                         tint = tokens.mutedTextColor,
-                        modifier = Modifier.size(18.dp)
+                        size = 18.dp
                     )
                 }
             }
@@ -735,7 +871,7 @@ private fun ExerciseCockpitCard(
                 fontSize = 24.sp,
                 lineHeight = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFFF4F5F7)
+                color = tokens.palette.onSurface
             )
 
             FlowRow(
@@ -751,7 +887,7 @@ private fun ExerciseCockpitCard(
                         },
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
-                        color = Color(0xFFD1D5DB)
+                        color = tokens.palette.onSurfaceVariant
                     )
                 }
                 if (!usesWeight) {
@@ -770,7 +906,11 @@ private fun ExerciseCockpitCard(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (allDone) Color(0xFF4ADE80) else tokens.accentColor
+                    color = if (allDone) {
+                        if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
+                    } else {
+                        tokens.accentColor
+                    }
                 )
             }
         }
@@ -792,11 +932,11 @@ private fun ExerciseCockpitCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Timer,
+                    ThemedIcon(
+                        icon = IronPulseIcon.TIMER,
                         contentDescription = null,
                         tint = tokens.accentColor,
-                        modifier = Modifier.size(16.dp)
+                        size = 16.dp
                     )
                     Text(
                         text = "${lang.t("Istirahat", "Rest")} ${spec?.restSeconds ?: 60}$secUnit",
@@ -824,13 +964,13 @@ private fun ExerciseCockpitCard(
                             text = lang.t("Teknik", "Form"),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFD1D5DB)
+                            color = tokens.palette.onSurfaceVariant
                         )
-                        Icon(
-                            imageVector = if (notesExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        ThemedIcon(
+                            icon = if (notesExpanded) IronPulseIcon.EXPAND_LESS else IronPulseIcon.EXPAND_MORE,
                             contentDescription = null,
                             tint = tokens.mutedTextColor,
-                            modifier = Modifier.size(16.dp)
+                            size = 16.dp
                         )
                     }
                 }
@@ -854,7 +994,7 @@ private fun ExerciseCockpitCard(
                     text = spec?.notes ?: "",
                     fontSize = 12.5.sp,
                     lineHeight = 18.sp,
-                    color = Color(0xFFD1D5DB)
+                    color = tokens.palette.onSurfaceVariant
                 )
             }
         }
@@ -878,7 +1018,13 @@ private fun ExerciseCockpitCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (timerRunning) Color(0xB30C1924) else tokens.wellBg)
+                    .background(
+                        if (timerRunning) {
+                            if (tokens.isLightTheme) Color(0xCCDCF5FF) else Color(0xB30C1924)
+                        } else {
+                            tokens.wellBg
+                        }
+                    )
                     .border(
                         1.dp,
                         if (timerRunning) Color(0x8C38BDF8) else tokens.subtleBorderColor,
@@ -892,7 +1038,7 @@ private fun ExerciseCockpitCard(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF38BDF8)
+                    color = if (tokens.isLightTheme) Color(0xFF0284C7) else Color(0xFF38BDF8)
                 )
 
                 if (entry.sets.size > 1) {
@@ -923,7 +1069,7 @@ private fun ExerciseCockpitCard(
                                     fontWeight = FontWeight.Bold,
                                     color = when {
                                         isActiveSet -> Color(0xFF0A0B0E)
-                                        s.completed -> Color(0xFF86EFAC)
+                                        s.completed -> if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF86EFAC)
                                         else -> tokens.mutedTextColor
                                     }
                                 )
@@ -982,7 +1128,7 @@ private fun ExerciseCockpitCard(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 42.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFF4F5F7)
+                    color = tokens.palette.onSurface
                 )
                 Text(
                     text = if (timerDirection == TimerDirection.COUNTDOWN) {
@@ -1018,10 +1164,10 @@ private fun ExerciseCockpitCard(
                             .height(46.dp)
                             .tactilePress(disabledByPerf = noAnim)
                     ) {
-                        Icon(
-                            imageVector = if (timerRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        ThemedIcon(
+                            icon = if (timerRunning) IronPulseIcon.PAUSE else IronPulseIcon.PLAY,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            size = 18.dp
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -1043,9 +1189,9 @@ private fun ExerciseCockpitCard(
                             .height(46.dp)
                             .tactilePress(disabledByPerf = noAnim)
                     ) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Color(0xFFD1D5DB), modifier = Modifier.size(16.dp))
+                        ThemedIcon(IronPulseIcon.REFRESH, contentDescription = null, tint = tokens.palette.onSurfaceVariant, size = 16.dp)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(lang.t("Reset", "Reset"), fontSize = 12.5.sp, color = Color(0xFFD1D5DB))
+                        Text(lang.t("Reset", "Reset"), fontSize = 12.5.sp, color = tokens.palette.onSurfaceVariant)
                     }
 
                     if (elapsedSeconds > 0 || timerRunning) {
@@ -1060,7 +1206,7 @@ private fun ExerciseCockpitCard(
                                 .height(46.dp)
                                 .tactilePress(disabledByPerf = noAnim)
                         ) {
-                            Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = Color.White, size = 16.dp)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(lang.t("Simpan Set #$activeSetNumber", "Save Set #$activeSetNumber"), fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
                         }
@@ -1072,7 +1218,10 @@ private fun ExerciseCockpitCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(
+                            if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.14f)
+                            else Color.White.copy(alpha = 0.1f)
+                        )
                 ) {
                     Box(
                         modifier = Modifier
@@ -1127,15 +1276,16 @@ private fun ExerciseCockpitCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val doneGreen = if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
                             Text(
                                 text = "SET ${setRow.setNumber}",
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = when {
-                                    setRow.completed -> Color(0xFF4ADE80)
+                                    setRow.completed -> doneGreen
                                     isNextActiveSet -> tokens.accentColor
-                                    else -> Color(0xFFD1D5DB)
+                                    else -> tokens.palette.onSurfaceVariant
                                 }
                             )
                             if (isNextActiveSet && !setRow.completed) {
@@ -1151,7 +1301,7 @@ private fun ExerciseCockpitCard(
                                     text = lang.t("Selesai", "Done"),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF86EFAC)
+                                    color = doneGreen
                                 )
                             }
                         }
@@ -1243,9 +1393,9 @@ private fun ExerciseCockpitCard(
                     .height(42.dp)
                     .tactilePress(enabled = entry.sets.size < 12, disabledByPerf = noAnim)
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(16.dp))
+                ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentColor, size = 16.dp)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(lang.t("Tambah Set", "Add Set"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF4F5F7))
+                Text(lang.t("Tambah Set", "Add Set"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tokens.palette.onSurface)
             }
 
             OutlinedButton(
@@ -1258,9 +1408,9 @@ private fun ExerciseCockpitCard(
                     .height(42.dp)
                     .tactilePress(enabled = entry.sets.size > 1, disabledByPerf = noAnim)
             ) {
-                Icon(Icons.Rounded.Remove, contentDescription = null, tint = tokens.mutedTextColor, modifier = Modifier.size(16.dp))
+                ThemedIcon(IronPulseIcon.REMOVE, contentDescription = null, tint = tokens.mutedTextColor, size = 16.dp)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(lang.t("Kurangi Set", "Remove Set"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFD1D5DB))
+                Text(lang.t("Kurangi Set", "Remove Set"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = tokens.palette.onSurfaceVariant)
             }
         }
     }
@@ -1315,18 +1465,18 @@ private fun SetCompletePillButton(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF38BDF8)
+                    color = tokens.infoColor
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
+                ThemedIcon(
+                    icon = IronPulseIcon.CHECK,
                     contentDescription = null,
                     tint = when {
                         completed -> Color.White
                         isNextActiveSet -> tokens.onAccentColor
-                        else -> Color(0xFFE5E7EB)
+                        else -> tokens.palette.onSurface
                     },
-                    modifier = Modifier.size(16.dp)
+                    size = 16.dp
                 )
                 Text(
                     text = lang.t("Selesai", "Done"),
@@ -1335,7 +1485,7 @@ private fun SetCompletePillButton(
                     color = when {
                         completed -> Color.White
                         isNextActiveSet -> tokens.onAccentColor
-                        else -> Color(0xFFE5E7EB)
+                        else -> tokens.palette.onSurface
                     }
                 )
             }

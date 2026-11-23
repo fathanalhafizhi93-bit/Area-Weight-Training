@@ -69,6 +69,7 @@ class RestTimerService : Service() {
                 startCountdown(secs, name)
             }
             ACTION_ADD_15 -> addSeconds(15)
+            ACTION_ADJUST -> addSeconds(intent.getIntExtra(EXTRA_DELTA_SECONDS, 0))
             ACTION_STOP -> stopCountdown()
         }
         return START_NOT_STICKY
@@ -102,10 +103,16 @@ class RestTimerService : Service() {
     }
 
     private fun addSeconds(delta: Int) {
-        if (!_state.value.isActive) return
-        endTimeMillis += delta * 1000L
-        totalSeconds = (totalSeconds + delta).coerceAtLeast(1)
-        val remainingSec = (((endTimeMillis - System.currentTimeMillis()) + 999L) / 1000L).toInt().coerceAtLeast(1)
+        if (!_state.value.isActive || delta == 0) return
+        val now = System.currentTimeMillis()
+        val minEnd = now + 5000L
+        endTimeMillis = (endTimeMillis + delta * 1000L).coerceAtLeast(minEnd)
+        val remainingSec = (((endTimeMillis - now) + 999L) / 1000L).toInt().coerceIn(5, 600)
+        totalSeconds = if (delta > 0) {
+            maxOf(totalSeconds, remainingSec).coerceIn(5, 600)
+        } else {
+            totalSeconds.coerceAtLeast(remainingSec)
+        }
         _state.value = _state.value.copy(
             remainingSeconds = remainingSec,
             totalSeconds = totalSeconds
@@ -240,8 +247,10 @@ class RestTimerService : Service() {
         private const val NOTIF_ID = 7101
         private const val ACTION_START = "com.fathan.ironpulse.timer.START"
         private const val ACTION_ADD_15 = "com.fathan.ironpulse.timer.ADD_15"
+        private const val ACTION_ADJUST = "com.fathan.ironpulse.timer.ADJUST"
         private const val ACTION_STOP = "com.fathan.ironpulse.timer.STOP"
         private const val EXTRA_SECONDS = "extra_seconds"
+        private const val EXTRA_DELTA_SECONDS = "extra_delta_seconds"
         private const val EXTRA_EXERCISE_NAME = "extra_exercise_name"
 
         fun start(context: Context, seconds: Int, exerciseName: String) {
@@ -254,11 +263,16 @@ class RestTimerService : Service() {
         }
 
         fun add15Seconds(context: Context) {
-            if (!_state.value.isActive) return
+            adjust(context, 15)
+        }
+
+        fun adjust(context: Context, deltaSeconds: Int) {
+            if (!_state.value.isActive || deltaSeconds == 0) return
             val intent = Intent(context, RestTimerService::class.java).apply {
-                action = ACTION_ADD_15
+                action = ACTION_ADJUST
+                putExtra(EXTRA_DELTA_SECONDS, deltaSeconds)
             }
-            context.startService(intent)
+            runCatching { context.startService(intent) }
         }
 
         fun stop(context: Context) {

@@ -24,22 +24,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Bookmark
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -150,11 +140,11 @@ fun ScheduleTopProgramStrip(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
+                    ThemedIcon(
+                        icon = IronPulseIcon.ADD,
                         contentDescription = lang.t("Simpan jadwal saat ini", "Save current schedule"),
                         tint = tokens.accentColor,
-                        modifier = Modifier.size(16.dp)
+                        size = 16.dp
                     )
                     Text(
                         text = lang.t("Simpan", "Save"),
@@ -292,12 +282,12 @@ private fun ScheduleStripCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Icon(
-                            imageVector = when {
-                                isActive -> Icons.Rounded.Check
-                                isOfficial -> Icons.Rounded.AutoAwesome
-                                isAutoBackup -> Icons.Rounded.History
-                                else -> Icons.Rounded.Bookmark
+                        ThemedIcon(
+                            icon = when {
+                                isActive -> IronPulseIcon.CHECK
+                                isOfficial -> IronPulseIcon.SPARKLE
+                                isAutoBackup -> IronPulseIcon.HISTORY
+                                else -> IronPulseIcon.BOOKMARK
                             },
                             contentDescription = null,
                             tint = when {
@@ -305,7 +295,7 @@ private fun ScheduleStripCard(
                                 isOfficial -> tokens.accentColor
                                 else -> tokens.phaseTokens.accentBright
                             },
-                            modifier = Modifier.size(11.dp)
+                            size = 11.dp
                         )
                         Text(
                             text = badgeText,
@@ -614,11 +604,11 @@ fun ScheduleProgramPreviewSheet(
                                     .clickable(enabled = !applying) { onRequestRename(target.profile) }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Edit,
+                                    ThemedIcon(
+                                        icon = IronPulseIcon.EDIT,
                                         contentDescription = lang.t("Ganti nama jadwal", "Rename schedule"),
                                         tint = tokens.palette.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
+                                        size = 18.dp
                                     )
                                 }
                             }
@@ -635,11 +625,11 @@ fun ScheduleProgramPreviewSheet(
                                     .clickable(enabled = !applying) { onDeleteSaved(target.profile) }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.DeleteOutline,
+                                    ThemedIcon(
+                                        icon = IronPulseIcon.DELETE,
                                         contentDescription = lang.t("Hapus jadwal tersimpan", "Delete saved schedule"),
-                                        tint = Color(0xFFF87171),
-                                        modifier = Modifier.size(18.dp)
+                                        tint = tokens.dangerColor,
+                                        size = 18.dp
                                     )
                                 }
                             }
@@ -761,11 +751,11 @@ fun ScheduleProgramPreviewSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.NotificationsActive,
+                ThemedIcon(
+                    icon = IronPulseIcon.NOTIFICATIONS,
                     contentDescription = null,
                     tint = tokens.accentColor,
-                    modifier = Modifier.size(20.dp)
+                    size = 20.dp
                 )
                 Column(
                     modifier = Modifier.weight(1f),

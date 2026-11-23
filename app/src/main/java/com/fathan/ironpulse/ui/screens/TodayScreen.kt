@@ -34,19 +34,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -82,9 +72,11 @@ import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TodayMascot
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
@@ -210,7 +202,7 @@ fun TodayScreen(
                         bitmap = heroBitmap,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        alpha = 0.15f,
+                        alpha = if (tokens.isLightTheme) 0.06f else 0.15f,
                         modifier = Modifier.matchParentSize()
                     )
                 }
@@ -263,13 +255,13 @@ fun TodayScreen(
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 12.5.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color(0xFFCBD5E1)
+                                    color = tokens.palette.onSurfaceVariant
                                 )
                             }
                         }
                     }
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = tokens.subtleBorderColor)
 
                     // Zone 2: Isolated Date Lead-In + Dominant Focus Title + Next Alarm Bar
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -288,7 +280,7 @@ fun TodayScreen(
                             lineHeight = 35.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-0.6).sp,
-                            color = Color(0xFFF8FAFC)
+                            color = tokens.palette.onSurface
                         )
                     }
 
@@ -335,14 +327,14 @@ fun TodayScreen(
                                         text = "${summary.completedSets}/${summary.totalSets} ${lang.t("Set Selesai", "Sets Done")}",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp,
-                                        color = Color(0xFFD1D5DB)
+                                        color = tokens.palette.onSurfaceVariant
                                     )
                                     Text("·", fontSize = 12.sp, color = tokens.mutedTextColor)
                                     Text(
                                         text = "${lang.t("Volume", "Volume")}: ${numberFormat.format(summary.totalVolumeKg)} kg",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp,
-                                        color = Color(0xFFD1D5DB)
+                                        color = tokens.palette.onSurfaceVariant
                                     )
                                     if (summary.totalTimedSeconds > 0) {
                                         Text("·", fontSize = 12.sp, color = tokens.mutedTextColor)
@@ -350,7 +342,7 @@ fun TodayScreen(
                                             text = "${lang.t("Durasi", "Duration")}: ${GymModelHelpers.formatCompactDuration(summary.totalTimedSeconds, lang)}",
                                             fontFamily = FontFamily.Monospace,
                                             fontSize = 12.sp,
-                                            color = Color(0xFF38BDF8)
+                                            color = if (tokens.isLightTheme) Color(0xFF0284C7) else Color(0xFF38BDF8)
                                         )
                                     }
                                 }
@@ -368,7 +360,10 @@ fun TodayScreen(
                                     .fillMaxWidth()
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(Color.White.copy(alpha = 0.1f))
+                                    .background(
+                                        if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.14f)
+                                        else Color.White.copy(alpha = 0.1f)
+                                    )
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -448,11 +443,11 @@ fun TodayScreen(
                                 .background(Color.Black.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.FitnessCenter,
+                            ThemedIcon(
+                                icon = IronPulseIcon.EXERCISES,
                                 contentDescription = null,
                                 tint = tokens.onAccentColor,
-                                modifier = Modifier.size(20.dp)
+                                size = 20.dp
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -475,16 +470,16 @@ fun TodayScreen(
                         ) {
                             Text(
                                 text = "${summary.completedSets}/${summary.totalSets}",
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = tokens.fontPack.monoFont,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 13.sp,
                                 color = tokens.onAccentColor
                             )
-                            Icon(
-                                imageVector = Icons.Rounded.ArrowForward,
+                            ThemedIcon(
+                                icon = IronPulseIcon.FORWARD,
                                 contentDescription = null,
                                 tint = tokens.onAccentColor,
-                                modifier = Modifier.size(18.dp)
+                                size = 18.dp
                             )
                         }
                     }
@@ -503,11 +498,12 @@ fun TodayScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Schedule,
+                    ThemedIcon(
+                        icon = IronPulseIcon.TIMER,
                         contentDescription = null,
                         tint = tokens.mutedTextColor,
-                        modifier = Modifier.size(36.dp)
+                        size = 36.dp,
+                        filledBadge = true
                     )
                     Text(
                         text = lang.t(
@@ -516,7 +512,7 @@ fun TodayScreen(
                         ),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF4F5F7),
+                        color = tokens.palette.onSurface,
                         textAlign = TextAlign.Center
                     )
                     Text(
@@ -553,17 +549,18 @@ fun TodayScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.FitnessCenter,
+                    ThemedIcon(
+                        icon = IronPulseIcon.EXERCISES,
                         contentDescription = null,
                         tint = tokens.mutedTextColor,
-                        modifier = Modifier.size(36.dp)
+                        size = 36.dp,
+                        filledBadge = true
                     )
                     Text(
                         text = lang.t("Belum Ada Gerakan untuk $dayLabel", "No Exercises Yet for $dayLabel"),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF4F5F7),
+                        color = tokens.palette.onSurface,
                         textAlign = TextAlign.Center
                     )
                     Text(
@@ -603,7 +600,7 @@ fun TodayScreen(
                             text = lang.t("Ringkasan Gerakan Hari Ini", "Today's Exercise Overview"),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFF4F5F7)
+                            color = tokens.palette.onSurface
                         )
                         Text(
                             text = "${todayEntries.size} ${lang.t("gerakan terjadwal", "scheduled exercises")} · ${lang.t("Ketuk untuk catat set", "Tap to log sets")}",
@@ -679,7 +676,7 @@ fun TodayScreen(
                                 text = entry.name,
                                 fontSize = 14.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF4F5F7),
+                                color = tokens.palette.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -698,12 +695,13 @@ fun TodayScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val doneGreen = if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
                         Text(
                             text = "$doneCount/${entry.sets.size}",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (allDone) Color(0xFF4ADE80) else Color(0xFFD1D5DB)
+                            color = if (allDone) doneGreen else tokens.palette.onSurfaceVariant
                         )
                         Box(
                             modifier = Modifier
@@ -712,11 +710,11 @@ fun TodayScreen(
                                 .background(if (allDone) Color(0x3316A34A) else tokens.subtleChipBg),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = if (allDone) Icons.Rounded.Check else Icons.Rounded.ArrowForward,
+                            ThemedIcon(
+                                icon = if (allDone) IronPulseIcon.CHECK else IronPulseIcon.FORWARD,
                                 contentDescription = null,
-                                tint = if (allDone) Color(0xFF4ADE80) else tokens.mutedTextColor,
-                                modifier = Modifier.size(14.dp)
+                                tint = if (allDone) doneGreen else tokens.mutedTextColor,
+                                size = 14.dp
                             )
                         }
                     }
@@ -782,13 +780,12 @@ private fun NextAlarmStatusBar(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(
-            imageVector = Icons.Rounded.Notifications,
+        ThemedIcon(
+            icon = IronPulseIcon.NOTIFICATIONS,
             contentDescription = null,
             tint = tokens.accentColor,
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .size(15.dp)
+            size = 15.dp,
+            modifier = Modifier.padding(top = 2.dp)
         )
         if (nextAlarm != null) {
             val alarmFmt = GymModelHelpers.formatAlarmTime(nextAlarm.alarmTime, clockFormat, lang)
@@ -806,7 +803,7 @@ private fun NextAlarmStatusBar(
                     text = nextAlarm.dayLabel,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFF4F5F7)
+                    color = tokens.palette.onSurface
                 )
                 Text("·", fontSize = 12.sp, color = tokens.mutedTextColor)
                 Text(
@@ -821,7 +818,7 @@ private fun NextAlarmStatusBar(
                     text = nextCountdown,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFFE2E8F0)
+                    color = tokens.palette.onSurfaceVariant
                 )
             }
         } else {
@@ -889,10 +886,11 @@ private fun RestTimerHeroCard(
                 contentAlignment = Alignment.Center
             ) {
                 val ringColor = if (restRemaining == 0) Color(0xFF16A34A) else tokens.accentColor
+                val ringTrack = if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.14f) else Color.White.copy(alpha = 0.08f)
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val stroke = 6.dp.toPx()
                     drawArc(
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = ringTrack,
                         startAngle = 0f,
                         sweepAngle = 360f,
                         useCenter = false,
@@ -911,7 +909,7 @@ private fun RestTimerHeroCard(
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = Color(0xFFF4F5F7)
+                    color = tokens.palette.onSurface
                 )
             }
 
@@ -920,7 +918,7 @@ private fun RestTimerHeroCard(
                     text = lang.t("Timer Istirahat", "Rest Timer"),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF4F5F7)
+                    color = tokens.palette.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -945,9 +943,9 @@ private fun RestTimerHeroCard(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = when {
-                        restRemaining == 0 -> Color(0xFF4ADE80)
+                        restRemaining == 0 -> if (tokens.isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
                         restRunning -> tokens.accentColor
-                        else -> Color(0xFFD1D5DB)
+                        else -> tokens.palette.onSurfaceVariant
                     }
                 )
             }
@@ -983,7 +981,7 @@ private fun RestTimerHeroCard(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (activePreset) tokens.accentColor else Color(0xFFD1D5DB)
+                        color = if (activePreset) tokens.accentColor else tokens.palette.onSurfaceVariant
                     )
                 }
             }
@@ -1004,7 +1002,7 @@ private fun RestTimerHeroCard(
                     .height(44.dp)
                     .tactilePress(disabledByPerf = noAnim)
             ) {
-                Text("-15$secUnit", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFD1D5DB))
+                Text("-15$secUnit", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = tokens.palette.onSurface)
             }
 
             Button(
@@ -1019,10 +1017,11 @@ private fun RestTimerHeroCard(
                     .height(44.dp)
                     .tactilePress(disabledByPerf = noAnim)
             ) {
-                Icon(
-                    imageVector = if (restRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                ThemedIcon(
+                    icon = if (restRunning) IronPulseIcon.PAUSE else IronPulseIcon.PLAY,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    tint = tokens.onAccentColor,
+                    size = 18.dp
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
@@ -1045,7 +1044,7 @@ private fun RestTimerHeroCard(
                     .height(44.dp)
                     .tactilePress(disabledByPerf = noAnim)
             ) {
-                Text("+15$secUnit", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFD1D5DB))
+                Text("+15$secUnit", fontFamily = tokens.fontPack.monoFont, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = tokens.palette.onSurface)
             }
 
             Surface(
@@ -1058,11 +1057,11 @@ private fun RestTimerHeroCard(
                     .tactilePress(disabledByPerf = noAnim)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Refresh,
+                    ThemedIcon(
+                        icon = IronPulseIcon.REFRESH,
                         contentDescription = lang.t("Reset timer", "Reset timer"),
                         tint = tokens.mutedTextColor,
-                        modifier = Modifier.size(18.dp)
+                        size = 18.dp
                     )
                 }
             }
@@ -1234,8 +1233,8 @@ internal fun HeroAnimatedAtmosphereLayer(
             val sheenBrush = Brush.linearGradient(
                 colors = listOf(
                     Color.Transparent,
-                    Color.White.copy(alpha = 0.045f),
-                    accentBright.copy(alpha = 0.055f),
+                    Color.White.copy(alpha = if (tokens.isLightTheme) 0.24f else 0.045f),
+                    accentBright.copy(alpha = if (tokens.isLightTheme) 0.12f else 0.055f),
                     Color.Transparent
                 ),
                 start = Offset(left, 0f),

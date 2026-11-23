@@ -33,15 +33,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.NotificationsOff
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,7 +40,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -81,10 +71,12 @@ import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.SavedCustomSchedule
+import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.SaveCustomScheduleDialog
 import com.fathan.ironpulse.ui.components.SchedulePreviewTarget
 import com.fathan.ironpulse.ui.components.ScheduleProgramPreviewSheet
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
@@ -451,7 +443,7 @@ private fun DayScheduleCard(
                         text = day.label(lang),
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (sched.isGymDay) Color(0xFFF4F5F7) else Color(0xFFCBD5E1)
+                        color = if (sched.isGymDay) tokens.palette.onSurface else tokens.palette.onSurfaceVariant
                     )
                     if (isToday) {
                         Text(
@@ -509,13 +501,13 @@ private fun DayScheduleCard(
                                 text = lang.t("Gerakan", "Exercises"),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFF4F5F7)
+                                color = tokens.palette.onSurface
                             )
-                            Icon(
-                                imageVector = Icons.Rounded.ChevronRight,
+                            ThemedIcon(
+                                icon = IronPulseIcon.CHEVRON_RIGHT,
                                 contentDescription = null,
                                 tint = tokens.mutedTextColor,
-                                modifier = Modifier.size(16.dp)
+                                size = 16.dp
                             )
                         }
                     }
@@ -530,7 +522,7 @@ private fun DayScheduleCard(
             exit = if (noAnim) ExitTransition.None else shrinkVertically(IronPulseMotion.FluidCardSpring) + fadeOut(tween(140))
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+            HorizontalDivider(color = tokens.subtleBorderColor)
 
             // Lightweight Tap-to-Edit Focus Title (only mounts OutlinedTextField when editing)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -553,11 +545,11 @@ private fun DayScheduleCard(
                                 val trimmed = focusDraft.trim()
                                 if (trimmed.isNotEmpty()) {
                                     IconButton(onClick = { onSaveFocusTitle(trimmed) }) {
-                                        Icon(Icons.Rounded.Check, contentDescription = null, tint = tokens.accentColor)
+                                        ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
                                     }
                                 }
                                 IconButton(onClick = onStopEditingFocus) {
-                                    Icon(Icons.Rounded.Close, contentDescription = null, tint = tokens.mutedTextColor, modifier = Modifier.size(18.dp))
+                                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = null, tint = tokens.mutedTextColor, size = 18.dp)
                                 }
                             }
                         },
@@ -574,8 +566,8 @@ private fun DayScheduleCard(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = tokens.accentColor,
                             unfocusedBorderColor = tokens.subtleBorderColor,
-                            focusedTextColor = Color(0xFFF4F5F7),
-                            unfocusedTextColor = Color(0xFFF4F5F7),
+                            focusedTextColor = tokens.palette.onSurface,
+                            unfocusedTextColor = tokens.palette.onSurface,
                             focusedContainerColor = tokens.wellBg,
                             unfocusedContainerColor = tokens.wellBg
                         ),
@@ -602,17 +594,17 @@ private fun DayScheduleCard(
                                 },
                                 fontSize = 13.5.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (sched.focusTitle.isBlank()) tokens.mutedTextColor else Color(0xFFF4F5F7),
+                                color = if (sched.focusTitle.isBlank()) tokens.mutedTextColor else tokens.palette.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                imageVector = Icons.Rounded.Edit,
+                            ThemedIcon(
+                                icon = IronPulseIcon.EDIT,
                                 contentDescription = null,
                                 tint = tokens.accentColor,
-                                modifier = Modifier.size(16.dp)
+                                size = 16.dp
                             )
                         }
                     }
@@ -655,18 +647,18 @@ private fun DayScheduleCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Schedule,
+                                ThemedIcon(
+                                    icon = IronPulseIcon.TIMER,
                                     contentDescription = null,
                                     tint = tokens.accentColor,
-                                    modifier = Modifier.size(16.dp)
+                                    size = 16.dp
                                 )
                                 Text(
                                     text = GymModelHelpers.formatAlarmTime(sched.alarmTime, tokens.clockFormat, lang),
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFF4F5F7),
+                                    color = tokens.palette.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -686,15 +678,15 @@ private fun DayScheduleCard(
                                 .tactilePress(disabledByPerf = noAnim)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (sched.alarmEnabled) {
-                                        Icons.Rounded.NotificationsActive
+                                ThemedIcon(
+                                    icon = if (sched.alarmEnabled) {
+                                        IronPulseIcon.NOTIFICATIONS
                                     } else {
-                                        Icons.Rounded.NotificationsOff
+                                        IronPulseIcon.NOTIFICATIONS_OFF
                                     },
                                     contentDescription = null,
                                     tint = if (sched.alarmEnabled) tokens.accentColor else tokens.mutedTextColor,
-                                    modifier = Modifier.size(18.dp)
+                                    size = 18.dp
                                 )
                             }
                         }
@@ -731,15 +723,16 @@ private fun DayScheduleCard(
                                 Text(
                                     text = toneDisplayName,
                                     fontSize = 12.5.sp,
-                                    color = Color(0xFFF4F5F7),
+                                    color = tokens.palette.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f)
                                 )
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowDropDown,
+                                ThemedIcon(
+                                    icon = IronPulseIcon.EXPAND_MORE,
                                     contentDescription = null,
-                                    tint = tokens.mutedTextColor
+                                    tint = tokens.mutedTextColor,
+                                    size = 18.dp
                                 )
                             }
                         }

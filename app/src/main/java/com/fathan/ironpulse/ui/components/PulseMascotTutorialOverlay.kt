@@ -39,13 +39,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -651,11 +646,11 @@ fun PulseMascotTutorialOverlay(
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         if (selected) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.CheckCircle,
+                                            ThemedIcon(
+                                                icon = IronPulseIcon.CHECK_CIRCLE,
                                                 contentDescription = null,
                                                 tint = tokens.accentColor,
-                                                modifier = Modifier.size(16.dp)
+                                                size = 16.dp
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
                                         }
@@ -849,11 +844,11 @@ private fun PulseSpeechBubble(
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.AutoAwesome,
+                        ThemedIcon(
+                            icon = IronPulseIcon.SPARKLE,
                             contentDescription = null,
                             tint = tokens.accentColor,
-                            modifier = Modifier.size(13.dp)
+                            size = 13.dp
                         )
                         Text(
                             text = badgeText,
@@ -898,11 +893,11 @@ private fun PulseSpeechBubble(
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                         modifier = Modifier.graphicsLayer { alpha = tapHintAlpha }
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.TouchApp,
+                        ThemedIcon(
+                            icon = IronPulseIcon.FOCUS_HUD,
                             contentDescription = null,
                             tint = tokens.accentColor,
-                            modifier = Modifier.size(14.dp)
+                            size = 14.dp
                         )
                         Text(
                             text = tapHint,
@@ -935,11 +930,11 @@ private fun TapScreenContinuePill(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Icon(
-                imageVector = Icons.Rounded.TouchApp,
+            ThemedIcon(
+                icon = IronPulseIcon.FOCUS_HUD,
                 contentDescription = null,
                 tint = tokens.accentColor,
-                modifier = Modifier.size(16.dp)
+                size = 16.dp
             )
             Text(
                 text = text,

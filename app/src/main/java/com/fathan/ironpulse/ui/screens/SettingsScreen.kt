@@ -26,38 +26,13 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Alarm
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.CloudDone
-import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Logout
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.School
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.UploadFile
-import androidx.compose.material.icons.rounded.Vibration
-import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -82,7 +57,8 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -104,10 +80,14 @@ import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
+import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.ThemeBrandEmblem
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
 import com.fathan.ironpulse.ui.components.VisualColorPickerMode
 import com.fathan.ironpulse.ui.components.VisualPickColorPill
+import com.fathan.ironpulse.ui.components.resolvePreviewAccentForTheme
 import com.fathan.ironpulse.ui.components.fluidModalEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
@@ -116,6 +96,7 @@ import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.resolveThemeFontPack
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import kotlinx.coroutines.flow.StateFlow
@@ -497,11 +478,11 @@ private fun SettingsPinnedHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowBack,
+                    ThemedIcon(
+                        icon = IronPulseIcon.BACK,
                         contentDescription = lang.t("Kembali", "Back"),
                         tint = tokens.palette.onSurface,
-                        modifier = Modifier.size(16.dp)
+                        size = 16.dp
                     )
                     Text(
                         text = lang.t("Kembali", "Back"),
@@ -528,10 +509,11 @@ private fun SettingsPinnedHeader(
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.28f))
             ) {
                 Text(
-                    text = lang.t("ATUR", "SETUP"),
+                    text = tokens.fontPack.osBadgeLabel,
+                    fontFamily = tokens.fontPack.monoFont,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.2.sp,
+                    letterSpacing = 1.1.sp,
                     color = tokens.accentColor,
                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                 )
@@ -549,10 +531,10 @@ private fun SettingsPinnedHeader(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf(
-                Triple(SettingsSubTab.PROFILE, lang.t("Profil", "Profile"), Icons.Rounded.Person),
-                Triple(SettingsSubTab.APPEARANCE, lang.t("Tampilan", "Themes"), Icons.Rounded.Palette),
-                Triple(SettingsSubTab.ALARM, lang.t("Alarm", "Alarm"), Icons.Rounded.Alarm),
-                Triple(SettingsSubTab.SYSTEM, lang.t("Sistem", "System"), Icons.Rounded.Settings)
+                Triple(SettingsSubTab.PROFILE, lang.t("Profil", "Profile"), IronPulseIcon.PERSON),
+                Triple(SettingsSubTab.APPEARANCE, lang.t("Tampilan", "Themes"), IronPulseIcon.PALETTE),
+                Triple(SettingsSubTab.ALARM, lang.t("Alarm", "Alarm"), IronPulseIcon.ALARM),
+                Triple(SettingsSubTab.SYSTEM, lang.t("Sistem", "System"), IronPulseIcon.SETTINGS)
             ).forEach { (tab, label, icon) ->
                 val selected = activeSubTab == tab
                 val pillBg by animateColorAsState(
@@ -579,11 +561,11 @@ private fun SettingsPinnedHeader(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Icon(
-                            imageVector = icon,
+                        ThemedIcon(
+                            icon = icon,
                             contentDescription = label,
                             tint = pillFg,
-                            modifier = Modifier.size(16.dp)
+                            size = 16.dp
                         )
                         Text(
                             text = label,
@@ -673,23 +655,23 @@ private fun ProfileHeroCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        imageVector = if (state.isOffline) Icons.Rounded.CloudOff else Icons.Rounded.CloudDone,
+                    ThemedIcon(
+                        icon = if (state.isOffline) IronPulseIcon.CLOUD_OFF else IronPulseIcon.CLOUD_DONE,
                         contentDescription = null,
-                        tint = if (state.isOffline) Color(0xFFFBBF24) else Color(0xFF6EE7B7),
-                        modifier = Modifier.size(13.dp)
+                        tint = if (state.isOffline) tokens.warningColor else tokens.successColor,
+                        size = 13.dp
                     )
                     Text(
                         text = if (state.isOffline) lang.t("Offline", "Offline") else lang.t("Sinkron", "Synced"),
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (state.isOffline) Color(0xFFFBBF24) else Color(0xFF6EE7B7)
+                        color = if (state.isOffline) tokens.warningColor else tokens.successColor
                     )
                 }
             }
         }
 
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = tokens.dividerColor)
 
         Text(
             text = if (state.isOffline) {
@@ -775,7 +757,7 @@ private fun ProfileDisplayNameCard(
                 .height(46.dp)
                 .tactilePress(enabled = nameDraft.trim().isNotEmpty(), disabledByPerf = noAnim)
         ) {
-            Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+            ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, size = 18.dp)
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = if (savedFeedback) lang.t("Nama Tersimpan", "Name Saved") else lang.t("Simpan Nama", "Save Name"),
@@ -804,18 +786,18 @@ private fun ProfileSignOutCard(
         OutlinedButton(
             onClick = onRequestSignOut,
             shape = RoundedCornerShape(tokens.buttonRadius),
-            border = BorderStroke(1.dp, Color(0x66F87171)),
+            border = BorderStroke(1.dp, tokens.dangerColor.copy(alpha = 0.55f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(46.dp)
                 .tactilePress(disabledByPerf = noAnim)
         ) {
-            Icon(Icons.Rounded.Logout, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(18.dp))
+            ThemedIcon(IronPulseIcon.LOGOUT, contentDescription = null, tint = tokens.dangerColor, size = 18.dp)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = lang.t("Keluar Akun", "Sign Out"),
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFF87171)
+                color = tokens.dangerColor
             )
         }
     }
@@ -836,8 +818,8 @@ private fun AppearanceSectionSwitcher(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         listOf(
-            Triple(AppearanceSection.THEMES, lang.t("Tema & Warna", "Themes & Colors"), Icons.Rounded.Palette),
-            Triple(AppearanceSection.PERFORMANCE, lang.t("Performa", "Performance"), Icons.Rounded.Speed)
+            Triple(AppearanceSection.THEMES, lang.t("Tema & Warna", "Themes & Colors"), IronPulseIcon.PALETTE),
+            Triple(AppearanceSection.PERFORMANCE, lang.t("Performa", "Performance"), IronPulseIcon.SPEED)
         ).forEach { (sec, label, icon) ->
             val active = section == sec
             val bgColor by animateColorAsState(
@@ -864,18 +846,18 @@ private fun AppearanceSectionSwitcher(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = icon,
+                    ThemedIcon(
+                        icon = icon,
                         contentDescription = null,
-                        tint = if (active) tokens.accentColor else tokens.palette.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
+                        tint = if (active) tokens.accentTextColor else tokens.palette.onSurfaceVariant,
+                        size = 16.dp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = label,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (active) tokens.accentColor else tokens.palette.onSurface
+                        color = if (active) tokens.accentTextColor else tokens.palette.onSurface
                     )
                 }
             }
@@ -907,7 +889,10 @@ private fun ThemesGridCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = lang.t("Gaya Antarmuka (3 Tema)", "Interface Style (3 Themes)"),
+                    text = lang.t(
+                        "Gaya Antarmuka (${UiTheme.entries.size} Tema)",
+                        "Interface Style (${UiTheme.entries.size} Themes)"
+                    ),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = tokens.palette.onSurface
@@ -922,9 +907,9 @@ private fun ThemesGridCard(
                 )
             }
             TextButton(onClick = onResetTheme) {
-                Icon(Icons.Rounded.Refresh, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(15.dp))
+                ThemedIcon(IronPulseIcon.REFRESH, contentDescription = null, tint = tokens.accentTextColor, size = 15.dp)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(lang.t("Reset", "Reset"), fontSize = 12.sp, color = tokens.accentColor)
+                Text(lang.t("Reset", "Reset"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tokens.accentTextColor)
             }
         }
 
@@ -1020,116 +1005,175 @@ fun AccentAndTintSettingsCard(
             }
         }
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            GymModelHelpers.ACCENT_COLOR_PRESETS.forEach { opt ->
-                val color = MaterialYouColorEngine.parseColor(opt.hex)
-                val active = activeAccentHex.equals(opt.hex, ignoreCase = true)
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .tactilePress(pressedScale = 0.90f, disabledByPerf = noAnim)
-                        .clip(CircleShape)
-                        .background(color)
-                        .border(
-                            width = if (active) 3.dp else 1.dp,
-                            color = if (active) Color.White else Color.White.copy(alpha = 0.25f),
-                            shape = CircleShape
-                        )
-                        .clickable { onSelectAccent(opt.hex) },
-                    contentAlignment = Alignment.Center
+        if (tokens.accentLocked) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = tokens.accentColor.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.42f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("accent_locked_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (active) {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = lang.t(opt.labelId, opt.labelEn),
-                            tint = Color(0xFF0A0B0E),
-                            modifier = Modifier.size(18.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    0.0f to Color(0xFF66DAFF),
+                                    0.5f to Color(0xFF0099E5),
+                                    1.0f to Color(0xFF006FB8)
+                                )
+                            )
+                            .border(1.5.dp, Color.White.copy(alpha = 0.85f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ThemedIcon(
+                            icon = IronPulseIcon.LOCK,
+                            contentDescription = lang.t("Warna aksen terkunci", "Accent color locked"),
+                            tint = Color.White,
+                            size = 18.dp
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked"),
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.palette.onSurface
+                        )
+                        Text(
+                            text = lang.t(
+                                "Tema Frutiger Aero mengunci warna aksen biru langit khas Y2K agar nuansa kaca glossy tetap serasi. Pilihan warna kustommu tetap aman untuk tema lainnya.",
+                                "Frutiger Aero locks its signature Y2K sky-blue accent to keep the glossy glass look cohesive. Your custom color stays saved for other themes."
+                            ),
+                            fontSize = 11.5.sp,
+                            lineHeight = 16.sp,
+                            color = tokens.palette.onSurfaceVariant
                         )
                     }
                 }
             }
+        } else {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                GymModelHelpers.ACCENT_COLOR_PRESETS.forEach { opt ->
+                    val color = MaterialYouColorEngine.parseColor(opt.hex)
+                    val active = activeAccentHex.equals(opt.hex, ignoreCase = true)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .tactilePress(pressedScale = 0.90f, disabledByPerf = noAnim)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(
+                                width = if (active) 3.dp else 1.dp,
+                                color = if (active) Color.White else Color.White.copy(alpha = 0.25f),
+                                shape = CircleShape
+                            )
+                            .clickable { onSelectAccent(opt.hex) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (active) {
+                            ThemedIcon(
+                                icon = IronPulseIcon.CHECK,
+                                contentDescription = lang.t(opt.labelId, opt.labelEn),
+                                tint = Color(0xFF0A0B0E),
+                                size = 18.dp
+                            )
+                        }
+                    }
+                }
 
-            VisualPickColorPill(
-                label = lang.t("Pilih Warna", "Pick Color"),
-                onClick = onOpenAccentPicker,
-                modifier = Modifier.testTag("accent_pick_color_button")
-            )
-        }
-
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = lang.t("Nuansa Permukaan (Material Tint)", "Material Surface Tint"),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tokens.palette.onSurface
+                VisualPickColorPill(
+                    label = lang.t("Pilih Warna", "Pick Color"),
+                    onClick = onOpenAccentPicker,
+                    modifier = Modifier.testTag("accent_pick_color_button")
                 )
-                if (activeTintName != null) {
+            }
+
+            HorizontalDivider(color = tokens.subtleBorderColor)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = activeTintName,
-                        fontSize = 11.sp,
-                        color = tokens.palette.onSurfaceVariant
+                        text = lang.t("Nuansa Permukaan (Material Tint)", "Material Surface Tint"),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.palette.onSurface
+                    )
+                    if (activeTintName != null) {
+                        Text(
+                            text = activeTintName,
+                            fontSize = 11.sp,
+                            color = tokens.palette.onSurfaceVariant
+                        )
+                    }
+                }
+                TextButton(onClick = { onSelectMaterialTint(null) }) {
+                    Text(
+                        text = lang.t("Bawaan Tema", "Theme Default"),
+                        fontSize = 11.5.sp,
+                        color = if (materialTintColorHex == null) tokens.accentColor else tokens.palette.onSurfaceVariant
                     )
                 }
             }
-            TextButton(onClick = { onSelectMaterialTint(null) }) {
-                Text(
-                    text = lang.t("Bawaan Tema", "Theme Default"),
-                    fontSize = 11.5.sp,
-                    color = if (materialTintColorHex == null) tokens.accentColor else tokens.palette.onSurfaceVariant
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                GymModelHelpers.MATERIAL_TINT_PRESETS.forEach { opt ->
+                    val color = MaterialYouColorEngine.parseColor(opt.hex)
+                    val active = materialTintColorHex.equals(opt.hex, ignoreCase = true)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .tactilePress(pressedScale = 0.90f, disabledByPerf = noAnim)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(color)
+                            .border(
+                                width = if (active) 2.5.dp else 1.dp,
+                                color = if (active) tokens.accentColor else Color.White.copy(alpha = 0.25f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onSelectMaterialTint(opt.hex) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (active) {
+                            ThemedIcon(
+                                icon = IronPulseIcon.CHECK,
+                                contentDescription = lang.t(opt.labelId, opt.labelEn),
+                                tint = Color.White,
+                                size = 16.dp
+                            )
+                        }
+                    }
+                }
+
+                VisualPickColorPill(
+                    label = lang.t("Pilih Warna", "Pick Color"),
+                    onClick = onOpenTintPicker,
+                    modifier = Modifier.testTag("tint_pick_color_button")
                 )
             }
         }
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            GymModelHelpers.MATERIAL_TINT_PRESETS.forEach { opt ->
-                val color = MaterialYouColorEngine.parseColor(opt.hex)
-                val active = materialTintColorHex.equals(opt.hex, ignoreCase = true)
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .tactilePress(pressedScale = 0.90f, disabledByPerf = noAnim)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(color)
-                        .border(
-                            width = if (active) 2.5.dp else 1.dp,
-                            color = if (active) tokens.accentColor else Color.White.copy(alpha = 0.25f),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        .clickable { onSelectMaterialTint(opt.hex) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (active) {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = lang.t(opt.labelId, opt.labelEn),
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
-            VisualPickColorPill(
-                label = lang.t("Pilih Warna", "Pick Color"),
-                onClick = onOpenTintPicker,
-                modifier = Modifier.testTag("tint_pick_color_button")
-            )
-        }
-
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = tokens.subtleBorderColor)
 
         Text(
             text = lang.t("Palet Tonal Material You Aktif", "Live Material You Tonal Palette"),
@@ -1160,7 +1204,7 @@ fun AccentAndTintSettingsCard(
                             .height(28.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(swatchColor)
-                            .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(8.dp))
+                            .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(8.dp))
                     )
                     Text(
                         text = label,
@@ -1201,17 +1245,18 @@ private fun TodayPhaseMoodCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val nightDot = if (tokens.isLightTheme) Color(0xFF4338CA) else Color(0xFFA5B4FC)
             listOf(
-                Triple(DayTimeMode.AUTO, lang.t("Auto", "Auto"), Color(0xFF34D399)),
-                Triple(DayTimeMode.MORNING, lang.t("Pagi", "Morning"), Color(0xFFFBBF24)),
-                Triple(DayTimeMode.AFTERNOON, lang.t("Siang", "Day"), Color(0xFF38BDF8)),
-                Triple(DayTimeMode.NIGHT, lang.t("Malam", "Night"), Color(0xFFA5B4FC))
+                Triple(DayTimeMode.AUTO, lang.t("Auto", "Auto"), tokens.successColor),
+                Triple(DayTimeMode.MORNING, lang.t("Pagi", "Morning"), tokens.warningColor),
+                Triple(DayTimeMode.AFTERNOON, lang.t("Siang", "Day"), tokens.infoColor),
+                Triple(DayTimeMode.NIGHT, lang.t("Malam", "Night"), nightDot)
             ).forEach { (mode, label, dot) ->
                 val active = selectedMode == mode
                 Surface(
                     onClick = { onSelectMode(mode) },
                     shape = RoundedCornerShape(12.dp),
-                    color = if (active) dot.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
+                    color = if (active) dot.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f) else tokens.palette.surfaceContainerLow,
                     border = BorderStroke(1.dp, if (active) dot else tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
@@ -1322,11 +1367,11 @@ private fun PerformanceSettingsCard(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
+                            ThemedIcon(
+                                icon = IronPulseIcon.CHECK,
                                 contentDescription = null,
                                 tint = tokens.accentColor,
-                                modifier = Modifier.size(14.dp)
+                                size = 14.dp
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                         }
@@ -1342,7 +1387,7 @@ private fun PerformanceSettingsCard(
             }
         }
 
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = tokens.subtleBorderColor)
 
         PerformanceSwitchRow(
             title = lang.t("Tanpa Animasi Gerak", "Disable Animations"),
@@ -1375,25 +1420,36 @@ private fun ThemePreviewCard(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val previewAccent = when (theme) {
-        UiTheme.UBUNTU_YARU -> Color(0xFFE95420)
-        UiTheme.AMOLED_STEALTH -> if (accentColor == MaterialYouColorEngine.parseColor(MaterialYouColorEngine.DEFAULT_ACCENT_COLOR)) {
-            Color(0xFF00E5FF)
-        } else {
-            accentColor
-        }
-        else -> accentColor
+    val previewAccent = resolvePreviewAccentForTheme(theme, accentColor)
+    val readableAccent = remember(previewAccent, tokens.isLightTheme) {
+        if (tokens.isLightTheme) MaterialYouColorEngine.readableAccentOnLight(previewAccent) else previewAccent
+    }
+    val fontPack = remember(theme) { resolveThemeFontPack(theme) }
+    val isAeroPreview = theme == UiTheme.FRUTIGER_AERO
+
+    val cardShape = when (theme) {
+        UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
+        UiTheme.UBUNTU_YARU -> RoundedCornerShape(12.dp)
+        UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
+        UiTheme.FRUTIGER_AERO -> RoundedCornerShape(18.dp)
+        UiTheme.MATERIAL_YOU -> RoundedCornerShape(18.dp)
     }
 
     Surface(
         onClick = onSelect,
-        shape = RoundedCornerShape(14.dp),
-        color = if (selected) previewAccent.copy(alpha = 0.14f) else tokens.controlBg,
+        shape = cardShape,
+        color = if (selected) {
+            readableAccent.copy(alpha = if (tokens.isLightTheme) 0.10f else 0.14f)
+        } else {
+            tokens.controlBg
+        },
         border = BorderStroke(
             width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) previewAccent else tokens.surfaceBorderColor
+            color = if (selected) readableAccent else tokens.surfaceBorderColor
         ),
-        modifier = modifier.tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
+        modifier = modifier
+            .testTag("theme_card_${theme.wireValue}")
+            .tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
     ) {
         Row(
             modifier = Modifier
@@ -1402,18 +1458,17 @@ private fun ThemePreviewCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val previewShape = RoundedCornerShape(
-                when (theme) {
-                    UiTheme.MATERIAL_YOU -> 14.dp
-                    UiTheme.CARBON_FORGE -> 6.dp
-                    UiTheme.UBUNTU_YARU -> 7.dp
-                    UiTheme.AMOLED_STEALTH -> 10.dp
-                }
-            )
-            Box(
+            val previewShape = when (theme) {
+                UiTheme.MATERIAL_YOU -> RoundedCornerShape(14.dp)
+                UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
+                UiTheme.UBUNTU_YARU -> RoundedCornerShape(8.dp)
+                UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
+                UiTheme.FRUTIGER_AERO -> RoundedCornerShape(14.dp)
+            }
+            Column(
                 modifier = Modifier
-                    .width(92.dp)
-                    .height(54.dp)
+                    .width(98.dp)
+                    .height(64.dp)
                     .clip(previewShape)
                     .drawWithCache {
                         val strokePx = 1.dp.toPx()
@@ -1421,51 +1476,83 @@ private fun ThemePreviewCard(
                         val grainScale = density.roundToInt().coerceIn(1, 3)
                         val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
                         val baseBg = when (theme) {
-                            UiTheme.MATERIAL_YOU -> Color(0xFF23202A)
-                            UiTheme.CARBON_FORGE -> Color(0xFF101318)
-                            UiTheme.UBUNTU_YARU -> Color(0xFF2C2C2C)
+                            UiTheme.MATERIAL_YOU -> Color(0xFF211E28)
+                            UiTheme.CARBON_FORGE -> Color(0xFF0E1117)
+                            UiTheme.UBUNTU_YARU -> Color(0xFF2A1626)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
+                            UiTheme.FRUTIGER_AERO -> Color(0xFFD6F3FF)
                         }
                         val shaderBrush = when (theme) {
-                            UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = false)
-                            UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = false)
-                            UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = false)
-                            UiTheme.MATERIAL_YOU -> null
+                            UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
+                            UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = true)
+                            UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
+                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO -> null
                         }
                         val finishBrush = when (theme) {
-                            UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
-                                0.0f to previewAccent.copy(alpha = 0.08f),
-                                1.0f to Color.Transparent
+                            UiTheme.MATERIAL_YOU -> Brush.radialGradient(
+                                colors = listOf(previewAccent.copy(alpha = 0.22f), Color.Transparent),
+                                center = Offset(size.width * 0.85f, size.height * 0.20f),
+                                radius = size.width * 0.85f
                             )
                             UiTheme.CARBON_FORGE -> Brush.verticalGradient(
                                 0.0f to Color.White.copy(alpha = 0.07f),
                                 0.45f to Color.Transparent,
-                                1.0f to Color.Black.copy(alpha = 0.24f)
+                                1.0f to Color.Black.copy(alpha = 0.28f)
                             )
-                            UiTheme.UBUNTU_YARU -> Brush.horizontalGradient(
-                                listOf(Color(0x28E95420), Color.Transparent)
+                            UiTheme.UBUNTU_YARU -> Brush.linearGradient(
+                                colors = listOf(Color(0x4AE95420), Color(0x2E77216F), Color.Transparent),
+                                start = Offset(0f, 0f),
+                                end = Offset(size.width, size.height)
                             )
                             UiTheme.AMOLED_STEALTH -> Brush.verticalGradient(
                                 0.0f to previewAccent.copy(alpha = 0.12f),
-                                0.35f to Color.Transparent
+                                0.45f to Color.Transparent
+                            )
+                            UiTheme.FRUTIGER_AERO -> Brush.verticalGradient(
+                                0.0f to Color(0xFF7ED8FF),
+                                0.56f to Color(0xFFE0F8FF),
+                                1.0f to Color(0xFFD0FCE4)
                             )
                         }
-                        val topRim = when (theme) {
-                            UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.20f)
-                            UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.09f)
-                            UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
-                            UiTheme.MATERIAL_YOU -> Color.Transparent
-                        }
+                        val aeroHillPath = if (isAeroPreview) {
+                            Path().apply {
+                                moveTo(0f, size.height * 0.78f)
+                                cubicTo(
+                                    size.width * 0.34f, size.height * 0.62f,
+                                    size.width * 0.68f, size.height * 0.90f,
+                                    size.width, size.height * 0.72f
+                                )
+                                lineTo(size.width, size.height)
+                                lineTo(0f, size.height)
+                                close()
+                            }
+                        } else null
                         onDrawBehind {
                             drawRect(baseBg)
                             if (shaderBrush != null) drawRect(shaderBrush)
                             drawRect(finishBrush)
-                            if (topRim != Color.Transparent) {
-                                drawLine(
-                                    color = topRim,
-                                    start = Offset(0f, strokePx * 0.5f),
-                                    end = Offset(size.width, strokePx * 0.5f),
-                                    strokeWidth = strokePx
+                            if (aeroHillPath != null) {
+                                drawPath(
+                                    path = aeroHillPath,
+                                    brush = Brush.verticalGradient(
+                                        listOf(Color(0x7039D353), Color(0x880EA5A4))
+                                    )
+                                )
+                            }
+                            if (theme == UiTheme.AMOLED_STEALTH) {
+                                val bLen = 5.dp.toPx()
+                                val bPad = 2.dp.toPx()
+                                val bColor = previewAccent.copy(alpha = 0.85f)
+                                val bSw = 1.1.dp.toPx()
+                                drawLine(bColor, Offset(bPad, bPad), Offset(bPad + bLen, bPad), bSw)
+                                drawLine(bColor, Offset(bPad, bPad), Offset(bPad, bPad + bLen), bSw)
+                                drawLine(bColor, Offset(size.width - bPad, size.height - bPad), Offset(size.width - bPad - bLen, size.height - bPad), bSw)
+                                drawLine(bColor, Offset(size.width - bPad, size.height - bPad), Offset(size.width - bPad, size.height - bPad - bLen), bSw)
+                            } else if (theme == UiTheme.CARBON_FORGE) {
+                                drawRect(
+                                    color = previewAccent,
+                                    topLeft = Offset(0f, 14.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height - 20.dp.toPx())
                                 )
                             }
                         }
@@ -1473,51 +1560,114 @@ private fun ThemePreviewCard(
                     .border(
                         1.dp,
                         when (theme) {
-                            UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.18f)
+                            UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.22f)
                             UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-                            UiTheme.AMOLED_STEALTH -> Color.White.copy(alpha = 0.16f)
-                            UiTheme.MATERIAL_YOU -> previewAccent.copy(alpha = 0.28f)
+                            UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
+                            UiTheme.FRUTIGER_AERO -> Color(0xB80082C8)
+                            UiTheme.MATERIAL_YOU -> previewAccent.copy(alpha = 0.30f)
                         },
                         previewShape
                     )
             ) {
+                // Dedicated mini OS header strip — zero overlap with emblem/icons below
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
+                        .fillMaxWidth()
+                        .height(14.dp)
+                        .background(
+                            when (theme) {
+                                UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.62f)
+                                UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
+                                UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
+                                UiTheme.CARBON_FORGE -> Color(0xCC181E28)
+                                UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.06f)
+                            }
+                        )
+                        .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .width(34.dp)
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.76f))
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(22.dp)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.32f))
-                        )
-                    }
-                    val pillShape = RoundedCornerShape(
-                        when (theme) {
-                            UiTheme.MATERIAL_YOU -> 999.dp
-                            UiTheme.CARBON_FORGE -> 3.dp
-                            UiTheme.UBUNTU_YARU -> 5.dp
-                            UiTheme.AMOLED_STEALTH -> 6.dp
-                        }
-                    )
                     Box(
                         modifier = Modifier
-                            .size(width = 22.dp, height = 14.dp)
-                            .clip(pillShape)
-                            .background(previewAccent)
+                            .width(24.dp)
+                            .height(3.5.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(
+                                if (isAeroPreview) Color(0xFF073B66).copy(alpha = 0.65f)
+                                else previewAccent.copy(alpha = 0.85f)
+                            )
                     )
+                    when (theme) {
+                        UiTheme.UBUNTU_YARU -> Row(horizontalArrangement = Arrangement.spacedBy(2.5.dp)) {
+                            Box(Modifier.size(3.5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.35f)))
+                            Box(Modifier.size(3.5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.55f)))
+                            Box(Modifier.size(3.5.dp).clip(CircleShape).background(Color(0xFFE95420)))
+                        }
+                        UiTheme.FRUTIGER_AERO -> Row(horizontalArrangement = Arrangement.spacedBy(2.5.dp)) {
+                            Box(Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF38BDF8)))
+                            Box(Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF22C55E)))
+                        }
+                        UiTheme.AMOLED_STEALTH -> Box(Modifier.size(4.dp).background(previewAccent))
+                        else -> Box(Modifier.size(4.dp).clip(CircleShape).background(previewAccent.copy(alpha = 0.75f)))
+                    }
+                }
+
+                // Clean mini OS viewport body: emblem + 3 custom themed icons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    ThemeBrandEmblem(
+                        theme = theme,
+                        accentOverride = previewAccent,
+                        size = 28.dp
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    if (isAeroPreview) Color(0xFF072B4A).copy(alpha = 0.72f)
+                                    else Color.White.copy(alpha = 0.75f)
+                                )
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val iconTint = if (isAeroPreview) Color(0xFF005F9E) else previewAccent
+                            ThemedIcon(
+                                icon = IronPulseIcon.TODAY,
+                                contentDescription = null,
+                                tint = iconTint,
+                                size = 12.dp,
+                                themeOverride = theme
+                            )
+                            ThemedIcon(
+                                icon = IronPulseIcon.EXERCISES,
+                                contentDescription = null,
+                                tint = if (isAeroPreview) Color(0xFF073257) else Color.White.copy(alpha = 0.85f),
+                                size = 12.dp,
+                                themeOverride = theme
+                            )
+                            ThemedIcon(
+                                icon = IronPulseIcon.TIMER,
+                                contentDescription = null,
+                                tint = iconTint,
+                                size = 12.dp,
+                                themeOverride = theme
+                            )
+                        }
+                    }
                 }
             }
 
@@ -1525,18 +1675,49 @@ private fun ThemePreviewCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = lang.t(theme.titleId, theme.titleEn),
+                        fontFamily = fontPack.displayFont,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.palette.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = readableAccent.copy(alpha = if (tokens.isLightTheme) 0.13f else 0.16f),
+                        border = BorderStroke(1.dp, readableAccent.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.36f))
+                    ) {
+                        Text(
+                            text = fontPack.osBadgeLabel,
+                            fontFamily = fontPack.monoFont,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = readableAccent,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                        )
+                    }
+                }
                 Text(
-                    text = lang.t(theme.titleId, theme.titleEn),
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tokens.palette.onSurface,
+                    text = fontPack.fontDisplayName,
+                    fontFamily = fontPack.bodyFont,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = readableAccent,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = lang.t(theme.subtitleId, theme.subtitleEn),
                     fontSize = 11.sp,
-                    lineHeight = 15.sp,
+                    lineHeight = 14.5.sp,
                     color = tokens.palette.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -1544,11 +1725,12 @@ private fun ThemePreviewCard(
             }
 
             if (selected) {
-                Icon(
-                    imageVector = Icons.Rounded.CheckCircle,
+                ThemedIcon(
+                    icon = IronPulseIcon.CHECK_CIRCLE,
                     contentDescription = lang.t("Dipilih", "Selected"),
-                    tint = previewAccent,
-                    modifier = Modifier.size(20.dp)
+                    tint = readableAccent,
+                    size = 20.dp,
+                    themeOverride = theme
                 )
             }
         }
@@ -1610,7 +1792,7 @@ private fun AlarmAudioSettingsCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Rounded.VolumeUp, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+                ThemedIcon(IronPulseIcon.VOLUME, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
                 Text(
                     text = lang.t("Volume & Pengatur Waktu", "Volume & Timing"),
                     fontSize = 15.5.sp,
@@ -1636,7 +1818,7 @@ private fun AlarmAudioSettingsCard(
             )
         )
 
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = tokens.dividerColor)
 
         Text(
             text = lang.t("Durasi Tunda (Snooze)", "Snooze Duration"),
@@ -1671,7 +1853,7 @@ private fun AlarmAudioSettingsCard(
             }
         }
 
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = tokens.dividerColor)
 
         PerformanceSwitchRow(
             title = lang.t("Timer Istirahat Otomatis", "Auto-Start Rest Timer"),
@@ -1703,7 +1885,7 @@ private fun AlarmFeedbackSettingsCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Rounded.Vibration, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+            ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
             Text(
                 text = lang.t("Umpan Balik & Suara", "Feedback & Voice"),
                 fontSize = 15.5.sp,
@@ -1745,7 +1927,7 @@ private fun AlarmFeedbackSettingsCard(
                         text = lang.t("Uji", "Test"),
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = tokens.accentColor,
+                        color = tokens.accentTextColor,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
@@ -1760,7 +1942,7 @@ private fun AlarmFeedbackSettingsCard(
             }
         }
 
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = tokens.dividerColor)
 
         PerformanceSwitchRow(
             title = lang.t("Suara Maskot Pulse (TTS)", "Pulse Mascot Voice (TTS)"),
@@ -1794,7 +1976,7 @@ private fun AlarmDiagnosticsCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+            ThemedIcon(IronPulseIcon.NOTIFICATIONS, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
             Text(
                 text = lang.t("Diagnostik Alarm Android", "Android Alarm Diagnostics"),
                 fontSize = 15.5.sp,
@@ -1834,7 +2016,8 @@ private fun AlarmDiagnosticsCard(
                 Text(
                     text = if (state.hasNotificationPermission) lang.t("Diizinkan", "Granted") else lang.t("Belum diizinkan", "Missing"),
                     fontSize = 11.5.sp,
-                    color = if (state.hasNotificationPermission) Color(0xFF34D399) else Color(0xFFFBBF24)
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (state.hasNotificationPermission) tokens.successColor else tokens.warningColor
                 )
             }
             if (!state.hasNotificationPermission) {
@@ -1850,7 +2033,7 @@ private fun AlarmDiagnosticsCard(
                     Text(lang.t("Izinkan", "Allow"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             } else {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = Color(0xFF34D399))
+                ThemedIcon(IronPulseIcon.CHECK_CIRCLE, contentDescription = null, tint = tokens.successColor, size = 20.dp)
             }
         }
 
@@ -1872,7 +2055,8 @@ private fun AlarmDiagnosticsCard(
                 Text(
                     text = if (state.canScheduleExactAlarms) lang.t("Aktif (Presisi)", "Active (Exact)") else lang.t("Perlu izin sistem", "Needs system permission"),
                     fontSize = 11.5.sp,
-                    color = if (state.canScheduleExactAlarms) Color(0xFF34D399) else Color(0xFFFBBF24)
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (state.canScheduleExactAlarms) tokens.successColor else tokens.warningColor
                 )
             }
             OutlinedButton(
@@ -1894,7 +2078,7 @@ private fun AlarmDiagnosticsCard(
             ),
             modifier = Modifier.fillMaxWidth().height(46.dp)
         ) {
-            Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
+            ThemedIcon(IronPulseIcon.ALARM, contentDescription = null, size = 18.dp)
             Spacer(modifier = Modifier.width(8.dp))
             Text(lang.t("Uji Alarm Latar Belakang (5 Detik)", "Test Background Alarm (5s)"), fontWeight = FontWeight.Bold)
         }
@@ -1921,7 +2105,7 @@ private fun RingtoneManagerHeaderCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+            ThemedIcon(IronPulseIcon.MUSIC, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
             Text(
                 text = lang.t("Pengelola Nada Dering", "Ringtone Manager"),
                 fontSize = 16.sp,
@@ -1942,17 +2126,17 @@ private fun RingtoneManagerHeaderCard(
             onClick = onPickCustomRingtone,
             enabled = !uploading,
             shape = RoundedCornerShape(tokens.buttonRadius),
-            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.55f)),
+            border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.55f)),
             modifier = Modifier.fillMaxWidth().height(46.dp)
         ) {
             if (uploading) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = tokens.accentColor)
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = tokens.accentTextColor)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(lang.t("Mengimpor Audio...", "Importing Audio..."), color = tokens.accentColor, fontWeight = FontWeight.Bold)
+                Text(lang.t("Mengimpor Audio...", "Importing Audio..."), color = tokens.accentTextColor, fontWeight = FontWeight.Bold)
             } else {
-                Icon(Icons.Rounded.UploadFile, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(18.dp))
+                ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(lang.t("Pilih File Audio dari HP", "Pick Audio File from Phone"), color = tokens.accentColor, fontWeight = FontWeight.Bold)
+                Text(lang.t("Pilih File Audio dari HP", "Pick Audio File from Phone"), color = tokens.accentTextColor, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1993,11 +2177,11 @@ private fun CustomRingtoneItemCard(
                     .clip(CircleShape)
                     .background(tokens.accentColor.copy(alpha = 0.16f))
             ) {
-                Icon(
-                    imageVector = if (isPreviewing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                ThemedIcon(
+                    icon = if (isPreviewing) IronPulseIcon.STOP else IronPulseIcon.PLAY,
                     contentDescription = "Preview",
-                    tint = tokens.accentColor,
-                    modifier = Modifier.size(18.dp)
+                    tint = tokens.accentTextColor,
+                    size = 18.dp
                 )
             }
 
@@ -2021,11 +2205,11 @@ private fun CustomRingtoneItemCard(
                 onClick = onDelete,
                 modifier = Modifier.size(32.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.DeleteOutline,
+                ThemedIcon(
+                    icon = IronPulseIcon.DELETE,
                     contentDescription = "Delete",
-                    tint = Color(0xFFF87171),
-                    modifier = Modifier.size(18.dp)
+                    tint = tokens.dangerColor,
+                    size = 18.dp
                 )
             }
         }
@@ -2083,11 +2267,11 @@ private fun BuiltinRingtoneItemCard(
                     .clip(CircleShape)
                     .background(tokens.accentColor.copy(alpha = 0.16f))
             ) {
-                Icon(
-                    imageVector = if (isPreviewing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                ThemedIcon(
+                    icon = if (isPreviewing) IronPulseIcon.STOP else IronPulseIcon.PLAY,
                     contentDescription = "Preview",
                     tint = tokens.accentColor,
-                    modifier = Modifier.size(18.dp)
+                    size = 18.dp
                 )
             }
 
@@ -2159,7 +2343,7 @@ private fun RingtoneAssignChip(
             horizontalArrangement = Arrangement.Center
         ) {
             if (active) {
-                Icon(Icons.Rounded.Check, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(14.dp))
+                ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.accentColor, size = 14.dp)
                 Spacer(modifier = Modifier.width(4.dp))
             }
             Text(
@@ -2256,7 +2440,7 @@ private fun SystemLanguageCard(
                             modifier = Modifier.weight(1f)
                         )
                         if (active) {
-                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = tokens.accentColor, modifier = Modifier.size(16.dp))
+                            ThemedIcon(IronPulseIcon.CHECK_CIRCLE, contentDescription = null, tint = tokens.accentColor, size = 16.dp)
                         }
                     }
                 }
@@ -2357,14 +2541,14 @@ private fun SystemGuideAndAboutCard(
         )
 
         SystemActionRow(
-            icon = Icons.Rounded.School,
+            icon = IronPulseIcon.SCHOOL,
             title = lang.t("Tur Interaktif Bersama Pulse", "Interactive Tour with Pulse"),
             subtitle = lang.t("Pulse memandumu keliling 5 tab, template jadwal & alarm.", "Let Pulse walk you through all 5 tabs, templates & alarms."),
             onClick = onOpenTutorial
         )
 
         SystemActionRow(
-            icon = Icons.Rounded.Info,
+            icon = IronPulseIcon.INFO,
             title = lang.t("Tentang IronPulse & Kredit", "About IronPulse & Credits"),
             subtitle = lang.t("Versi aplikasi, informasi rilis & kredit pengembang.", "App version, release notes & developer credits."),
             onClick = onOpenAbout
@@ -2374,7 +2558,7 @@ private fun SystemGuideAndAboutCard(
 
 @Composable
 private fun SystemActionRow(
-    icon: ImageVector,
+    icon: IronPulseIcon,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -2403,11 +2587,11 @@ private fun SystemActionRow(
                     .background(tokens.accentColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
+                ThemedIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = tokens.accentColor,
-                    modifier = Modifier.size(18.dp)
+                    size = 18.dp
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -2427,11 +2611,11 @@ private fun SystemActionRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
+            ThemedIcon(
+                icon = IronPulseIcon.CHEVRON_RIGHT,
                 contentDescription = null,
                 tint = tokens.mutedTextColor,
-                modifier = Modifier.size(20.dp)
+                size = 20.dp
             )
         }
     }
