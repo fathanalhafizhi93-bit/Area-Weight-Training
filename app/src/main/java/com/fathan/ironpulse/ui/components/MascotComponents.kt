@@ -232,7 +232,7 @@ fun MascotOrbFace(
         staticOne
     }
 
-    // Natural squash-and-stretch impulse on tap / combo / pet / hype
+    // Natural squash-and-stretch impulse on tap / combo / pet
     val squashX = remember { Animatable(1f) }
     val squashY = remember { Animatable(1f) }
     LaunchedEffect(eyeState.reactionTick, runAnim) {
@@ -241,8 +241,7 @@ fun MascotOrbFace(
             squashY.snapTo(1f)
             return@LaunchedEffect
         }
-        val intense = eyeState.reactionKind == MascotReaction.COMBO_EXCITED ||
-            eyeState.reactionKind == MascotReaction.HYPE
+        val intense = eyeState.reactionKind == MascotReaction.COMBO_EXCITED
         val wide = if (intense) 1.15f else 1.09f
         val flat = if (intense) 0.87f else 0.92f
         val tall = if (intense) 1.09f else 1.05f
@@ -731,8 +730,8 @@ fun MascotOrbFace(
                 if (isZenPose) {
                     drawCircle(phaseColor, px(3.2f), pt(32f, 14f), style = Stroke(px(1.7f)))
                 }
-                // Extra reaction micro-overlays for Combo Poke, Hype, Petting, and Quick Tips
-                if (eyeState.reactionKind == MascotReaction.COMBO_EXCITED || eyeState.reactionKind == MascotReaction.HYPE) {
+                // Extra reaction micro-overlays for Combo Poke, Petting, and Quick Tips
+                if (eyeState.reactionKind == MascotReaction.COMBO_EXCITED) {
                     drawLine(phaseColor, pt(12.5f, 13f), pt(12.5f, 18.5f), px(2f), cap = StrokeCap.Round)
                     drawLine(phaseColor, pt(9.8f, 15.8f), pt(15.2f, 15.8f), px(2f), cap = StrokeCap.Round)
                     drawLine(Color(0xFFFDE68A), pt(51.5f, 13f), pt(51.5f, 18.5f), px(2f), cap = StrokeCap.Round)

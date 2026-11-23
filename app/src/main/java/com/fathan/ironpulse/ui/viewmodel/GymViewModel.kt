@@ -126,7 +126,6 @@ enum class MascotReaction {
     TAP_BOUNCE,
     COMBO_EXCITED,
     PET_COZY,
-    HYPE,
     TIP
 }
 
@@ -2414,7 +2413,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     rotateTimePoseOnly()
                 }
 
-                // Autonomous interaction (~64s day with automatic Hype/Tip moments; rare ~300s @ 30% chance at night)
+                // Autonomous interaction (~64s day with automatic Tips; rare ~300s @ 30% chance at night)
                 val chatGap = mascotAutoChatIntervalMs(current.timePhase)
                 if (!lockActive && initialGreetingFired &&
                     now - lastAutoChatAtMs >= chatGap
@@ -2430,17 +2429,14 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                             updateMascotSpeech(playChirp = false, speakTts = false)
                             scheduleNightReturnToSleep(5500L)
                         }
-                    } else if (shouldTriggerAutoDaytimeHypeOrTip(phase, current.urgentMood)) {
-                        val roll = (0..99).random()
-                        when {
-                            roll < 28 -> triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.HYPE, speakTts = false)
-                            roll < 54 -> triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.TIP, speakTts = false)
-                            else -> {
-                                val pool = posesForPhase(phase)
-                                mascotPhasePoseIdx = pickFreshPoseIndex(pool.size, mascotPhasePoseIdx)
-                                pushRecentPose(mascotPhasePoseIdx)
-                                updateMascotSpeech(playChirp = true, speakTts = false)
-                            }
+                    } else if (shouldTriggerAutoDaytimeTip(phase, current.urgentMood)) {
+                        if ((0..99).random() < 34) {
+                            triggerAutomaticDaytimeTip(phase, speakTts = false)
+                        } else {
+                            val pool = posesForPhase(phase)
+                            mascotPhasePoseIdx = pickFreshPoseIndex(pool.size, mascotPhasePoseIdx)
+                            pushRecentPose(mascotPhasePoseIdx)
+                            updateMascotSpeech(playChirp = true, speakTts = false)
                         }
                     } else {
                         updateMascotSpeech(playChirp = true, speakTts = false)
@@ -2493,12 +2489,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun triggerAutomaticDaytimeMoodMoment(
+    private fun triggerAutomaticDaytimeTip(
         phase: DayTimePhase,
-        kind: MascotReaction,
         speakTts: Boolean
     ) {
-        if (!shouldTriggerAutoDaytimeHypeOrTip(phase, _mascotState.value.urgentMood)) return
+        if (!shouldTriggerAutoDaytimeTip(phase, _mascotState.value.urgentMood)) return
         val prefs = prefsStore.state.value
         val cleanName = (_profile.value?.displayName ?: "").trim()
         val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
@@ -2507,55 +2502,26 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         dialogueLockedUntilMs = now + 14_000L
         lastAutoChatAtMs = now
 
-        when (kind) {
-            MascotReaction.HYPE -> {
-                triggerMascotReactionPulse(
-                    kind = MascotReaction.HYPE,
-                    durationMs = 1150L,
-                    tiltDeg = listOf(-4.5f, 4.5f).random()
-                )
-                val pool = MascotDialogues.buildHypePool(prefs.lang, n)
-                mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
-                val picked = pool[mascotQuoteRoll]
-                val hypePose = if (phase == DayTimePhase.MORNING) TimePhasePose.FLEX else TimePhasePose.BEAST
-                _mascotState.value = _mascotState.value.copy(
-                    mood = MascotMood.READY,
-                    timePhase = phase,
-                    activeTimePose = hypePose,
-                    phaseColorHex = prefs.accentColorHex,
-                    activeLine = picked,
-                    speechEventId = _mascotState.value.speechEventId + 1,
-                    isDialogueLocked = true
-                )
-                audioEngine.playMascotChirp("celebrate", vol)
-                if (speakTts && prefs.mascotVoiceEnabled) {
-                    ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
-                }
-            }
-            MascotReaction.TIP -> {
-                triggerMascotReactionPulse(
-                    kind = MascotReaction.TIP,
-                    durationMs = 1000L,
-                    tiltDeg = 5.0f
-                )
-                val pool = MascotDialogues.buildQuickTipPool(prefs.lang, n)
-                mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
-                val picked = pool[mascotQuoteRoll]
-                _mascotState.value = _mascotState.value.copy(
-                    mood = MascotMood.READY,
-                    timePhase = phase,
-                    activeTimePose = TimePhasePose.CURIOUS,
-                    phaseColorHex = resolvePhaseThemeTokens(phase).accentBrightHex,
-                    activeLine = picked,
-                    speechEventId = _mascotState.value.speechEventId + 1,
-                    isDialogueLocked = true
-                )
-                audioEngine.playMascotChirp("ready", vol)
-                if (speakTts && prefs.mascotVoiceEnabled) {
-                    ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
-                }
-            }
-            else -> Unit
+        triggerMascotReactionPulse(
+            kind = MascotReaction.TIP,
+            durationMs = 1000L,
+            tiltDeg = 5.0f
+        )
+        val pool = MascotDialogues.buildQuickTipPool(prefs.lang, n)
+        mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
+        val picked = pool[mascotQuoteRoll]
+        _mascotState.value = _mascotState.value.copy(
+            mood = MascotMood.READY,
+            timePhase = phase,
+            activeTimePose = TimePhasePose.CURIOUS,
+            phaseColorHex = resolvePhaseThemeTokens(phase).accentBrightHex,
+            activeLine = picked,
+            speechEventId = _mascotState.value.speechEventId + 1,
+            isDialogueLocked = true
+        )
+        audioEngine.playMascotChirp("ready", vol)
+        if (speakTts && prefs.mascotVoiceEnabled) {
+            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
         }
     }
 
@@ -2636,18 +2602,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        if (shouldTriggerAutoDaytimeHypeOrTip(phase, _mascotState.value.urgentMood)) {
-            val roll = (0..99).random()
-            when {
-                roll < 24 -> {
-                    triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.HYPE, speakTts = true)
-                    return
-                }
-                roll < 48 -> {
-                    triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.TIP, speakTts = true)
-                    return
-                }
-            }
+        if (shouldTriggerAutoDaytimeTip(phase, _mascotState.value.urgentMood) &&
+            (0..99).random() < 28
+        ) {
+            triggerAutomaticDaytimeTip(phase, speakTts = true)
+            return
         }
 
         if (_mascotState.value.urgentMood == null) {
@@ -3036,7 +2995,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             return mascot.activeTimePose in CLOSED_EYE_POSES
         }
 
-        internal fun shouldTriggerAutoDaytimeHypeOrTip(phase: DayTimePhase, urgentMood: MascotMood?): Boolean {
+        internal fun shouldTriggerAutoDaytimeTip(phase: DayTimePhase, urgentMood: MascotMood?): Boolean {
             return urgentMood == null && (phase == DayTimePhase.MORNING || phase == DayTimePhase.AFTERNOON)
         }
 

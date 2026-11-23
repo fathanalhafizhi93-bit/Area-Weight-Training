@@ -1011,11 +1011,11 @@ class StartupSmokeTest {
             assertTrue(isClosedEyeExpression(mascot, isPetting = true))
         }
 
-        // Automatic Hype & Tip triggers only in Morning & Afternoon (never Night)
-        assertTrue(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.MORNING, null))
-        assertTrue(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.AFTERNOON, null))
-        assertFalse(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.NIGHT, null))
-        assertFalse(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.MORNING, MascotMood.TIMER_ACTIVE))
+        // Automatic Tip triggers only in Morning & Afternoon (never Night)
+        assertTrue(GymViewModel.shouldTriggerAutoDaytimeTip(DayTimePhase.MORNING, null))
+        assertTrue(GymViewModel.shouldTriggerAutoDaytimeTip(DayTimePhase.AFTERNOON, null))
+        assertFalse(GymViewModel.shouldTriggerAutoDaytimeTip(DayTimePhase.NIGHT, null))
+        assertFalse(GymViewModel.shouldTriggerAutoDaytimeTip(DayTimePhase.MORNING, MascotMood.TIMER_ACTIVE))
 
         // Nighttime sleep chat gap is much longer (rare) than daytime
         assertTrue(GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.NIGHT) >= 240_000L)

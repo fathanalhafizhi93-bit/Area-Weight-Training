@@ -573,27 +573,6 @@ object MascotDialogues {
         )
     }
 
-    fun buildHypePool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
-        fun t(id: String, en: String) = lang.t(id, en)
-        return listOf(
-            MascotSpeechLine(
-                "hype-1",
-                t("MODE GAHAR AKTIF$n!", "BEAST MODE ON$n!"),
-                t("Kunci inti tubuhmu, buang napas saat mendorong, dan buktikan kekuatanmu hari ini!", "Brace your core, exhale through the drive, and own every rep today!")
-            ),
-            MascotSpeechLine(
-                "hype-2",
-                t("Gas penuh tanpa ragu$n!", "Full throttle, no doubts$n!"),
-                t("Satu set fokus lebih berharga dari sepuluh niat tanpa aksi. Let's go!", "One focused set beats ten intentions. Let's move!")
-            ),
-            MascotSpeechLine(
-                "hype-3",
-                t("Hari ini milikmu$n!", "Today belongs to you$n!"),
-                t("Fokus satu repetisi demi satu repetisi — rekor baru lahir dari kontrol yang rapi.", "One crisp rep at a time — new PRs are built on clean control.")
-            )
-        )
-    }
-
     fun buildQuickTipPool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
         fun t(id: String, en: String) = lang.t(id, en)
         return listOf(
