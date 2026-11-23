@@ -159,28 +159,21 @@ fun HistoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .ironGlassSurface(tokens)
-                    .padding(18.dp),
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = lang.t("PELACAK KONSISTENSI", "CONSISTENCY TRACKER"),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.4.sp,
-                    color = tokens.accentColor
-                )
-                Text(
                     text = lang.t("Riwayat & Kalender Latihan", "History & Workout Calendar"),
-                    fontSize = 23.sp,
+                    fontSize = 21.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = tokens.palette.onSurface
                 )
                 Text(
                     text = lang.t(
-                        "Ketuk tanggal di kalender untuk memeriksa detail set, beban, dan durasi.",
-                        "Tap any calendar date to inspect logged sets, load, and durations."
+                        "Ketuk tanggal untuk melihat set, beban & durasi.",
+                        "Tap a date to inspect sets, load & duration."
                     ),
-                    fontSize = 13.sp,
+                    fontSize = 12.5.sp,
                     color = tokens.palette.onSurfaceVariant
                 )
             }

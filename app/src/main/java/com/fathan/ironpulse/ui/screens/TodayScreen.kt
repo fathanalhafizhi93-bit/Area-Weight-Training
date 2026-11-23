@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -190,7 +191,7 @@ fun TodayScreen(
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
         ) {
-        // 1. HERO BANNER CARD
+        // 1. COMPACT HERO BANNER CARD
         item(key = "hero_banner", contentType = "hero") {
             Box(
                 modifier = Modifier
@@ -202,7 +203,7 @@ fun TodayScreen(
                         bitmap = heroBitmap,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        alpha = if (tokens.isLightTheme) 0.06f else 0.15f,
+                        alpha = if (tokens.isLightTheme) 0.05f else 0.12f,
                         modifier = Modifier.matchParentSize()
                     )
                 }
@@ -213,13 +214,13 @@ fun TodayScreen(
                 )
 
                 Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Zone 1: Phase Emblem + Isolated Fluid Clock + Phase / Alarm Status
+                    // Zone 1: Phase Emblem + Clock + Phase / Alarm Status
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         PhaseLogoEmblem(timePhase = state.timePhase)
                         Column(modifier = Modifier.weight(1f)) {
@@ -232,9 +233,9 @@ fun TodayScreen(
                             val alarmText = if (activeSchedule?.isGymDay == true) {
                                 val fmt = GymModelHelpers.formatAlarmTime(activeSchedule.alarmTime, tokens.clockFormat, lang)
                                 if (activeSchedule.alarmEnabled) {
-                                    "${lang.t("Alarm Hari Ini", "Today Alarm")} $fmt"
+                                    "${lang.t("Alarm", "Alarm")} $fmt"
                                 } else {
-                                    "$fmt (${lang.t("Alarm Mati", "Alarm Off")})"
+                                    "$fmt (${lang.t("Mati", "Off")})"
                                 }
                             } else {
                                 lang.t("Hari Istirahat", "Rest Day")
@@ -245,15 +246,15 @@ fun TodayScreen(
                             ) {
                                 Text(
                                     text = state.timePhase.label(lang),
-                                    fontSize = 13.sp,
+                                    fontSize = 12.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = tokens.phaseTokens.accentBright
                                 )
-                                Text(text = "·", fontSize = 13.sp, color = tokens.mutedTextColor)
+                                Text(text = "·", fontSize = 12.5.sp, color = tokens.mutedTextColor)
                                 Text(
                                     text = alarmText,
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 12.5.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = tokens.palette.onSurfaceVariant
                                 )
@@ -263,8 +264,8 @@ fun TodayScreen(
 
                     HorizontalDivider(color = tokens.subtleBorderColor)
 
-                    // Zone 2: Isolated Date Lead-In + Dominant Focus Title + Next Alarm Bar
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Zone 2: Date Lead-In + Dominant Focus Title + Compact Next Alarm Line
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         TodayLongDateLabel(
                             clockSecondsFlow = clockSecondsFlow,
                             lang = lang,
@@ -276,10 +277,10 @@ fun TodayScreen(
                             } else {
                                 "$dayLabel — ${lang.t("Hari Istirahat", "Rest Day")}"
                             },
-                            fontSize = 31.sp,
-                            lineHeight = 35.sp,
+                            fontSize = 25.sp,
+                            lineHeight = 30.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-0.6).sp,
+                            letterSpacing = (-0.4).sp,
                             color = tokens.palette.onSurface
                         )
                     }
@@ -291,20 +292,6 @@ fun TodayScreen(
                         lang = lang
                     )
 
-                    // Interactive Companion Mascot (truly absent while Pulse is out leading tutorial)
-                    TodayMascot(
-                        mascot = state.mascot,
-                        eyeStateFlow = mascotEyeFlow,
-                        voiceEnabled = state.appPrefs.mascotVoiceEnabled,
-                        orbVisibleAlpha = homeOrbAlphaProvider,
-                        orbAnimActive = homeOrbAnimActive,
-                        hideForTutorial = state.tutorialOpen,
-                        homeOrbBoundsHolder = homeOrbBoundsHolder,
-                        onTapMascot = onTapMascot,
-                        onPetMascot = onPetMascot,
-                        onReplayVoice = onReplayMascotVoice
-                    )
-
                     // Daily Progress Metrics + Animated Bar
                     if (activeSchedule?.isGymDay == true && activeSchedule.exercises.isNotEmpty()) {
                         val animatedBarState = animateFloatAsState(
@@ -312,7 +299,7 @@ fun TodayScreen(
                             animationSpec = if (noAnim) tween(0) else tween(320),
                             label = "todayProgressBar"
                         )
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -324,14 +311,14 @@ fun TodayScreen(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = "${summary.completedSets}/${summary.totalSets} ${lang.t("Set Selesai", "Sets Done")}",
+                                        text = "${summary.completedSets}/${summary.totalSets} ${lang.t("Set", "Sets")}",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp,
                                         color = tokens.palette.onSurfaceVariant
                                     )
                                     Text("·", fontSize = 12.sp, color = tokens.mutedTextColor)
                                     Text(
-                                        text = "${lang.t("Volume", "Volume")}: ${numberFormat.format(summary.totalVolumeKg)} kg",
+                                        text = "${numberFormat.format(summary.totalVolumeKg)} kg",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp,
                                         color = tokens.palette.onSurfaceVariant
@@ -339,7 +326,7 @@ fun TodayScreen(
                                     if (summary.totalTimedSeconds > 0) {
                                         Text("·", fontSize = 12.sp, color = tokens.mutedTextColor)
                                         Text(
-                                            text = "${lang.t("Durasi", "Duration")}: ${GymModelHelpers.formatCompactDuration(summary.totalTimedSeconds, lang)}",
+                                            text = GymModelHelpers.formatCompactDuration(summary.totalTimedSeconds, lang),
                                             fontFamily = FontFamily.Monospace,
                                             fontSize = 12.sp,
                                             color = if (tokens.isLightTheme) Color(0xFF0284C7) else Color(0xFF38BDF8)
@@ -349,7 +336,7 @@ fun TodayScreen(
                                 Text(
                                     text = "${summary.progressPct}%",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 14.sp,
+                                    fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = tokens.accentColor
                                 )
@@ -358,7 +345,7 @@ fun TodayScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(8.dp)
+                                    .height(7.dp)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(
                                         if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.14f)
@@ -368,7 +355,7 @@ fun TodayScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(8.dp)
+                                        .height(7.dp)
                                         .graphicsLayer {
                                             scaleX = animatedBarState.value
                                             transformOrigin = TransformOrigin(0f, 0.5f)
@@ -383,25 +370,24 @@ fun TodayScreen(
             }
         }
 
-        // 2. ISOLATED STANDALONE REST TIMER CARD
-        item(key = "rest_timer_card", contentType = "rest_timer") {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .tutorialSpotlightTarget(TutorialSpotlightTarget.TODAY_REST_TIMER)
-            ) {
-                RestTimerHeroCard(
-                    restTimerFlow = restTimerFlow,
-                    secUnit = secUnit,
-                    onStartRestPreset = onStartRestPreset,
-                    onToggleRestPauseOrStart = onToggleRestPauseOrStart,
-                    onAdjustRest = onAdjustRest,
-                    onResetRest = onResetRest
-                )
-            }
+        // 2. INTERACTIVE PULSE COMPANION CARD (Directly beneath Hero clock card)
+        item(key = "today_mascot_card", contentType = "mascot") {
+            TodayMascot(
+                mascot = state.mascot,
+                eyeStateFlow = mascotEyeFlow,
+                voiceEnabled = state.appPrefs.mascotVoiceEnabled,
+                orbVisibleAlpha = homeOrbAlphaProvider,
+                orbAnimActive = homeOrbAnimActive,
+                hideForTutorial = state.tutorialOpen,
+                homeOrbBoundsHolder = homeOrbBoundsHolder,
+                onTapMascot = onTapMascot,
+                onPetMascot = onPetMascot,
+                onReplayVoice = onReplayMascotVoice,
+                modifier = Modifier.testTag("today_mascot_card")
+            )
         }
 
-        // 3. PRIMARY START WORKOUT CTA
+        // 3. ELEVATED PRIMARY START WORKOUT CTA
         if (activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()) {
             item(key = "start_workout_cta", contentType = "cta") {
                 val ctaRadius = (tokens.cardRadius * 0.78f).coerceAtLeast(10.dp)
@@ -413,6 +399,7 @@ fun TodayScreen(
                     contentColor = tokens.onAccentColor,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .testTag("start_workout_cta")
                         .tactilePress(disabledByPerf = noAnim)
                 ) {
                     Row(
@@ -422,10 +409,9 @@ fun TodayScreen(
                                 if (tokens.buttonHasGloss) {
                                     Modifier.background(
                                         Brush.verticalGradient(
-                                            0.0f to Color.White.copy(alpha = 0.30f),
-                                            0.47f to Color.White.copy(alpha = 0.06f),
-                                            0.50f to Color.Transparent,
-                                            1.0f to Color.Black.copy(alpha = 0.14f)
+                                            0.0f to Color.White.copy(alpha = 0.26f),
+                                            0.48f to Color.White.copy(alpha = 0.04f),
+                                            1.0f to Color.Black.copy(alpha = 0.12f)
                                         )
                                     )
                                 } else {
@@ -438,8 +424,8 @@ fun TodayScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(Color.Black.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -447,7 +433,7 @@ fun TodayScreen(
                                 icon = IronPulseIcon.EXERCISES,
                                 contentDescription = null,
                                 tint = tokens.onAccentColor,
-                                size = 20.dp
+                                size = 19.dp
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -458,10 +444,10 @@ fun TodayScreen(
                                 color = tokens.onAccentColor
                             )
                             Text(
-                                text = lang.t("Buka fokus set, beban & repetisi", "Open focused sets & reps view"),
+                                text = lang.t("Catat set, beban & repetisi", "Log sets, load & reps"),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = tokens.onAccentColor.copy(alpha = 0.8f)
+                                color = tokens.onAccentColor.copy(alpha = 0.82f)
                             )
                         }
                         Row(
@@ -484,6 +470,24 @@ fun TodayScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // 4. COMPACT STANDALONE REST TIMER CARD
+        item(key = "rest_timer_card", contentType = "rest_timer") {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .tutorialSpotlightTarget(TutorialSpotlightTarget.TODAY_REST_TIMER)
+            ) {
+                RestTimerHeroCard(
+                    restTimerFlow = restTimerFlow,
+                    secUnit = secUnit,
+                    onStartRestPreset = onStartRestPreset,
+                    onToggleRestPauseOrStart = onToggleRestPauseOrStart,
+                    onAdjustRest = onAdjustRest,
+                    onResetRest = onResetRest
+                )
             }
         }
 
@@ -872,23 +876,23 @@ private fun RestTimerHeroCard(
         modifier = Modifier
             .fillMaxWidth()
             .ironGlassSurface(tokens, borderOverride = restBorder)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(90.dp)
+                    .size(76.dp)
                     .graphicsLayer { },
                 contentAlignment = Alignment.Center
             ) {
                 val ringColor = if (restRemaining == 0) Color(0xFF16A34A) else tokens.accentColor
                 val ringTrack = if (tokens.isLightTheme) Color(0xFF0077B6).copy(alpha = 0.14f) else Color.White.copy(alpha = 0.08f)
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val stroke = 6.dp.toPx()
+                    val stroke = 5.5.dp.toPx()
                     drawArc(
                         color = ringTrack,
                         startAngle = 0f,
@@ -908,7 +912,7 @@ private fun RestTimerHeroCard(
                     text = GymModelHelpers.formatRestDuration(restRemaining),
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     color = tokens.palette.onSurface
                 )
             }
@@ -916,7 +920,7 @@ private fun RestTimerHeroCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = lang.t("Timer Istirahat", "Rest Timer"),
-                    fontSize = 18.sp,
+                    fontSize = 16.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = tokens.palette.onSurface
                 )
@@ -1106,21 +1110,6 @@ internal fun HeroAnimatedAtmosphereLayer(
     val tabActive = LocalTabActive.current
     val animate = !noAnim && tabActive
 
-    val outerOrbit = if (animate) {
-        val inf = rememberInfiniteTransition(label = "heroOrbit")
-        inf.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 24000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "outerOrbit"
-        ).value
-    } else {
-        0f
-    }
-
     val breathe = if (animate) {
         val inf = rememberInfiniteTransition(label = "heroBreathe")
         inf.animateFloat(
@@ -1136,112 +1125,30 @@ internal fun HeroAnimatedAtmosphereLayer(
         0.5f
     }
 
-    val sheenProgress = if (animate) {
-        val inf = rememberInfiniteTransition(label = "heroSheen")
-        inf.animateFloat(
-            initialValue = -0.35f,
-            targetValue = 1.35f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 5200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "sheen"
-        ).value
-    } else {
-        -1f
-    }
-
     val scrimAlpha = tokens.heroScrimAlpha
     val heroStart = tokens.phaseTokens.heroStart.copy(alpha = tokens.phaseTokens.heroStart.alpha * scrimAlpha)
     val heroMid = tokens.phaseTokens.heroMid.copy(alpha = tokens.phaseTokens.heroMid.alpha * scrimAlpha)
     val heroEnd = tokens.phaseTokens.heroEnd.copy(alpha = tokens.phaseTokens.heroEnd.alpha * scrimAlpha)
     val glowColor = tokens.phaseTokens.glowPrimary
-    val accentColor = tokens.phaseTokens.accent
     val accentBright = tokens.phaseTokens.accentBright
 
     Canvas(modifier = modifier) {
         val gradient = Brush.linearGradient(colors = listOf(heroStart, heroMid, heroEnd))
         drawRect(gradient)
 
-        val cx = size.width * 0.84f
+        val cx = size.width * 0.86f
         val cy = size.height * 0.16f
-        val pulseRadius = (88.dp.toPx()) * (0.92f + 0.16f * breathe)
+        val pulseRadius = (80.dp.toPx()) * (0.94f + 0.12f * breathe)
         val auraBrush = Brush.radialGradient(
             colors = listOf(
-                glowColor.copy(alpha = 0.22f + 0.12f * breathe),
-                accentBright.copy(alpha = 0.08f + 0.06f * breathe),
+                glowColor.copy(alpha = 0.16f + 0.08f * breathe),
+                accentBright.copy(alpha = 0.05f + 0.04f * breathe),
                 Color.Transparent
             ),
             center = Offset(cx, cy),
-            radius = pulseRadius * 1.45f
+            radius = pulseRadius * 1.4f
         )
-        drawCircle(brush = auraBrush, radius = pulseRadius * 1.45f, center = Offset(cx, cy))
-
-        val outerR = 110.dp.toPx()
-        val innerR = 72.dp.toPx()
-        val outerStroke = Stroke(
-            width = 1.5.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f))
-        )
-        val innerStroke = Stroke(width = 1.25.dp.toPx(), cap = StrokeCap.Round)
-
-        rotate(degrees = outerOrbit, pivot = Offset(cx, cy)) {
-            drawCircle(
-                color = accentColor.copy(alpha = 0.24f),
-                radius = outerR,
-                center = Offset(cx, cy),
-                style = outerStroke
-            )
-            // Orbiting beacon dot on outer ring
-            drawCircle(
-                color = accentBright.copy(alpha = 0.55f),
-                radius = 3.dp.toPx(),
-                center = Offset(cx + outerR, cy)
-            )
-        }
-
-        rotate(degrees = -outerOrbit * 1.35f, pivot = Offset(cx, cy)) {
-            drawCircle(
-                color = accentBright.copy(alpha = 0.16f),
-                radius = innerR,
-                center = Offset(cx, cy),
-                style = Stroke(width = 1.dp.toPx())
-            )
-            drawArc(
-                color = accentBright.copy(alpha = 0.45f),
-                startAngle = -30f,
-                sweepAngle = 78f,
-                useCenter = false,
-                topLeft = Offset(cx - innerR, cy - innerR),
-                size = Size(innerR * 2f, innerR * 2f),
-                style = innerStroke
-            )
-            drawArc(
-                color = accentColor.copy(alpha = 0.35f),
-                startAngle = 150f,
-                sweepAngle = 62f,
-                useCenter = false,
-                topLeft = Offset(cx - innerR, cy - innerR),
-                size = Size(innerR * 2f, innerR * 2f),
-                style = innerStroke
-            )
-        }
-
-        if (animate && sheenProgress in -0.35f..1.35f) {
-            val sheenW = size.width * 0.42f
-            val left = size.width * sheenProgress - sheenW * 0.5f
-            val sheenBrush = Brush.linearGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    Color.White.copy(alpha = if (tokens.isLightTheme) 0.24f else 0.045f),
-                    accentBright.copy(alpha = if (tokens.isLightTheme) 0.12f else 0.055f),
-                    Color.Transparent
-                ),
-                start = Offset(left, 0f),
-                end = Offset(left + sheenW, size.height)
-            )
-            drawRect(brush = sheenBrush)
-        }
+        drawCircle(brush = auraBrush, radius = pulseRadius * 1.4f, center = Offset(cx, cy))
     }
 }
 

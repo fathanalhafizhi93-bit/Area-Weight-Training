@@ -152,32 +152,15 @@ fun ScheduleScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .ironGlassSurface(tokens)
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = lang.t("PROGRAM & ALARM MINGGUAN", "WEEKLY SCHEDULE & ALARMS"),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.4.sp,
-                        color = tokens.accentColor
-                    )
-                    Text(
                         text = lang.t("Jadwal & Alarm Mingguan", "Weekly Schedule & Alarms"),
-                        fontSize = 23.sp,
+                        fontSize = 21.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = tokens.palette.onSurface
                     )
-                    Text(
-                        text = lang.t(
-                            "Pilih hari latihan Senin sampai Minggu, atur jam pengingat, dan tentukan fokus otot tiap hari.",
-                            "Choose training days Monday through Sunday, set reminder times, and define each day's muscle focus."
-                        ),
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
-                        color = tokens.palette.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -188,7 +171,7 @@ fun ScheduleScreen(
                             border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f))
                         ) {
                             Text(
-                                text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm Aktif", "Active Alarms")}",
+                                text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm", "Alarms")}",
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,

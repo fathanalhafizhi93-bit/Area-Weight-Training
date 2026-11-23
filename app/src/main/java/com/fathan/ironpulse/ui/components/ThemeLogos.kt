@@ -374,14 +374,23 @@ fun ThemeBrandWordmark(
     fontSize: TextUnit = 21.sp,
     modifier: Modifier = Modifier
 ) {
+    val isAeroNight = LocalIronPulseTokens.current.isAeroNight
     val metallicBrush = remember {
         Brush.verticalGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFAEB8C6)))
     }
-    val aeroOceanBrush = remember {
-        Brush.verticalGradient(colors = listOf(Color(0xFF062A4D), Color(0xFF005A99)))
+    val aeroOceanBrush = remember(isAeroNight) {
+        if (isAeroNight) {
+            Brush.verticalGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFBAE6FD)))
+        } else {
+            Brush.verticalGradient(colors = listOf(Color(0xFF062A4D), Color(0xFF005A99)))
+        }
     }
-    val aeroAquaLeafBrush = remember {
-        Brush.horizontalGradient(colors = listOf(Color(0xFF006EB8), Color(0xFF0284A8), Color(0xFF15803D)))
+    val aeroAquaLeafBrush = remember(isAeroNight) {
+        if (isAeroNight) {
+            Brush.horizontalGradient(colors = listOf(Color(0xFF38BDF8), Color(0xFF2DD4BF), Color(0xFF6EE7B7)))
+        } else {
+            Brush.horizontalGradient(colors = listOf(Color(0xFF006EB8), Color(0xFF0284A8), Color(0xFF15803D)))
+        }
     }
 
     val fontPack = remember(theme) { com.fathan.ironpulse.ui.theme.resolveThemeFontPack(theme) }

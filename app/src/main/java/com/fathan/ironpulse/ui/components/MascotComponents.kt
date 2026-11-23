@@ -44,6 +44,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -85,12 +86,14 @@ import androidx.compose.ui.util.lerp
 import kotlin.math.PI
 import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
+import com.fathan.ironpulse.ui.theme.MaterialYouPalette
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotReaction
@@ -128,6 +131,211 @@ internal fun isClosedEyeExpression(mascot: MascotUiState, isPetting: Boolean): B
         pose == TimePhasePose.YAWN
 }
 
+@Immutable
+data class MascotOrbPalette(
+    val coreStart: Color,
+    val coreMid: Color,
+    val coreEnd: Color,
+    val lowerBounce: Color,
+    val haloPrimary: Color,
+    val haloSecondary: Color,
+    val borderColor: Color,
+    val expressionAccent: Color,
+    val cardAccent: Color
+)
+
+/**
+ * Resolves a harmonious 5-OS-Theme × 3-Day-Phase (15-combination) color palette for Pulse Mascot,
+ * keeping each theme's unmistakable OS character while adapting smoothly across Morning, Afternoon, and Night.
+ */
+fun resolveMascotOrbPalette(
+    theme: UiTheme,
+    phase: DayTimePhase,
+    accentColor: Color,
+    palette: MaterialYouPalette,
+    isLightTheme: Boolean
+): MascotOrbPalette = when (theme) {
+    UiTheme.FRUTIGER_AERO -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF0EA5E9),
+            coreMid = Color(0xFF0269A4),
+            coreEnd = Color(0xFF003B66),
+            lowerBounce = Color(0x88FDE047),
+            haloPrimary = Color(0x5CFDE68A),
+            haloSecondary = Color(0x4038BDF8),
+            borderColor = Color.White.copy(alpha = 0.94f),
+            expressionAccent = Color(0xFFFDE68A),
+            cardAccent = if (isLightTheme) Color(0xFFB45309) else Color(0xFFFBBF24)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = Color(0xFF0B6BB8),
+            coreMid = Color(0xFF004C8C),
+            coreEnd = Color(0xFF00244A),
+            lowerBounce = Color(0x8834D399),
+            haloPrimary = Color(0x557CE8FF),
+            haloSecondary = Color(0x364ADE80),
+            borderColor = Color.White.copy(alpha = 0.92f),
+            expressionAccent = Color(0xFF7DD3FC),
+            cardAccent = if (isLightTheme) Color(0xFF006EB8) else Color(0xFF38BDF8)
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF1D4E89),
+            coreMid = Color(0xFF143566),
+            coreEnd = Color(0xFF0D2044),
+            lowerBounce = Color(0x882DD4BF),
+            haloPrimary = Color(0x505BC6FA),
+            haloSecondary = Color(0x382DD4BF),
+            borderColor = Color(0xE8BAE6FD),
+            expressionAccent = Color(0xFFA5F3FC),
+            cardAccent = Color(0xFF7DD3FC)
+        )
+    }
+
+    UiTheme.MATERIAL_YOU -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF34271B),
+            coreMid = Color(0xFF1E191B),
+            coreEnd = Color(0xFF13131A),
+            lowerBounce = Color(0x50FBBF24),
+            haloPrimary = Color(0xFFFBBF24),
+            haloSecondary = Color(0xFFF59E0B),
+            borderColor = Color(0xFFFBBF24),
+            expressionAccent = Color(0xFFFCD34D),
+            cardAccent = Color(0xFFFBBF24)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = palette.surfaceContainerHighest,
+            coreMid = palette.surfaceContainer,
+            coreEnd = Color(0xF5141824),
+            lowerBounce = accentColor.copy(alpha = 0.30f),
+            haloPrimary = Color(0xFF7DD3FC),
+            haloSecondary = accentColor,
+            borderColor = Color(0xFF7DD3FC),
+            expressionAccent = Color(0xFF7DD3FC),
+            cardAccent = Color(0xFF7DD3FC)
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF231E3C),
+            coreMid = Color(0xFF17162A),
+            coreEnd = Color(0xFF0E101B),
+            lowerBounce = Color(0x4D818CF8),
+            haloPrimary = Color(0xFFA5B4FC),
+            haloSecondary = Color(0xFF818CF8),
+            borderColor = Color(0xFFA5B4FC),
+            expressionAccent = Color(0xFFC7D2FE),
+            cardAccent = Color(0xFFA5B4FC)
+        )
+    }
+
+    UiTheme.CARBON_FORGE -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF2E251F),
+            coreMid = Color(0xFF161314),
+            coreEnd = Color(0xFF090A0D),
+            lowerBounce = Color(0x5AF59E0B),
+            haloPrimary = Color(0xFFF59E0B),
+            haloSecondary = Color(0xFFE2E8F0),
+            borderColor = Color(0xFFF59E0B),
+            expressionAccent = Color(0xFFFBBF24),
+            cardAccent = Color(0xFFFBBF24)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = Color(0xFF242B37),
+            coreMid = Color(0xFF11151C),
+            coreEnd = Color(0xFF080A0E),
+            lowerBounce = accentColor.copy(alpha = 0.30f),
+            haloPrimary = accentColor,
+            haloSecondary = Color(0xFFE2E8F0),
+            borderColor = accentColor,
+            expressionAccent = accentColor,
+            cardAccent = accentColor
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF182236),
+            coreMid = Color(0xFF0E1420),
+            coreEnd = Color(0xFF07090F),
+            lowerBounce = Color(0x5260A5FA),
+            haloPrimary = Color(0xFF60A5FA),
+            haloSecondary = Color(0xFFCBD5E1),
+            borderColor = Color(0xFF60A5FA),
+            expressionAccent = Color(0xFF93C5FD),
+            cardAccent = Color(0xFF93C5FD)
+        )
+    }
+
+    UiTheme.UBUNTU_YARU -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF522335),
+            coreMid = Color(0xFF2E1E24),
+            coreEnd = Color(0xFF1B161B),
+            lowerBounce = Color(0x4DFB923C),
+            haloPrimary = Color(0xFFFF7849),
+            haloSecondary = Color(0xFFFBBF24),
+            borderColor = Color(0xFFFF7849),
+            expressionAccent = Color(0xFFFDBA74),
+            cardAccent = Color(0xFFFB923C)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = Color(0xFF3E1C35),
+            coreMid = Color(0xFF261F25),
+            coreEnd = Color(0xFF1A171B),
+            lowerBounce = Color(0x44E95420),
+            haloPrimary = Color(0xFFE95420),
+            haloSecondary = Color(0xFF9E427A),
+            borderColor = Color(0xFFE95420),
+            expressionAccent = Color(0xFFFF8A5B),
+            cardAccent = Color(0xFFE95420)
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF30163A),
+            coreMid = Color(0xFF1E1525),
+            coreEnd = Color(0xFF14111A),
+            lowerBounce = Color(0x4AC084FC),
+            haloPrimary = Color(0xFFC084FC),
+            haloSecondary = Color(0xFFD96B43),
+            borderColor = Color(0xFFD96B43),
+            expressionAccent = Color(0xFFE9D5FF),
+            cardAccent = Color(0xFFD8B4FE)
+        )
+    }
+
+    UiTheme.AMOLED_STEALTH -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF000000),
+            coreMid = Color(0xFF000000),
+            coreEnd = Color(0xFF000000),
+            lowerBounce = Color(0x30FBBF24),
+            haloPrimary = Color(0xFFFBBF24),
+            haloSecondary = accentColor,
+            borderColor = Color(0xFFFBBF24),
+            expressionAccent = Color(0xFFFCD34D),
+            cardAccent = Color(0xFFFBBF24)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = Color(0xFF000000),
+            coreMid = Color(0xFF000000),
+            coreEnd = Color(0xFF000000),
+            lowerBounce = accentColor.copy(alpha = 0.22f),
+            haloPrimary = accentColor,
+            haloSecondary = accentColor,
+            borderColor = accentColor,
+            expressionAccent = accentColor,
+            cardAccent = accentColor
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF000000),
+            coreMid = Color(0xFF000000),
+            coreEnd = Color(0xFF000000),
+            lowerBounce = Color(0x2E818CF8),
+            haloPrimary = Color(0xFF818CF8),
+            haloSecondary = Color(0xFF38BDF8),
+            borderColor = Color(0xFF818CF8),
+            expressionAccent = Color(0xFFA5B4FC),
+            cardAccent = Color(0xFFA5B4FC)
+        )
+    }
+}
+
 @Composable
 fun MascotOrbFace(
     mascot: MascotUiState,
@@ -145,11 +353,18 @@ fun MascotOrbFace(
     } else {
         remember { MascotEyeState() }
     }
-    val phaseColor = remember(mascot.phaseColorHex) {
-        MaterialYouColorEngine.parseColor(mascot.phaseColorHex, Color(0xFFFBBF24))
+    val orbPalette = remember(tokens.uiTheme, tokens.timePhase, tokens.accentColor, tokens.palette, tokens.isLightTheme) {
+        resolveMascotOrbPalette(
+            theme = tokens.uiTheme,
+            phase = tokens.timePhase,
+            accentColor = tokens.accentColor,
+            palette = tokens.palette,
+            isLightTheme = tokens.isLightTheme
+        )
     }
-    val ringBorderColor = remember(phaseColor, staticMode) {
-        phaseColor.copy(alpha = if (staticMode) 0.45f else 0.55f)
+    val phaseColor = orbPalette.expressionAccent
+    val ringBorderColor = remember(orbPalette.haloPrimary, staticMode) {
+        orbPalette.haloPrimary.copy(alpha = if (staticMode) 0.45f else 0.58f)
     }
 
     val urgent = mascot.urgentMood
@@ -326,10 +541,10 @@ fun MascotOrbFace(
             val sw = 2.dp.toPx()
             when (theme) {
                 UiTheme.FRUTIGER_AERO -> {
-                    // Luminous Y2K crystal water bubble aura
+                    // Luminous Y2K crystal water bubble aura harmonized with Morning / Afternoon / Twilight Night
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color(0x557CE8FF), Color(0x334ADE80), Color.Transparent),
+                            colors = listOf(orbPalette.haloPrimary, orbPalette.haloSecondary, Color.Transparent),
                             center = Offset(cx, cy),
                             radius = r * 1.06f
                         ),
@@ -337,17 +552,17 @@ fun MascotOrbFace(
                         center = Offset(cx, cy)
                     )
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.88f),
+                        color = orbPalette.borderColor.copy(alpha = 0.88f),
                         radius = r * 0.96f,
                         center = Offset(cx, cy),
                         style = Stroke(sw * 0.9f)
                     )
                 }
                 UiTheme.CARBON_FORGE -> {
-                    // Brushed titanium mechanical bezel ring with 4 cardinal machined ticks
+                    // Brushed titanium mechanical bezel ring with phase-matched forge glow & 4 cardinal ticks
                     drawCircle(
                         brush = Brush.linearGradient(
-                            listOf(Color(0xFFE2E8F0), Color(0xFF475569), accent)
+                            listOf(orbPalette.haloSecondary, Color(0xFF475569), orbPalette.haloPrimary)
                         ),
                         radius = r * 0.97f,
                         center = Offset(cx, cy),
@@ -358,7 +573,7 @@ fun MascotOrbFace(
                         val c = kotlin.math.cos(rad).toFloat()
                         val s = kotlin.math.sin(rad).toFloat()
                         drawLine(
-                            color = Color(0xFFE2E8F0),
+                            color = orbPalette.haloSecondary,
                             start = Offset(cx + r * 0.84f * c, cy + r * 0.84f * s),
                             end = Offset(cx + r * 1.01f * c, cy + r * 1.01f * s),
                             strokeWidth = sw * 1.1f,
@@ -367,9 +582,9 @@ fun MascotOrbFace(
                     }
                 }
                 UiTheme.UBUNTU_YARU -> {
-                    // Ubuntu orbital ring with 3 signature Yaru orange nodes
+                    // Ubuntu orbital ring with 3 phase-harmonized Yaru nodes
                     drawCircle(
-                        color = Color(0xFFE95420).copy(alpha = 0.65f),
+                        color = orbPalette.haloPrimary.copy(alpha = 0.65f),
                         radius = r * 0.96f,
                         center = Offset(cx, cy),
                         style = Stroke(sw * 0.95f)
@@ -379,12 +594,12 @@ fun MascotOrbFace(
                         val nx = cx + (r * 0.96f * kotlin.math.cos(rad)).toFloat()
                         val ny = cy + (r * 0.96f * kotlin.math.sin(rad)).toFloat()
                         drawCircle(Color(0xFF231D22), sw * 1.6f, Offset(nx, ny))
-                        drawCircle(Color(0xFFE95420), sw * 1.15f, Offset(nx, ny))
+                        drawCircle(orbPalette.haloPrimary, sw * 1.15f, Offset(nx, ny))
                     }
                 }
                 UiTheme.AMOLED_STEALTH -> {
-                    // Tactical HUD segmented holographic scan arcs + reticle pips
-                    val hudColor = accent.copy(alpha = 0.82f)
+                    // Tactical HUD segmented holographic scan arcs harmonized for dawn / day / night-vision
+                    val hudColor = orbPalette.haloPrimary.copy(alpha = 0.84f)
                     for (start in listOf(-32f, 58f, 148f, 238f)) {
                         drawArc(
                             color = hudColor,
@@ -427,14 +642,13 @@ fun MascotOrbFace(
                     val r = this.size.minDimension * 0.5f
                     when (theme) {
                         UiTheme.FRUTIGER_AERO -> {
-                            // 3D Glossy Aqua Crystal Water-Droplet Orb (deep ocean center keeps white eyes crisp!)
+                            // 3D Glossy Aqua Crystal Water-Droplet Orb — harmonized for Morning, Day, & Twilight Night
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colorStops = arrayOf(
-                                        0.0f to Color(0xFF0B6BB8),
-                                        0.58f to Color(0xFF004C8C),
-                                        0.92f to Color(0xFF003262),
-                                        1.0f to Color(0xFF00244A)
+                                        0.0f to orbPalette.coreStart,
+                                        0.58f to orbPalette.coreMid,
+                                        1.0f to orbPalette.coreEnd
                                     ),
                                     center = Offset(cx * 0.92f, cy * 0.82f),
                                     radius = r * 1.12f
@@ -442,10 +656,10 @@ fun MascotOrbFace(
                                 radius = r,
                                 center = Offset(cx, cy)
                             )
-                            // Fresh Aero mint-aqua lower refraction bounce
+                            // Phase-matched lower refraction bounce (sun-mint morning, emerald day, aurora teal night)
                             drawCircle(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(Color(0x8834D399), Color.Transparent),
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
                                     center = Offset(cx, cy * 1.62f),
                                     radius = r * 0.85f
                                 ),
@@ -455,17 +669,20 @@ fun MascotOrbFace(
                             // Iconic Y2K glossy white gel upper dome reflection
                             drawOval(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color.White.copy(alpha = 0.62f), Color.Transparent)
+                                    colors = listOf(
+                                        Color.White.copy(alpha = if (tokens.isAeroNight) 0.46f else 0.62f),
+                                        Color.Transparent
+                                    )
                                 ),
                                 topLeft = Offset(cx - r * 0.68f, cy - r * 0.88f),
                                 size = Size(r * 1.36f, r * 0.58f)
                             )
                         }
                         UiTheme.CARBON_FORGE -> {
-                            // Anodized forged titanium core with diagonal metallic sheen
+                            // Anodized forged titanium core with phase-tuned diagonal metallic sheen
                             drawCircle(
                                 brush = Brush.linearGradient(
-                                    colors = listOf(Color(0xFF232936), Color(0xFF101319), Color(0xFF080A0E)),
+                                    colors = listOf(orbPalette.coreStart, orbPalette.coreMid, orbPalette.coreEnd),
                                     start = Offset(0f, 0f),
                                     end = Offset(this.size.width, this.size.height)
                                 ),
@@ -474,7 +691,7 @@ fun MascotOrbFace(
                             )
                             drawCircle(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(accent.copy(alpha = 0.22f), Color.Transparent),
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
                                     center = Offset(cx, cy * 1.45f),
                                     radius = r * 0.9f
                                 ),
@@ -483,21 +700,30 @@ fun MascotOrbFace(
                             )
                         }
                         UiTheme.UBUNTU_YARU -> {
-                            // Warm aubergine-to-charcoal GNOME matte orb
+                            // Warm aubergine GNOME matte orb with subtle phase warmth/twilight shift
                             drawCircle(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color(0xFF3E1C35), Color(0xFF261F25), Color(0xFF1A171B))
+                                    colors = listOf(orbPalette.coreStart, orbPalette.coreMid, orbPalette.coreEnd)
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
+                                    center = Offset(cx, cy * 1.5f),
+                                    radius = r * 0.85f
                                 ),
                                 radius = r,
                                 center = Offset(cx, cy)
                             )
                         }
                         UiTheme.AMOLED_STEALTH -> {
-                            // Pitch-black tactical stealth visor
+                            // Pitch-black tactical stealth visor with phase-matched HUD inner glow
                             drawCircle(Color(0xFF000000), r, Offset(cx, cy))
                             drawCircle(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(accent.copy(alpha = 0.14f), Color.Transparent),
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
                                     center = Offset(cx, cy),
                                     radius = r
                                 ),
@@ -506,15 +732,21 @@ fun MascotOrbFace(
                             )
                         }
                         UiTheme.MATERIAL_YOU -> {
-                            // Expressive M3 tonal frosted core
+                            // Expressive M3 tonal frosted core tuned to Morning / Afternoon / Night
                             drawCircle(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        tokens.palette.surfaceContainerHighest,
-                                        Color(0xF5141824)
-                                    ),
+                                    colors = listOf(orbPalette.coreStart, orbPalette.coreEnd),
                                     center = Offset(cx * 0.78f, cy * 0.68f),
                                     radius = r * 1.15f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
+                                    center = Offset(cx, cy * 1.55f),
+                                    radius = r * 0.85f
                                 ),
                                 radius = r,
                                 center = Offset(cx, cy)
@@ -524,12 +756,7 @@ fun MascotOrbFace(
                 }
                 .border(
                     width = if (theme == UiTheme.FRUTIGER_AERO) 2.2.dp else 2.dp,
-                    color = when (theme) {
-                        UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.92f)
-                        UiTheme.UBUNTU_YARU -> Color(0xFFE95420)
-                        UiTheme.AMOLED_STEALTH -> accent
-                        else -> phaseColor
-                    },
+                    color = orbPalette.borderColor,
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -974,9 +1201,16 @@ fun TodayMascot(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val phaseColor = remember(mascot.phaseColorHex) {
-        MaterialYouColorEngine.parseColor(mascot.phaseColorHex, tokens.phaseTokens.accentBright)
+    val orbPalette = remember(tokens.uiTheme, tokens.timePhase, tokens.accentColor, tokens.palette, tokens.isLightTheme) {
+        resolveMascotOrbPalette(
+            theme = tokens.uiTheme,
+            phase = tokens.timePhase,
+            accentColor = tokens.accentColor,
+            palette = tokens.palette,
+            isLightTheme = tokens.isLightTheme
+        )
     }
+    val phaseColor = orbPalette.cardAccent
 
     Row(
         modifier = modifier
@@ -986,7 +1220,7 @@ fun TodayMascot(
             .ironGlassSurface(
                 tokens = tokens,
                 subtle = true,
-                borderOverride = phaseColor.copy(alpha = 0.28f),
+                borderOverride = phaseColor.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.34f),
                 radiusOverride = tokens.bubbleRadius
             )
             .combinedClickable(
@@ -994,13 +1228,13 @@ fun TodayMascot(
                 onClick = onTapMascot,
                 onLongClick = onPetMascot
             )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(62.dp)
+                .size(50.dp)
                 .onGloballyPositioned { coords ->
                     if (coords.isAttached) {
                         val rect = coords.boundsInRoot()
@@ -1014,7 +1248,7 @@ fun TodayMascot(
             MascotOrbFace(
                 mascot = mascot,
                 eyeStateFlow = eyeStateFlow,
-                size = 62.dp,
+                size = 50.dp,
                 animActive = orbAnimActive
             )
         }
@@ -1093,8 +1327,14 @@ fun FloatingMascotDock(
     val tokens = LocalIronPulseTokens.current
     val noAnim = tokens.performance.noAnimations
     val density = LocalDensity.current
-    val phaseColor = remember(mascot.phaseColorHex) {
-        MaterialYouColorEngine.parseColor(mascot.phaseColorHex, tokens.phaseTokens.accentBright)
+    val phaseColor = remember(tokens.uiTheme, tokens.timePhase, tokens.accentColor, tokens.palette, tokens.isLightTheme) {
+        resolveMascotOrbPalette(
+            theme = tokens.uiTheme,
+            phase = tokens.timePhase,
+            accentColor = tokens.accentColor,
+            palette = tokens.palette,
+            isLightTheme = tokens.isLightTheme
+        ).cardAccent
     }
 
     var bubbleOpen by remember { mutableStateOf(false) }

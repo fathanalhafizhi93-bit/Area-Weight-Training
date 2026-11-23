@@ -31,6 +31,7 @@ import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.fathan.ironpulse.alarm.AlarmScheduler
+import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.IronPulseRoot
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
@@ -82,7 +83,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeUi by viewModel.themeUiFlow.collectAsStateWithLifecycle()
-            val isLightTheme = themeUi.prefs.uiTheme == UiTheme.FRUTIGER_AERO
+            val isLightTheme = themeUi.prefs.uiTheme == UiTheme.FRUTIGER_AERO &&
+                themeUi.timePhase != DayTimePhase.NIGHT
             SideEffect {
                 val controller = WindowCompat.getInsetsController(window, window.decorView)
                 controller.isAppearanceLightStatusBars = isLightTheme

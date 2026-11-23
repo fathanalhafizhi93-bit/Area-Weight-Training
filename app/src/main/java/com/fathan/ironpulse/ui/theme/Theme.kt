@@ -172,6 +172,7 @@ data class IronPulseThemeTokens(
     val heroScrimAlpha: Float,
     val buttonHasGloss: Boolean,
     val isLightTheme: Boolean = false,
+    val isAeroNight: Boolean = false,
     val accentLocked: Boolean = false,
     val fontPack: ThemeFontPack = resolveThemeFontPack(UiTheme.MATERIAL_YOU),
     val timePhase: DayTimePhase,
@@ -364,119 +365,75 @@ fun Modifier.ironGlassSurface(
             this
                 .clip(shape)
                 .drawWithCache {
-                    val strokePx = 1.dp.toPx()
-                    val topSheen = Brush.verticalGradient(
-                        0.0f to tokens.palette.primary.copy(alpha = if (subtle) 0.03f else 0.07f),
-                        0.38f to Color.Transparent
-                    )
-                    val cornerWash = if (!subtle) {
-                        Brush.radialGradient(
-                            colors = listOf(tokens.palette.tertiary.copy(alpha = 0.055f), Color.Transparent),
-                            center = Offset(size.width * 0.92f, size.height * 0.08f),
-                            radius = size.maxDimension.coerceAtLeast(220f) * 0.68f
+                    val topSheen = if (!subtle) {
+                        Brush.verticalGradient(
+                            0.0f to tokens.palette.primary.copy(alpha = 0.055f),
+                            0.35f to Color.Transparent
                         )
                     } else null
-                    val topHighlight = Color.White.copy(alpha = if (subtle) 0.03f else 0.07f)
                     onDrawBehind {
                         drawRect(baseBg)
-                        drawRect(topSheen)
-                        if (cornerWash != null) drawRect(cornerWash)
-                        drawLine(
-                            color = topHighlight,
-                            start = Offset(0f, strokePx * 0.5f),
-                            end = Offset(size.width, strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
+                        if (topSheen != null) drawRect(topSheen)
                     }
                 }
                 .border(1.dp, borderColor, shape)
         }
         UiTheme.UBUNTU_YARU -> {
-            // Authentic Ubuntu GNOME Libadwaita desktop card — clean hierarchy for primary vs nested well
+            // Authentic Ubuntu GNOME Libadwaita card — clean matte slate + warm orange top-left accent on primary cards
             val bg = if (subtle) Color(0xFF211E23) else Color(0xFF2B272D)
             val outerBorder = borderOverride ?: if (subtle) Color(0xFF171419) else Color(0xFF121014)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
-                    val grainScale = density.roundToInt().coerceIn(1, 3)
-                    val matteGrain = ThemeMaterialShaderCache.getYaruMatteGrainBrush(
-                        pixelScale = grainScale,
-                        subtle = true
-                    )
                     val headerSheen = if (!subtle) {
                         Brush.verticalGradient(
-                            0.0f to Color(0xFF42273B).copy(alpha = 0.28f),
+                            0.0f to Color(0xFF42273B).copy(alpha = 0.20f),
                             0.24f to Color.Transparent
                         )
                     } else null
-                    val topBevel = Color.White.copy(alpha = if (subtle) 0.05f else 0.10f)
-                    val yaruStripe = Color(0xFFE95420).copy(alpha = 0.80f)
-                    val bottomShade = Color.Black.copy(alpha = 0.22f)
+                    val yaruStripe = Color(0xFFE95420).copy(alpha = 0.78f)
                     val stripeStart = 14.dp.toPx()
-                    val stripeLen = (size.width * 0.16f).coerceIn(22.dp.toPx(), 56.dp.toPx())
+                    val stripeLen = (size.width * 0.14f).coerceIn(20.dp.toPx(), 48.dp.toPx())
                     onDrawBehind {
                         drawRect(bg)
-                        drawRect(matteGrain)
                         if (headerSheen != null) drawRect(headerSheen)
-                        drawLine(
-                            color = topBevel,
-                            start = Offset(0f, strokePx * 1.0f),
-                            end = Offset(size.width, strokePx * 1.0f),
-                            strokeWidth = strokePx
-                        )
-                        // Signature Ubuntu Yaru warm orange headerbar mark ONLY on primary cards
                         if (!subtle && size.width > 120.dp.toPx()) {
                             drawLine(
                                 color = yaruStripe,
-                                start = Offset(stripeStart, strokePx * 1.2f),
-                                end = Offset(stripeStart + stripeLen, strokePx * 1.2f),
+                                start = Offset(stripeStart, strokePx * 1.1f),
+                                end = Offset(stripeStart + stripeLen, strokePx * 1.1f),
                                 strokeWidth = strokePx * 2.0f
                             )
                         }
-                        drawLine(
-                            color = bottomShade,
-                            start = Offset(0f, size.height - strokePx * 0.5f),
-                            end = Offset(size.width, size.height - strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
                     }
                 }
                 .border(1.dp, outerBorder, shape)
         }
         UiTheme.CARBON_FORGE -> {
-            // Industrial Machined Steel Plate — clean chamfer, accent bar & rivets ONLY on wide primary cards
+            // Industrial Machined Steel Plate — clean chamfer + left accent bar on primary cards (no rivets/heavy twill)
             val baseBg = tint.copy(alpha = if (subtle) 0.94f else 1f)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
-                    val cellPx = (2.2.dp.toPx()).roundToInt().coerceIn(4, 10)
-                    val twillBrush = ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
-                    val sheenBrush = Brush.linearGradient(
-                        0.0f to Color.White.copy(alpha = if (subtle) 0.04f else 0.09f),
-                        0.32f to Color.Transparent,
-                        0.74f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = if (subtle) 0.22f else 0.34f),
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width * 0.65f, size.height)
-                    )
-                    val rimColor = Color(0xFFE2E8F0).copy(alpha = if (subtle) 0.12f else 0.24f)
-                    val accentBar = tokens.accentColor.copy(alpha = 0.88f)
-                    val rivetOuter = Color(0xFF0A0C10)
-                    val rivetInner = Color(0xFF94A3B8).copy(alpha = 0.60f)
-                    val rInset = 6.dp.toPx()
-                    val rRad = 1.6.dp.toPx()
-                    val recessedBottom = Color.Black.copy(alpha = 0.48f)
+                    val sheenBrush = if (!subtle) {
+                        Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = 0.06f),
+                            0.32f to Color.Transparent,
+                            1.0f to Color.Black.copy(alpha = 0.24f)
+                        )
+                    } else null
+                    val rimColor = Color(0xFFE2E8F0).copy(alpha = if (subtle) 0.08f else 0.18f)
+                    val accentBar = tokens.accentColor.copy(alpha = 0.85f)
                     onDrawBehind {
                         drawRect(baseBg)
-                        drawRect(twillBrush)
-                        drawRect(sheenBrush)
+                        if (sheenBrush != null) drawRect(sheenBrush)
                         drawLine(
                             color = rimColor,
                             start = Offset(0f, strokePx * 0.6f),
                             end = Offset(size.width, strokePx * 0.6f),
-                            strokeWidth = strokePx * 1.1f
+                            strokeWidth = strokePx
                         )
                         if (!subtle && size.height > 44.dp.toPx()) {
                             drawRect(
@@ -485,51 +442,22 @@ fun Modifier.ironGlassSurface(
                                 size = androidx.compose.ui.geometry.Size(2.dp.toPx(), (size.height - 20.dp.toPx()).coerceAtLeast(10f))
                             )
                         }
-                        drawLine(
-                            color = recessedBottom,
-                            start = Offset(0f, size.height - strokePx * 0.5f),
-                            end = Offset(size.width, size.height - strokePx * 0.5f),
-                            strokeWidth = strokePx
-                        )
-                        if (!subtle && size.width > 180.dp.toPx() && size.height > 64.dp.toPx()) {
-                            val corners = listOf(
-                                Offset(size.width - rInset, rInset),
-                                Offset(size.width - rInset, size.height - rInset)
-                            )
-                            corners.forEach { pt ->
-                                drawCircle(rivetOuter, rRad * 1.35f, pt)
-                                drawCircle(rivetInner, rRad * 0.65f, pt)
-                            }
-                        }
                     }
                 }
                 .border(1.dp, borderColor, shape)
         }
         UiTheme.AMOLED_STEALTH -> {
-            // Pure Black Tactical HUD Module — crisp 7dp corner brackets ONLY on primary cards (zero nested noise)
+            // Pure Black Tactical HUD Module — crisp corner brackets on primary cards only, zero matrix clutter
             val baseBg = if (subtle) Color(0xFF030406) else Color(0xFF05070A)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
                     val bracketStroke = 1.4.dp.toPx()
-                    val arm = 7.dp.toPx()
-                    val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 12)
-                    val stealthMatrix = ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(
-                        cellPx = matrixCellPx,
-                        subtle = true
-                    )
-                    val bracketColor = (borderOverride ?: tokens.accentColor).copy(alpha = 0.82f)
-                    val topAccentFade = if (!subtle) {
-                        Brush.verticalGradient(
-                            0.0f to tokens.accentColor.copy(alpha = 0.055f),
-                            0.24f to Color.Transparent
-                        )
-                    } else null
+                    val arm = 6.dp.toPx()
+                    val bracketColor = (borderOverride ?: tokens.accentColor).copy(alpha = 0.78f)
                     onDrawBehind {
                         drawRect(baseBg)
-                        drawRect(stealthMatrix)
-                        if (topAccentFade != null) drawRect(topAccentFade)
                         if (!subtle && size.width > 96.dp.toPx() && size.height > 40.dp.toPx()) {
                             val p = strokePx * 1.1f
                             drawLine(bracketColor, Offset(p, p), Offset(p + arm, p), bracketStroke)
@@ -546,55 +474,73 @@ fun Modifier.ironGlassSurface(
                         }
                     }
                 }
-                .border(0.85.dp, borderColor.copy(alpha = if (subtle) 0.45f else 0.62f), shape)
+                .border(0.85.dp, borderColor.copy(alpha = if (subtle) 0.40f else 0.58f), shape)
         }
         UiTheme.FRUTIGER_AERO -> {
-            // Crisp Frosted Aqua Crystal Window — high-contrast white-ice glass with single clean border & subtle top sheen
-            val aeroOuterBorder = borderOverride ?: if (subtle) Color(0x7A0082C8) else Color(0xB80082C8)
-            this
-                .clip(shape)
-                .drawWithCache {
-                    val strokePx = 1.2.dp.toPx()
-                    val baseFill = Brush.verticalGradient(
-                        0.0f to if (subtle) Color(0xF5FFFFFF) else Color(0xFAFFFFFF),
-                        0.55f to if (subtle) Color(0xEEF0FAFF) else Color(0xF5EFFAFF),
-                        1.0f to if (subtle) Color(0xEEF0FDF6) else Color(0xF5EBFDF4)
-                    )
-                    val topGlossBand = if (!subtle) {
-                        Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = 0.72f),
-                            0.28f to Color.White.copy(alpha = 0.14f),
-                            0.34f to Color.Transparent,
-                            1.0f to Color.Transparent
+            if (tokens.isAeroNight) {
+                // Soft Twilight Dark Aero Glass — clean semi-dark indigo crystal with gentle top sheen
+                val twilightBorder = borderOverride ?: if (subtle) Color(0x5E5BC6FA) else Color(0x965BC6FA)
+                this
+                    .clip(shape)
+                    .drawWithCache {
+                        val strokePx = 1.1.dp.toPx()
+                        val baseFill = Brush.verticalGradient(
+                            0.0f to if (subtle) Color(0xEA1C3760) else Color(0xEE203F6D),
+                            0.55f to if (subtle) Color(0xEA162E52) else Color(0xEE183259),
+                            1.0f to if (subtle) Color(0xEB132B45) else Color(0xF012324B)
                         )
-                    } else null
-                    val bottomBounce = if (!subtle) {
-                        Brush.verticalGradient(
-                            0.74f to Color.Transparent,
-                            1.0f to Color(0xFF22C55E).copy(alpha = 0.08f)
-                        )
-                    } else null
-                    val skyInnerGlow = Color(0xFF0088CC).copy(alpha = if (subtle) 0.14f else 0.24f)
-                    onDrawBehind {
-                        drawRect(baseFill)
-                        if (topGlossBand != null) drawRect(topGlossBand)
-                        if (bottomBounce != null) drawRect(bottomBounce)
-                        // Single clean inner crystal white highlight inset below border
-                        drawLine(
-                            color = Color.White.copy(alpha = 0.94f),
-                            start = Offset(strokePx * 1.5f, strokePx * 1.6f),
-                            end = Offset(size.width - strokePx * 1.5f, strokePx * 1.6f),
-                            strokeWidth = strokePx * 1.1f
-                        )
-                        drawLine(
-                            color = skyInnerGlow,
-                            start = Offset(0f, size.height - strokePx * 0.7f),
-                            end = Offset(size.width, size.height - strokePx * 0.7f),
-                            strokeWidth = strokePx * 0.9f
-                        )
+                        val topGlossBand = if (!subtle) {
+                            Brush.verticalGradient(
+                                0.0f to Color(0xFFE0F4FF).copy(alpha = 0.18f),
+                                0.28f to Color.Transparent
+                            )
+                        } else null
+                        val crystalTopLine = Color(0xFFBAE6FD).copy(alpha = if (subtle) 0.20f else 0.40f)
+                        onDrawBehind {
+                            drawRect(baseFill)
+                            if (topGlossBand != null) drawRect(topGlossBand)
+                            drawLine(
+                                color = crystalTopLine,
+                                start = Offset(strokePx * 1.5f, strokePx * 1.4f),
+                                end = Offset(size.width - strokePx * 1.5f, strokePx * 1.4f),
+                                strokeWidth = strokePx
+                            )
+                        }
                     }
-                }
-                .border(1.dp, aeroOuterBorder, shape)
+                    .border(1.dp, twilightBorder, shape)
+            } else {
+                // Crisp Frosted Aqua Crystal Window — clean high-contrast white-ice glass with gentle top sheen
+                val aeroOuterBorder = borderOverride ?: if (subtle) Color(0x660082C8) else Color(0xA60082C8)
+                this
+                    .clip(shape)
+                    .drawWithCache {
+                        val strokePx = 1.1.dp.toPx()
+                        val baseFill = Brush.verticalGradient(
+                            0.0f to if (subtle) Color(0xF5FFFFFF) else Color(0xFAFFFFFF),
+                            0.55f to if (subtle) Color(0xEEF0FAFF) else Color(0xF5EFFAFF),
+                            1.0f to if (subtle) Color(0xEEF0FDF6) else Color(0xF5EBFDF4)
+                        )
+                        val topGlossBand = if (!subtle) {
+                            Brush.verticalGradient(
+                                0.0f to Color.White.copy(alpha = 0.62f),
+                                0.28f to Color.Transparent
+                            )
+                        } else null
+                        onDrawBehind {
+                            drawRect(baseFill)
+                            if (topGlossBand != null) drawRect(topGlossBand)
+                            if (!subtle) {
+                                drawLine(
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    start = Offset(strokePx * 1.5f, strokePx * 1.5f),
+                                    end = Offset(size.width - strokePx * 1.5f, strokePx * 1.5f),
+                                    strokeWidth = strokePx
+                                )
+                            }
+                        }
+                    }
+                    .border(1.dp, aeroOuterBorder, shape)
+            }
         }
     }
 }
@@ -613,46 +559,51 @@ fun Modifier.ironGlassBar(
         .clip(shape)
         .drawWithCache {
             val strokePx = 1.dp.toPx()
-            val cellPx = (2.2.dp.toPx()).roundToInt().coerceIn(4, 10)
-            val grainScale = density.roundToInt().coerceIn(1, 3)
-            val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 12)
             val primaryBrush = when (tokens.uiTheme) {
                 UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
-                    0.0f to tokens.palette.primary.copy(alpha = 0.05f),
+                    0.0f to tokens.palette.primary.copy(alpha = 0.04f),
                     1.0f to Color.Transparent
                 )
                 UiTheme.UBUNTU_YARU -> Brush.verticalGradient(
-                    0.0f to Color(0xFF3A1E32).copy(alpha = 0.85f),
-                    1.0f to Color(0xFF242126)
+                    0.0f to Color(0xFF331D2D).copy(alpha = 0.85f),
+                    1.0f to Color(0xFF232025)
                 )
-                UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = false)
-                UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
-                UiTheme.FRUTIGER_AERO -> Brush.verticalGradient(
-                    0.0f to Color(0xFAFFFFFF),
-                    0.50f to Color(0xF2E5F6FF),
-                    1.0f to Color(0xF4E8FCF2)
+                UiTheme.CARBON_FORGE -> Brush.verticalGradient(
+                    0.0f to Color.White.copy(alpha = 0.04f),
+                    1.0f to Color.Black.copy(alpha = 0.16f)
                 )
+                UiTheme.AMOLED_STEALTH -> null
+                UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) {
+                    Brush.verticalGradient(
+                        0.0f to Color(0xF2214271),
+                        0.50f to Color(0xF2173157),
+                        1.0f to Color(0xF4122B47)
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        0.0f to Color(0xFAFFFFFF),
+                        0.50f to Color(0xF2E5F6FF),
+                        1.0f to Color(0xF4E8FCF2)
+                    )
+                }
             }
             val solidBg = when (tokens.uiTheme) {
                 UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerLow
                 UiTheme.UBUNTU_YARU -> Color(0xFF221E24)
                 UiTheme.CARBON_FORGE -> tint
                 UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-                UiTheme.FRUTIGER_AERO -> Color(0xF5F2FBFF)
+                UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xF4162E52) else Color(0xF5F2FBFF)
             }
             val barAccentHighlight = when (tokens.uiTheme) {
-                UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.65f)
-                UiTheme.UBUNTU_YARU -> Color(0xFFE95420).copy(alpha = 0.55f)
-                UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.42f)
-                UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.95f)
+                UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.55f)
+                UiTheme.UBUNTU_YARU -> Color(0xFFE95420).copy(alpha = 0.45f)
+                UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.36f)
+                UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xFF7DD3FC).copy(alpha = 0.48f) else Color.White.copy(alpha = 0.90f)
                 else -> null
             }
             onDrawBehind {
                 drawRect(solidBg)
-                drawRect(primaryBrush)
-                if (tokens.uiTheme == UiTheme.UBUNTU_YARU) {
-                    drawRect(ThemeMaterialShaderCache.getYaruMatteGrainBrush(grainScale, subtle = true))
-                }
+                if (primaryBrush != null) drawRect(primaryBrush)
                 if (topHairlineColor != null) {
                     drawLine(
                         color = topHairlineColor,
@@ -674,7 +625,7 @@ fun Modifier.ironGlassBar(
                         color = barAccentHighlight,
                         start = Offset(0f, strokePx * 0.7f),
                         end = Offset(size.width, strokePx * 0.7f),
-                        strokeWidth = strokePx * 1.4f
+                        strokeWidth = strokePx * 1.2f
                     )
                 }
             }
@@ -750,12 +701,14 @@ fun IronPulseTheme(
 ) {
     val uiTheme = prefs.uiTheme
     val isAero = uiTheme == UiTheme.FRUTIGER_AERO
+    val isAeroNight = isAero && timePhase == DayTimePhase.NIGHT
+    val isLightAero = isAero && !isAeroNight
     val isDefaultAccent = prefs.accentColorHex.equals(
         MaterialYouColorEngine.DEFAULT_ACCENT_COLOR,
         ignoreCase = true
     )
     val effectiveAccentHex = when {
-        // Frutiger Aero locks accent permanently to signature Aero Sky Blue
+        // Frutiger Aero locks accent permanently to signature Aero Sky Blue (day & twilight night)
         isAero -> MaterialYouColorEngine.AERO_SKY_ACCENT
         uiTheme == UiTheme.UBUNTU_YARU && isDefaultAccent -> MaterialYouColorEngine.YARU_ORANGE_ACCENT
         uiTheme == UiTheme.AMOLED_STEALTH && isDefaultAccent -> MaterialYouColorEngine.AMOLED_STEALTH_CYAN_ACCENT
@@ -764,49 +717,70 @@ fun IronPulseTheme(
 
     val effectiveTintOverride = if (isAero) null else prefs.materialTintColorHex
     val effectiveTintHex = effectiveTintOverride
-        ?: MaterialYouColorEngine.defaultTintForTheme(uiTheme)
+        ?: if (isAeroNight) "#162A52" else MaterialYouColorEngine.defaultTintForTheme(uiTheme)
 
-    val palette = remember(effectiveAccentHex, effectiveTintOverride, uiTheme, isAero) {
+    val palette = remember(effectiveAccentHex, effectiveTintOverride, uiTheme, isLightAero, isAeroNight) {
         MaterialYouColorEngine.generateMaterialYouPalette(
             seedHex = effectiveAccentHex,
             surfaceTintOverrideHex = effectiveTintOverride,
-            isLight = isAero
+            isLight = isLightAero,
+            isAeroNight = isAeroNight
         )
     }
 
-    val phaseTokens = remember(timePhase, isAero) { resolvePhaseThemeTokens(timePhase, isLight = isAero) }
+    val phaseTokens = remember(timePhase, isLightAero, isAeroNight) {
+        if (isAeroNight) {
+            // Soft Twilight Aero Night hero tokens — indigo-aqua glass with gentle aurora accents
+            PhaseThemeTokens(
+                phase = DayTimePhase.NIGHT,
+                accentHex = "#38BDF8",
+                accentBrightHex = "#7DD3FC",
+                accent = Color(0xFF38BDF8),
+                accentBright = Color(0xFF7DD3FC),
+                heroStart = Color(0xDE1C3A6B),
+                heroMid = Color(0xDC16335A),
+                heroEnd = Color(0xE011344A),
+                heroBorder = Color(0x995BC6FA),
+                headerBorder = Color(0x8838BDF8),
+                glowPrimary = Color(0x3838BDF8),
+                glowSecondary = Color(0x2E2DD4BF)
+            )
+        } else {
+            resolvePhaseThemeTokens(timePhase, isLight = isLightAero)
+        }
+    }
 
     val fontPack = remember(uiTheme) { resolveThemeFontPack(uiTheme) }
     val themeTypography = remember(uiTheme) { buildIronPulseTypography(uiTheme) }
 
-    val tokens = remember(uiTheme, palette, effectiveTintHex, timePhase, phaseTokens, prefs, isAero, fontPack) {
+    val tokens = remember(uiTheme, palette, effectiveTintHex, timePhase, phaseTokens, prefs, isAero, isAeroNight, isLightAero, fontPack) {
         val canvasBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surface
             UiTheme.UBUNTU_YARU -> Color(0xFF1F1C21)
             UiTheme.CARBON_FORGE -> Color(0xFF07080B)
             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-            UiTheme.FRUTIGER_AERO -> Color(0xFF7FD9FF)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFF162A52) else Color(0xFF7FD9FF)
         }
         val canvasSecondaryBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
             UiTheme.UBUNTU_YARU -> Color(0xFF381630) // iconic Ubuntu aubergine desktop warmth
             UiTheme.CARBON_FORGE -> Color(0xFF12161E)
             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-            UiTheme.FRUTIGER_AERO -> Color(0xFFDFFCE9) // fresh meadow glow at bottom
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFF0F3D3E) else Color(0xFFDFFCE9)
         }
         val borderColor = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant
             UiTheme.CARBON_FORGE -> Color(0xFFCBD5E1).copy(alpha = 0.24f)
             UiTheme.UBUNTU_YARU -> Color(0xFF141216)
             UiTheme.AMOLED_STEALTH -> palette.primary.copy(alpha = 0.32f)
-            UiTheme.FRUTIGER_AERO -> Color(0xAA0099E5)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0x995BC6FA) else Color(0xAA0099E5)
         }
         val subtleBorder = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant.copy(alpha = 0.65f)
             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.14f)
             UiTheme.UBUNTU_YARU -> Color(0xFF18151A)
             UiTheme.AMOLED_STEALTH -> palette.primary.copy(alpha = 0.18f)
-            UiTheme.FRUTIGER_AERO -> Color(0x660088CC)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0x555BC6FA) else Color(0x660088CC)
         }
         val cardRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 22.dp
@@ -841,33 +815,33 @@ fun IronPulseTheme(
             UiTheme.UBUNTU_YARU -> 0.52f
             UiTheme.AMOLED_STEALTH -> 0.80f
             UiTheme.MATERIAL_YOU -> 0.62f
-            UiTheme.FRUTIGER_AERO -> 0.12f
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) 0.28f else 0.12f
         }
         val wellBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
             UiTheme.UBUNTU_YARU -> Color(0xFF211E23)
             UiTheme.CARBON_FORGE -> Color(0xFF0A0C10)
             UiTheme.AMOLED_STEALTH -> Color(0xFF020305)
-            UiTheme.FRUTIGER_AERO -> Color(0xF0EAF7FF)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xE0112442) else Color(0xF0EAF7FF)
         }
         val controlBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh
             UiTheme.UBUNTU_YARU -> Color(0xFF343037)
             UiTheme.CARBON_FORGE -> Color(0xFF171C26)
             UiTheme.AMOLED_STEALTH -> Color(0xFF0B0D12)
-            UiTheme.FRUTIGER_AERO -> Color(0xFAFFFFFF)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xEB1E3C66) else Color(0xFAFFFFFF)
         }
         val subtleChipBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh.copy(alpha = 0.78f)
             UiTheme.UBUNTU_YARU -> Color(0xFF322D34)
             UiTheme.CARBON_FORGE -> Color(0xFF141923)
             UiTheme.AMOLED_STEALTH -> Color(0xFF080A0E)
-            UiTheme.FRUTIGER_AERO -> Color(0xE8DCF2FF)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xDC1B3860) else Color(0xE8DCF2FF)
         }
         val mutedTextColor = when (uiTheme) {
             UiTheme.UBUNTU_YARU -> Color(0xFFBEB9B6)
             UiTheme.AMOLED_STEALTH -> Color(0xFF94A3B8)
-            UiTheme.FRUTIGER_AERO -> Color(0xFF24496A)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFFB4D3EB) else Color(0xFF24496A)
             else -> palette.onSurfaceVariant
         }
         val cardTopHighlight = when (uiTheme) {
@@ -875,14 +849,22 @@ fun IronPulseTheme(
             UiTheme.UBUNTU_YARU -> Color.White.copy(alpha = 0.10f)
             UiTheme.AMOLED_STEALTH -> palette.primary.copy(alpha = 0.42f)
             UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.05f)
-            UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.94f)
+            UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFFBAE6FD).copy(alpha = 0.48f) else Color.White.copy(alpha = 0.94f)
         }
-        val accentTextColor = if (isAero) Color(0xFF005F9E) else palette.primary
-        val dividerColor = if (isAero) Color(0x280B4B75) else Color.White.copy(alpha = 0.09f)
-        val successColor = if (isAero) Color(0xFF15803D) else Color(0xFF4ADE80)
-        val warningColor = if (isAero) Color(0xFFB45309) else Color(0xFFFBBF24)
-        val dangerColor = if (isAero) Color(0xFFB91C1C) else Color(0xFFF87171)
-        val infoColor = if (isAero) Color(0xFF0369A1) else Color(0xFF38BDF8)
+        val accentTextColor = when {
+            isLightAero -> Color(0xFF005F9E)
+            isAeroNight -> Color(0xFF7DD3FC)
+            else -> palette.primary
+        }
+        val dividerColor = when {
+            isLightAero -> Color(0x280B4B75)
+            isAeroNight -> Color(0x367DD3FC)
+            else -> Color.White.copy(alpha = 0.09f)
+        }
+        val successColor = if (isLightAero) Color(0xFF15803D) else Color(0xFF4ADE80)
+        val warningColor = if (isLightAero) Color(0xFFB45309) else Color(0xFFFBBF24)
+        val dangerColor = if (isLightAero) Color(0xFFB91C1C) else Color(0xFFF87171)
+        val infoColor = if (isLightAero) Color(0xFF0369A1) else Color(0xFF38BDF8)
 
         IronPulseThemeTokens(
             uiTheme = uiTheme,
@@ -911,7 +893,8 @@ fun IronPulseTheme(
             bubbleRadius = bubbleRadius,
             heroScrimAlpha = heroScrimAlpha,
             buttonHasGloss = isAero,
-            isLightTheme = isAero,
+            isLightTheme = isLightAero,
+            isAeroNight = isAeroNight,
             accentLocked = isAero,
             fontPack = fontPack,
             timePhase = timePhase,

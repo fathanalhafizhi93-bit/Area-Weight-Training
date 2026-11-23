@@ -256,8 +256,12 @@ object MaterialYouColorEngine {
     fun generateMaterialYouPalette(
         seedHex: String,
         surfaceTintOverrideHex: String? = null,
-        isLight: Boolean = false
+        isLight: Boolean = false,
+        isAeroNight: Boolean = false
     ): MaterialYouPalette {
+        if (isAeroNight) {
+            return buildFrutigerAeroTwilightPalette(normalizeHexColor(seedHex, AERO_SKY_ACCENT))
+        }
         if (isLight) {
             return buildFrutigerAeroLightPalette(normalizeHexColor(seedHex, AERO_SKY_ACCENT))
         }
@@ -460,4 +464,82 @@ object MaterialYouColorEngine {
             outlineVariant = parseColor(outlineVariantHex)
         )
     }
+
+    /**
+     * Soft Twilight Dark Frutiger Aero ("Aero Senja Lembut") palette:
+     * medium twilight indigo-ocean glass, fresh aqua-teal highlights, and crisp ice-white ink.
+     */
+    private fun buildFrutigerAeroTwilightPalette(primaryHex: String): MaterialYouPalette {
+        val onPrimaryHex = "#FFFFFF"
+        val primaryContainerHex = "#1A4B7C"
+        val onPrimaryContainerHex = "#E0F4FF"
+        val secondaryHex = "#34D399"
+        val onSecondaryHex = "#042C1C"
+        val secondaryContainerHex = "#134747"
+        val onSecondaryContainerHex = "#C6FBEA"
+        val tertiaryHex = "#38BDF8"
+        val onTertiaryHex = "#04253B"
+        val tertiaryContainerHex = "#194469"
+        val onTertiaryContainerHex = "#D8F2FF"
+
+        val surfaceHex = "#162A52"
+        val surfaceContainerLowestHex = "#102140"
+        val surfaceContainerLowHex = "#162C50"
+        val surfaceContainerHex = "#1B355E"
+        val surfaceContainerHighHex = "#224170"
+        val surfaceContainerHighestHex = "#2A4E82"
+        val onSurfaceHex = "#F0F8FF"
+        val onSurfaceVariantHex = "#B4D3EB"
+        val outlineHex = "#5AA9D9"
+        val outlineVariantHex = "#336796"
+
+        return MaterialYouPalette(
+            seed = primaryHex,
+            primaryHex = primaryHex,
+            onPrimaryHex = onPrimaryHex,
+            primaryContainerHex = primaryContainerHex,
+            onPrimaryContainerHex = onPrimaryContainerHex,
+            secondaryHex = secondaryHex,
+            onSecondaryHex = onSecondaryHex,
+            secondaryContainerHex = secondaryContainerHex,
+            onSecondaryContainerHex = onSecondaryContainerHex,
+            tertiaryHex = tertiaryHex,
+            onTertiaryHex = onTertiaryHex,
+            tertiaryContainerHex = tertiaryContainerHex,
+            onTertiaryContainerHex = onTertiaryContainerHex,
+            surfaceHex = surfaceHex,
+            surfaceContainerLowestHex = surfaceContainerLowestHex,
+            surfaceContainerLowHex = surfaceContainerLowHex,
+            surfaceContainerHex = surfaceContainerHex,
+            surfaceContainerHighHex = surfaceContainerHighHex,
+            surfaceContainerHighestHex = surfaceContainerHighestHex,
+            onSurfaceHex = onSurfaceHex,
+            onSurfaceVariantHex = onSurfaceVariantHex,
+            outlineHex = outlineHex,
+            outlineVariantHex = outlineVariantHex,
+            primary = parseColor(primaryHex),
+            onPrimary = parseColor(onPrimaryHex),
+            primaryContainer = parseColor(primaryContainerHex),
+            onPrimaryContainer = parseColor(onPrimaryContainerHex),
+            secondary = parseColor(secondaryHex),
+            onSecondary = parseColor(onSecondaryHex),
+            secondaryContainer = parseColor(secondaryContainerHex),
+            onSecondaryContainer = parseColor(onSecondaryContainerHex),
+            tertiary = parseColor(tertiaryHex),
+            onTertiary = parseColor(onTertiaryHex),
+            tertiaryContainer = parseColor(tertiaryContainerHex),
+            onTertiaryContainer = parseColor(onTertiaryContainerHex),
+            surface = parseColor(surfaceHex),
+            surfaceContainerLowest = parseColor(surfaceContainerLowestHex),
+            surfaceContainerLow = parseColor(surfaceContainerLowHex),
+            surfaceContainer = parseColor(surfaceContainerHex),
+            surfaceContainerHigh = parseColor(surfaceContainerHighHex),
+            surfaceContainerHighest = parseColor(surfaceContainerHighestHex),
+            onSurface = parseColor(onSurfaceHex),
+            onSurfaceVariant = parseColor(onSurfaceVariantHex),
+            outline = parseColor(outlineHex),
+            outlineVariant = parseColor(outlineVariantHex)
+        )
+    }
 }
+

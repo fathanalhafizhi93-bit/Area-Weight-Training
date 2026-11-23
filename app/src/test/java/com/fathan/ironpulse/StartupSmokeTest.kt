@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -46,6 +48,7 @@ import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayKey
+import com.fathan.ironpulse.model.DayTimeMode
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MuscleGroup
@@ -78,9 +81,11 @@ import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
 import com.fathan.ironpulse.ui.components.VisualColorPickerMode
 import com.fathan.ironpulse.ui.components.isClosedEyeExpression
+import com.fathan.ironpulse.ui.components.resolveMascotOrbPalette
 import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
+import com.fathan.ironpulse.ui.screens.TodayScreen
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
@@ -89,6 +94,7 @@ import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.resolveThemeFontPack
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
+import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotReaction
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
@@ -1482,5 +1488,314 @@ class StartupSmokeTest {
         assertNotNull(aeroDividerColor)
         assertTrue("Frutiger Aero divider must be tinted dark-sky, not white", aeroDividerColor!!.red < 0.2f)
     }
+
+    @Test
+    fun frutigerAeroNightPhase_switchesToSoftTwilightDarkAeroAndSyncsPreviewStrip() {
+        fun linearChannel(c: Float): Double {
+            val d = c.toDouble()
+            return if (d <= 0.03928) d / 12.92 else Math.pow((d + 0.055) / 1.055, 2.4)
+        }
+        fun wcagContrastOnTwilightAeroGlass(foreground: Color): Double {
+            val lumFg = 0.2126 * linearChannel(foreground.red) +
+                0.7152 * linearChannel(foreground.green) +
+                0.0722 * linearChannel(foreground.blue)
+            val darkAeroGlass = Color(0xFF183259)
+            val lumBg = 0.2126 * linearChannel(darkAeroGlass.red) +
+                0.7152 * linearChannel(darkAeroGlass.green) +
+                0.0722 * linearChannel(darkAeroGlass.blue)
+            val lighter = maxOf(lumFg, lumBg)
+            val darker = minOf(lumFg, lumBg)
+            return (lighter + 0.05) / (darker + 0.05)
+        }
+
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+        var isLightTheme = true
+        var isAeroNight = false
+        var accentLocked = false
+        var accentColor: Color? = null
+        var onSurfaceColor: Color? = null
+        var accentTextColor: Color? = null
+        var canvasBg: Color? = null
+        val selectedModes = mutableListOf<DayTimeMode>()
+
+        composeRule.setContent {
+            var activeMode by remember { mutableStateOf(DayTimeMode.AUTO) }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.FRUTIGER_AERO,
+                    accentColorHex = "#C8FF2E",
+                    lang = AppLanguage.ID,
+                    todayThemeMode = activeMode,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                ),
+                timePhase = DayTimePhase.NIGHT
+            ) {
+                val t = LocalIronPulseTokens.current
+                isLightTheme = t.isLightTheme
+                isAeroNight = t.isAeroNight
+                accentLocked = t.accentLocked
+                accentColor = t.accentColor
+                onSurfaceColor = t.palette.onSurface
+                accentTextColor = t.accentTextColor
+                canvasBg = t.canvasBg
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AmbientPhaseBackdrop()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        IronPulseTopBar(
+                            activeTab = AppTab.SETTINGS,
+                            aboutOpen = false,
+                            onLogoClick = {},
+                            onOpenSettings = {},
+                            onOpenAbout = {},
+                            onTestAlarm = {}
+                        )
+                        ThemeBrandLockup(theme = UiTheme.FRUTIGER_AERO, accentColor = t.accentColor)
+                        AccentAndTintSettingsCard(
+                            accentColorHex = "#0099E5",
+                            materialTintColorHex = null,
+                            onSelectAccent = {},
+                            onOpenAccentPicker = {},
+                            onOpenTintPicker = {},
+                            onSelectMaterialTint = {},
+                            selectedDayTimeMode = activeMode,
+                            onSelectDayTimeMode = { mode ->
+                                activeMode = mode
+                                selectedModes.add(mode)
+                            }
+                        )
+                        IronPulseBottomNav(
+                            activeTab = AppTab.SETTINGS,
+                            restTimerFlow = restFlow,
+                            onSelectTab = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertFalse("Frutiger Aero Night must switch off light theme flag", isLightTheme)
+        assertTrue("Frutiger Aero Night must activate isAeroNight", isAeroNight)
+        assertTrue("Frutiger Aero Night must keep accent permanently locked", accentLocked)
+        assertEquals(Color(0xFF0099E5), accentColor)
+        assertEquals(Color(0xFFF0F8FF), onSurfaceColor)
+        assertEquals(Color(0xFF7DD3FC), accentTextColor)
+        assertEquals(Color(0xFF162A52), canvasBg)
+        assertTrue(
+            "Ice-white onSurface must exceed WCAG AA on twilight Aero glass",
+            wcagContrastOnTwilightAeroGlass(onSurfaceColor!!) >= 4.5
+        )
+        assertTrue(
+            "Sky-blue accentTextColor must exceed WCAG AA on twilight Aero glass",
+            wcagContrastOnTwilightAeroGlass(accentTextColor!!) >= 4.5
+        )
+
+        composeRule.onNodeWithTag("os_backdrop_frutiger-aero").assertIsDisplayed()
+        composeRule.onNodeWithTag("accent_locked_banner").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("aero_phase_preview_strip").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Senja Malam").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("aero_phase_btn_night").performScrollTo().performClick()
+        composeRule.onNodeWithTag("aero_phase_btn_day").performScrollTo().performClick()
+        composeRule.onNodeWithTag("aero_phase_btn_auto").performScrollTo().performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(
+            listOf(DayTimeMode.NIGHT, DayTimeMode.AFTERNOON, DayTimeMode.AUTO),
+            selectedModes
+        )
+    }
+
+    @Test
+    fun pulseMascot_allFiveThemesHaveDistinctHarmoniousPalettesAcrossDayPhases() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var phaseSetter: ((DayTimePhase) -> Unit)? = null
+        val capturedPalettes = linkedMapOf<Pair<UiTheme, DayTimePhase>, List<Color>>()
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            var activePhase by remember { mutableStateOf(DayTimePhase.MORNING) }
+            themeSetter = { activeTheme = it }
+            phaseSetter = { activePhase = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                ),
+                timePhase = activePhase
+            ) {
+                val tokens = LocalIronPulseTokens.current
+                val orbPalette = resolveMascotOrbPalette(
+                    theme = tokens.uiTheme,
+                    phase = tokens.timePhase,
+                    accentColor = tokens.accentColor,
+                    palette = tokens.palette,
+                    isLightTheme = tokens.isLightTheme
+                )
+                capturedPalettes[activeTheme to activePhase] = listOf(
+                    orbPalette.coreStart,
+                    orbPalette.coreEnd,
+                    orbPalette.lowerBounce,
+                    orbPalette.haloPrimary,
+                    orbPalette.expressionAccent
+                )
+
+                Box(modifier = Modifier.padding(16.dp)) {
+                    MascotOrbFace(
+                        mascot = MascotUiState(),
+                        size = 72.dp
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            DayTimePhase.entries.forEach { phase ->
+                composeRule.runOnUiThread { phaseSetter?.invoke(phase) }
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag("mascot_orb_${theme.wireValue}", useUnmergedTree = true)
+                    .assertIsDisplayed()
+            }
+        }
+
+        // Every one of the 5 OS themes must adapt Pulse's palette distinctly across Morning, Afternoon, and Night
+        UiTheme.entries.forEach { theme ->
+            val morning = capturedPalettes[theme to DayTimePhase.MORNING]
+            val afternoon = capturedPalettes[theme to DayTimePhase.AFTERNOON]
+            val night = capturedPalettes[theme to DayTimePhase.NIGHT]
+            assertNotNull("Missing morning mascot palette for $theme", morning)
+            assertNotNull("Missing afternoon mascot palette for $theme", afternoon)
+            assertNotNull("Missing night mascot palette for $theme", night)
+            assertEquals(
+                "Theme $theme must produce 3 distinct harmonious Pulse palettes for Morning, Afternoon, and Night",
+                3,
+                setOf(morning, afternoon, night).size
+            )
+        }
+    }
+
+    @Test
+    fun todayScreen_elevatesStartWorkoutCtaAboveRestTimerAndMascotAcrossAllThemes() {
+        val defaultSchedules = GymPresets.createDefaultSchedules("u_today").toMutableMap()
+        val mondayExercises = GymPresets.createDefaultSchedules("u_today")[DayKey.MON]?.exercises ?: emptyList()
+        val activeDay = DayKey.MON
+        val activeSched = (defaultSchedules[activeDay] ?: return).copy(
+            isGymDay = true,
+            focusTitle = "Push Day",
+            exercises = mondayExercises.ifEmpty {
+                listOf(
+                    com.fathan.ironpulse.model.ExerciseItem(
+                        id = "ex_bench",
+                        name = "Barbell Bench Press",
+                        muscleGroup = MuscleGroup.DADA,
+                        equipment = "Barbell",
+                        targetSets = 3,
+                        targetReps = "10",
+                        targetWeightKg = 60.0,
+                        restSeconds = 90,
+                        notes = ""
+                    )
+                )
+            }
+        )
+        defaultSchedules[activeDay] = activeSched
+        val entries = activeSched.exercises.map { ex ->
+            WorkoutLogEntry(
+                exerciseId = ex.id,
+                name = ex.name,
+                muscleGroup = ex.muscleGroup,
+                sets = listOf(WorkoutSetLog(setNumber = 1, weightKg = 60.0, reps = 10, completed = false))
+            )
+        }
+        val uiState = IronPulseUiState(
+            authReady = true,
+            userUid = "u_today",
+            dataLoading = false,
+            historyLoading = false,
+            schedules = defaultSchedules,
+            todayDayKey = activeDay,
+            effectiveTodayEntries = entries
+        )
+        val clockFlow = MutableStateFlow(1_730_000_000L)
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+        val eyeFlow = MutableStateFlow(MascotEyeState())
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var openWorkoutCalls = 0
+
+        val listState = androidx.compose.foundation.lazy.LazyListState()
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            themeSetter = { activeTheme = it }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                CompositionLocalProvider(LocalTabActive provides true) {
+                    TodayScreen(
+                        state = uiState,
+                        listState = listState,
+                        contentPadding = PaddingValues(0.dp),
+                        clockSecondsFlow = clockFlow,
+                        restTimerFlow = restFlow,
+                        mascotEyeFlow = eyeFlow,
+                        onTapMascot = {},
+                        onReplayMascotVoice = {},
+                        onStartRestPreset = { _, _ -> },
+                        onToggleRestPauseOrStart = {},
+                        onAdjustRest = {},
+                        onResetRest = {},
+                        onOpenWorkout = { openWorkoutCalls += 1 },
+                        onOpenSchedule = {},
+                        onOpenExercisesForDay = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("today_mascot_card").assertIsDisplayed()
+            composeRule.onNodeWithTag("start_workout_cta").assertIsDisplayed()
+            val visibleKeys = listState.layoutInfo.visibleItemsInfo.map { it.key }
+            assertEquals("hero_banner", visibleKeys.getOrNull(0))
+            assertEquals("today_mascot_card", visibleKeys.getOrNull(1))
+            assertEquals("start_workout_cta", visibleKeys.getOrNull(2))
+            val mascotItem = listState.layoutInfo.visibleItemsInfo[1]
+            val ctaItem = listState.layoutInfo.visibleItemsInfo[2]
+            assertTrue(
+                "Expected TodayMascot offset (${mascotItem.offset}) right below Hero and above Start Workout CTA (${ctaItem.offset}) in $theme",
+                mascotItem.offset < ctaItem.offset
+            )
+            val restItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "rest_timer_card" }
+            if (restItem != null) {
+                assertTrue(
+                    "Expected Start Workout CTA offset (${ctaItem.offset}) above Rest Timer (${restItem.offset}) in $theme",
+                    ctaItem.offset < restItem.offset
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("start_workout_cta").performClick()
+        assertEquals(1, openWorkoutCalls)
+    }
 }
+
+
 

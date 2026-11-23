@@ -74,6 +74,7 @@ import com.fathan.ironpulse.model.BuiltinRingtoneSpec
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayTimeMode
+import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
@@ -211,6 +212,8 @@ fun SettingsScreen(
                                 onOpenAccentPicker = { activeColorPickerMode = VisualColorPickerMode.ACCENT },
                                 onOpenTintPicker = { activeColorPickerMode = VisualColorPickerMode.SURFACE_TINT },
                                 onSelectMaterialTint = { viewModel.setMaterialTintColor(it) },
+                                selectedDayTimeMode = state.appPrefs.todayThemeMode,
+                                onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
                                 modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
                             )
                         }
@@ -937,6 +940,8 @@ fun AccentAndTintSettingsCard(
     onOpenAccentPicker: () -> Unit,
     onOpenTintPicker: () -> Unit,
     onSelectMaterialTint: (String?) -> Unit,
+    selectedDayTimeMode: DayTimeMode = DayTimeMode.AUTO,
+    onSelectDayTimeMode: ((DayTimeMode) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -1059,6 +1064,109 @@ fun AccentAndTintSettingsCard(
                             lineHeight = 16.sp,
                             color = tokens.palette.onSurfaceVariant
                         )
+                    }
+                }
+            }
+
+            if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = tokens.wellBg,
+                    border = BorderStroke(1.dp, tokens.subtleBorderColor),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("aero_phase_preview_strip")
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = lang.t("Fase Otomatis Frutiger Aero", "Frutiger Aero Auto Phase"),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface
+                                )
+                                Text(
+                                    text = lang.t(
+                                        "Otomatis beralih ke Aero Senja Lembut pukul 18:00–04:59.",
+                                        "Automatically switches to Soft Twilight Aero from 18:00–04:59."
+                                    ),
+                                    fontSize = 11.sp,
+                                    color = tokens.palette.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = if (tokens.isAeroNight) Color(0x3338BDF8) else tokens.accentColor.copy(alpha = 0.14f),
+                                border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.45f))
+                            ) {
+                                Text(
+                                    text = if (tokens.isAeroNight) {
+                                        lang.t("Senja Malam", "Twilight Night")
+                                    } else {
+                                        lang.t("Langit Cerah", "Bright Sky")
+                                    },
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.accentTextColor,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val quickModes = listOf(
+                                Triple(DayTimeMode.AUTO, lang.t("Auto", "Auto"), "aero_phase_btn_auto"),
+                                Triple(DayTimeMode.AFTERNOON, lang.t("Siang", "Day"), "aero_phase_btn_day"),
+                                Triple(DayTimeMode.NIGHT, lang.t("Malam", "Night"), "aero_phase_btn_night")
+                            )
+                            quickModes.forEach { (mode, label, tag) ->
+                                val isActive = when (mode) {
+                                    DayTimeMode.AUTO -> selectedDayTimeMode == DayTimeMode.AUTO
+                                    DayTimeMode.AFTERNOON -> selectedDayTimeMode == DayTimeMode.AFTERNOON || selectedDayTimeMode == DayTimeMode.MORNING
+                                    DayTimeMode.NIGHT -> selectedDayTimeMode == DayTimeMode.NIGHT
+                                    else -> false
+                                }
+                                Surface(
+                                    onClick = { onSelectDayTimeMode?.invoke(mode) },
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = if (isActive) tokens.accentColor else tokens.controlBg,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isActive) {
+                                            if (tokens.isAeroNight) Color(0xCCBAE6FD) else Color.White.copy(alpha = 0.85f)
+                                        } else {
+                                            tokens.surfaceBorderColor
+                                        }
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(38.dp)
+                                        .testTag(tag)
+                                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isActive) Color.White else tokens.palette.onSurface,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1426,6 +1534,7 @@ private fun ThemePreviewCard(
     }
     val fontPack = remember(theme) { resolveThemeFontPack(theme) }
     val isAeroPreview = theme == UiTheme.FRUTIGER_AERO
+    val isAeroNightPreview = isAeroPreview && tokens.timePhase == DayTimePhase.NIGHT
 
     val cardShape = when (theme) {
         UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
@@ -1480,7 +1589,7 @@ private fun ThemePreviewCard(
                             UiTheme.CARBON_FORGE -> Color(0xFF0E1117)
                             UiTheme.UBUNTU_YARU -> Color(0xFF2A1626)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-                            UiTheme.FRUTIGER_AERO -> Color(0xFFD6F3FF)
+                            UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xFF162A52) else Color(0xFFD6F3FF)
                         }
                         val shaderBrush = when (theme) {
                             UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
@@ -1508,11 +1617,19 @@ private fun ThemePreviewCard(
                                 0.0f to previewAccent.copy(alpha = 0.12f),
                                 0.45f to Color.Transparent
                             )
-                            UiTheme.FRUTIGER_AERO -> Brush.verticalGradient(
-                                0.0f to Color(0xFF7ED8FF),
-                                0.56f to Color(0xFFE0F8FF),
-                                1.0f to Color(0xFFD0FCE4)
-                            )
+                            UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) {
+                                Brush.verticalGradient(
+                                    0.0f to Color(0xFF162A52),
+                                    0.55f to Color(0xFF1B3B6B),
+                                    1.0f to Color(0xFF0F3D3E)
+                                )
+                            } else {
+                                Brush.verticalGradient(
+                                    0.0f to Color(0xFF7ED8FF),
+                                    0.56f to Color(0xFFE0F8FF),
+                                    1.0f to Color(0xFFD0FCE4)
+                                )
+                            }
                         }
                         val aeroHillPath = if (isAeroPreview) {
                             Path().apply {
@@ -1535,7 +1652,11 @@ private fun ThemePreviewCard(
                                 drawPath(
                                     path = aeroHillPath,
                                     brush = Brush.verticalGradient(
-                                        listOf(Color(0x7039D353), Color(0x880EA5A4))
+                                        if (isAeroNightPreview) {
+                                            listOf(Color(0x662DD4BF), Color(0x800D9488))
+                                        } else {
+                                            listOf(Color(0x7039D353), Color(0x880EA5A4))
+                                        }
                                     )
                                 )
                             }
@@ -1563,7 +1684,7 @@ private fun ThemePreviewCard(
                             UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.22f)
                             UiTheme.UBUNTU_YARU -> Color(0xFF141414)
                             UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
-                            UiTheme.FRUTIGER_AERO -> Color(0xB80082C8)
+                            UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xA65BC6FA) else Color(0xB80082C8)
                             UiTheme.MATERIAL_YOU -> previewAccent.copy(alpha = 0.30f)
                         },
                         previewShape
@@ -1576,7 +1697,7 @@ private fun ThemePreviewCard(
                         .height(14.dp)
                         .background(
                             when (theme) {
-                                UiTheme.FRUTIGER_AERO -> Color.White.copy(alpha = 0.62f)
+                                UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xCC1E3D6B) else Color.White.copy(alpha = 0.62f)
                                 UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
                                 UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
                                 UiTheme.CARBON_FORGE -> Color(0xCC181E28)
@@ -1593,8 +1714,11 @@ private fun ThemePreviewCard(
                             .height(3.5.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(
-                                if (isAeroPreview) Color(0xFF073B66).copy(alpha = 0.65f)
-                                else previewAccent.copy(alpha = 0.85f)
+                                when {
+                                    isAeroNightPreview -> Color(0xFF7DD3FC).copy(alpha = 0.85f)
+                                    isAeroPreview -> Color(0xFF073B66).copy(alpha = 0.65f)
+                                    else -> previewAccent.copy(alpha = 0.85f)
+                                }
                             )
                     )
                     when (theme) {
@@ -1636,15 +1760,22 @@ private fun ThemePreviewCard(
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(
-                                    if (isAeroPreview) Color(0xFF072B4A).copy(alpha = 0.72f)
-                                    else Color.White.copy(alpha = 0.75f)
+                                    when {
+                                        isAeroNightPreview -> Color(0xFFE0F2FE).copy(alpha = 0.85f)
+                                        isAeroPreview -> Color(0xFF072B4A).copy(alpha = 0.72f)
+                                        else -> Color.White.copy(alpha = 0.75f)
+                                    }
                                 )
                         )
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val iconTint = if (isAeroPreview) Color(0xFF005F9E) else previewAccent
+                            val iconTint = when {
+                                isAeroNightPreview -> Color(0xFF38BDF8)
+                                isAeroPreview -> Color(0xFF005F9E)
+                                else -> previewAccent
+                            }
                             ThemedIcon(
                                 icon = IronPulseIcon.TODAY,
                                 contentDescription = null,
@@ -1655,7 +1786,11 @@ private fun ThemePreviewCard(
                             ThemedIcon(
                                 icon = IronPulseIcon.EXERCISES,
                                 contentDescription = null,
-                                tint = if (isAeroPreview) Color(0xFF073257) else Color.White.copy(alpha = 0.85f),
+                                tint = when {
+                                    isAeroNightPreview -> Color(0xFFF0F8FF).copy(alpha = 0.90f)
+                                    isAeroPreview -> Color(0xFF073257)
+                                    else -> Color.White.copy(alpha = 0.85f)
+                                },
                                 size = 12.dp,
                                 themeOverride = theme
                             )

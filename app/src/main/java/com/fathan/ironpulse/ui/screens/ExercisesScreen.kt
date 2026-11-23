@@ -128,33 +128,26 @@ fun ExercisesScreen(
                         .fillMaxWidth()
                         .tutorialSpotlightTarget(TutorialSpotlightTarget.EXERCISES_HEADER)
                         .ironGlassSurface(tokens)
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column {
-                        Text(
-                            text = lang.t("DAFTAR & PUSTAKA GERAKAN", "EXERCISES & LIBRARY"),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.4.sp,
-                            color = tokens.accentColor
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = lang.t("Program Latihan Harian", "Daily Exercise Planner"),
-                            fontSize = 23.sp,
+                            fontSize = 21.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = tokens.palette.onSurface
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = lang.t(
-                                "Susun hingga 30 gerakan per hari dari pustaka 120+ gerakan atau buat gerakan kustom.",
-                                "Build up to 30 movements per day from the 120+ library or create custom exercises."
-                            ),
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            color = tokens.palette.onSurfaceVariant
+                            text = "${exercises.size}/30",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.accentColor
                         )
                     }
 
