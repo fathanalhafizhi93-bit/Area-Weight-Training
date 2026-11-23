@@ -85,6 +85,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -104,6 +105,9 @@ import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
+import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
+import com.fathan.ironpulse.ui.components.VisualColorPickerMode
+import com.fathan.ironpulse.ui.components.VisualPickColorPill
 import com.fathan.ironpulse.ui.components.fluidModalEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
@@ -152,7 +156,7 @@ fun SettingsScreen(
     var activeSubTab by remember { mutableStateOf(SettingsSubTab.PROFILE) }
     var appearanceSection by remember { mutableStateOf(AppearanceSection.THEMES) }
     var confirmSignOut by remember { mutableStateOf(false) }
-    var showCustomHexDialog by remember { mutableStateOf(false) }
+    var activeColorPickerMode by remember { mutableStateOf<VisualColorPickerMode?>(null) }
     var pendingDeleteTone by remember { mutableStateOf<CustomRingtone?>(null) }
 
     val fallbackListState = rememberLazyListState()
@@ -223,7 +227,8 @@ fun SettingsScreen(
                                 accentColorHex = state.appPrefs.accentColorHex,
                                 materialTintColorHex = state.appPrefs.materialTintColorHex,
                                 onSelectAccent = { viewModel.setAccentColor(it) },
-                                onOpenCustomHex = { showCustomHexDialog = true },
+                                onOpenAccentPicker = { activeColorPickerMode = VisualColorPickerMode.ACCENT },
+                                onOpenTintPicker = { activeColorPickerMode = VisualColorPickerMode.SURFACE_TINT },
                                 onSelectMaterialTint = { viewModel.setMaterialTintColor(it) },
                                 modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
                             )
@@ -391,15 +396,33 @@ fun SettingsScreen(
         )
     }
 
-    if (showCustomHexDialog) {
-        CustomHexAccentDialog(
-            initialHex = state.appPrefs.accentColorHex,
-            lang = lang,
-            onApply = { hex ->
-                viewModel.setAccentColor(hex)
-                showCustomHexDialog = false
+    val pickerMode = activeColorPickerMode
+    if (pickerMode != null) {
+        val isAccent = pickerMode == VisualColorPickerMode.ACCENT
+        val startHex = if (isAccent) {
+            MaterialYouColorEngine.colorToHex(tokens.accentColor)
+        } else {
+            state.appPrefs.materialTintColorHex
+                ?: MaterialYouColorEngine.defaultTintForTheme(state.appPrefs.uiTheme)
+        }
+        VisualColorPickerDialog(
+            mode = pickerMode,
+            initialHex = startHex,
+            quickPresets = if (isAccent) {
+                GymModelHelpers.ACCENT_COLOR_PRESETS
+            } else {
+                GymModelHelpers.MATERIAL_TINT_PRESETS
             },
-            onDismiss = { showCustomHexDialog = false }
+            lang = lang,
+            onApplyHex = { chosenHex ->
+                if (isAccent) {
+                    viewModel.setAccentColor(chosenHex)
+                } else {
+                    viewModel.setMaterialTintColor(chosenHex)
+                }
+                activeColorPickerMode = null
+            },
+            onDismiss = { activeColorPickerMode = null }
         )
     }
 
@@ -922,17 +945,35 @@ private fun ThemesGridCard(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AccentAndTintSettingsCard(
+fun AccentAndTintSettingsCard(
     accentColorHex: String,
     materialTintColorHex: String?,
     onSelectAccent: (String) -> Unit,
-    onOpenCustomHex: () -> Unit,
+    onOpenAccentPicker: () -> Unit,
+    onOpenTintPicker: () -> Unit,
     onSelectMaterialTint: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val activeAccentHex = MaterialYouColorEngine.colorToHex(tokens.accentColor)
+    val activeAccentName = remember(activeAccentHex, lang) {
+        MaterialYouColorEngine.friendlyColorName(
+            hex = activeAccentHex,
+            presets = GymModelHelpers.ACCENT_COLOR_PRESETS,
+            lang = lang
+        )
+    }
+    val activeTintName = remember(materialTintColorHex, lang) {
+        materialTintColorHex?.let {
+            MaterialYouColorEngine.friendlyColorName(
+                hex = it,
+                presets = GymModelHelpers.MATERIAL_TINT_PRESETS,
+                lang = lang
+            )
+        }
+    }
 
     Column(
         modifier = modifier
@@ -952,13 +993,31 @@ private fun AccentAndTintSettingsCard(
                 fontWeight = FontWeight.Bold,
                 color = tokens.palette.onSurface
             )
-            Text(
-                text = accentColorHex,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = tokens.accentColor
-            )
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = tokens.accentColor.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.35f)),
+                modifier = Modifier.testTag("accent_active_visual_badge")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(tokens.accentColor)
+                    )
+                    Text(
+                        text = activeAccentName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.palette.onSurface
+                    )
+                }
+            }
         }
 
         FlowRow(
@@ -967,7 +1026,7 @@ private fun AccentAndTintSettingsCard(
         ) {
             GymModelHelpers.ACCENT_COLOR_PRESETS.forEach { opt ->
                 val color = MaterialYouColorEngine.parseColor(opt.hex)
-                val active = accentColorHex.equals(opt.hex, ignoreCase = true)
+                val active = activeAccentHex.equals(opt.hex, ignoreCase = true)
                 Box(
                     modifier = Modifier
                         .size(38.dp)
@@ -985,7 +1044,7 @@ private fun AccentAndTintSettingsCard(
                     if (active) {
                         Icon(
                             imageVector = Icons.Rounded.Check,
-                            contentDescription = opt.labelEn,
+                            contentDescription = lang.t(opt.labelId, opt.labelEn),
                             tint = Color(0xFF0A0B0E),
                             modifier = Modifier.size(18.dp)
                         )
@@ -993,22 +1052,11 @@ private fun AccentAndTintSettingsCard(
                 }
             }
 
-            Surface(
-                onClick = onOpenCustomHex,
-                shape = RoundedCornerShape(999.dp),
-                color = tokens.palette.surfaceContainerLow,
-                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                modifier = Modifier.tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-            ) {
-                Text(
-                    text = lang.t("# Kustom", "# Custom"),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tokens.palette.onSurface,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
-                )
-            }
+            VisualPickColorPill(
+                label = lang.t("Pilih Warna", "Pick Color"),
+                onClick = onOpenAccentPicker,
+                modifier = Modifier.testTag("accent_pick_color_button")
+            )
         }
 
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
@@ -1018,12 +1066,21 @@ private fun AccentAndTintSettingsCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = lang.t("Nuansa Permukaan (Material Tint)", "Material Surface Tint"),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = tokens.palette.onSurface
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = lang.t("Nuansa Permukaan (Material Tint)", "Material Surface Tint"),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+                if (activeTintName != null) {
+                    Text(
+                        text = activeTintName,
+                        fontSize = 11.sp,
+                        color = tokens.palette.onSurfaceVariant
+                    )
+                }
+            }
             TextButton(onClick = { onSelectMaterialTint(null) }) {
                 Text(
                     text = lang.t("Bawaan Tema", "Theme Default"),
@@ -1057,13 +1114,19 @@ private fun AccentAndTintSettingsCard(
                     if (active) {
                         Icon(
                             imageVector = Icons.Rounded.Check,
-                            contentDescription = opt.labelEn,
+                            contentDescription = lang.t(opt.labelId, opt.labelEn),
                             tint = Color.White,
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
+
+            VisualPickColorPill(
+                label = lang.t("Pilih Warna", "Pick Color"),
+                onClick = onOpenTintPicker,
+                modifier = Modifier.testTag("tint_pick_color_button")
+            )
         }
 
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
@@ -1518,81 +1581,6 @@ private fun PerformanceSwitchRow(
             )
         )
     }
-}
-
-@Composable
-private fun CustomHexAccentDialog(
-    initialHex: String,
-    lang: AppLanguage,
-    onApply: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val tokens = LocalIronPulseTokens.current
-    var hexInput by remember(initialHex) { mutableStateOf(initialHex) }
-    val valid = remember(hexInput) { Regex("^#[0-9A-Fa-f]{6}$").matches(hexInput.trim()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = tokens.palette.surfaceContainerHigh,
-        modifier = Modifier.fluidModalEntrance(disabledByPerf = tokens.performance.noAnimations),
-        title = {
-            Text(
-                text = lang.t("Warna Aksen Kustom (Hex)", "Custom Accent Hex"),
-                fontWeight = FontWeight.Bold,
-                color = tokens.palette.onSurface
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = hexInput,
-                    onValueChange = { hexInput = it.uppercase(Locale.US).take(7) },
-                    label = { Text("#RRGGBB") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(tokens.inputRadius),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = tokens.accentColor,
-                        unfocusedBorderColor = tokens.surfaceBorderColor,
-                        focusedTextColor = tokens.palette.onSurface,
-                        unfocusedTextColor = tokens.palette.onSurface
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (valid) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(MaterialYouColorEngine.parseColor(hexInput))
-                        )
-                        Text(lang.t("Pratinjau warna valid", "Valid color preview"), fontSize = 12.sp, color = tokens.palette.onSurfaceVariant)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onApply(hexInput.trim()) },
-                enabled = valid,
-                shape = RoundedCornerShape(tokens.buttonRadius),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = tokens.accentColor,
-                    contentColor = tokens.onAccentColor
-                )
-            ) {
-                Text(lang.t("Terapkan", "Apply"), fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurfaceVariant)
-            }
-        }
-    )
 }
 
 @Composable

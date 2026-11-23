@@ -91,6 +91,60 @@ object MaterialYouColorEngine {
         )
     }
 
+    fun colorToHsv(color: Color): FloatArray {
+        val r = color.red.coerceIn(0f, 1f)
+        val g = color.green.coerceIn(0f, 1f)
+        val b = color.blue.coerceIn(0f, 1f)
+        val maxC = max(r, max(g, b))
+        val minC = min(r, min(g, b))
+        val delta = maxC - minC
+
+        val hue = when {
+            delta < 1e-5f -> 0f
+            maxC == r -> 60f * (((g - b) / delta) % 6f)
+            maxC == g -> 60f * (((b - r) / delta) + 2f)
+            else -> 60f * (((r - g) / delta) + 4f)
+        }.let { if (it < 0f) it + 360f else it }
+
+        val sat = if (maxC <= 1e-5f) 0f else delta / maxC
+        return floatArrayOf(hue.coerceIn(0f, 360f), sat.coerceIn(0f, 1f), maxC.coerceIn(0f, 1f))
+    }
+
+    fun colorToHex(color: Color): String {
+        val ri = (color.red.coerceIn(0f, 1f) * 255f).roundToInt().coerceIn(0, 255)
+        val gi = (color.green.coerceIn(0f, 1f) * 255f).roundToInt().coerceIn(0, 255)
+        val bi = (color.blue.coerceIn(0f, 1f) * 255f).roundToInt().coerceIn(0, 255)
+        return String.format("#%02X%02X%02X", ri, gi, bi)
+    }
+
+    fun friendlyColorName(
+        hex: String,
+        presets: List<com.fathan.ironpulse.model.ColorPresetOption>,
+        lang: com.fathan.ironpulse.model.AppLanguage
+    ): String {
+        val matched = presets.firstOrNull { it.hex.equals(hex, ignoreCase = true) }
+        if (matched != null) return lang.t(matched.labelId, matched.labelEn)
+
+        val hsv = colorToHsv(parseColor(hex))
+        val h = hsv[0]
+        val s = hsv[1]
+        val v = hsv[2]
+        if (v < 0.12f) return lang.t("Hitam Pekat", "Deep Onyx")
+        if (s < 0.14f) return lang.t("Abu Netral", "Neutral Slate")
+
+        val family = when {
+            h < 18f || h >= 342f -> lang.t("Merah", "Crimson")
+            h < 42f -> lang.t("Oranye", "Amber")
+            h < 68f -> lang.t("Kuning", "Gold")
+            h < 155f -> lang.t("Hijau", "Emerald")
+            h < 195f -> lang.t("Cyan", "Cyan")
+            h < 252f -> lang.t("Biru", "Azure")
+            h < 292f -> lang.t("Ungu", "Violet")
+            else -> lang.t("Pink", "Rose")
+        }
+        return "$family · ${lang.t("Kustom", "Custom")}"
+    }
+
     private fun hexToRgb(hex: String): Triple<Int, Int, Int> {
         val valid = normalizeHexColor(hex)
         return Triple(

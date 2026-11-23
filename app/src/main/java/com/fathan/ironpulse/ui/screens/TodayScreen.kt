@@ -116,6 +116,7 @@ fun TodayScreen(
     homeOrbAnimActive: Boolean = true,
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     onTapMascot: () -> Unit,
+    onPetMascot: () -> Unit = {},
     onReplayMascotVoice: () -> Unit,
     onStartRestPreset: (Int, String?) -> Unit,
     onToggleRestPauseOrStart: () -> Unit,
@@ -308,6 +309,7 @@ fun TodayScreen(
                         hideForTutorial = state.tutorialOpen,
                         homeOrbBoundsHolder = homeOrbBoundsHolder,
                         onTapMascot = onTapMascot,
+                        onPetMascot = onPetMascot,
                         onReplayVoice = onReplayMascotVoice
                     )
 

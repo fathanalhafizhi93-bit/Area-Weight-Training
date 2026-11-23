@@ -121,13 +121,29 @@ data class ActiveTestAlarmState(
     val ringtoneName: String
 )
 
+enum class MascotReaction {
+    NONE,
+    TAP_BOUNCE,
+    COMBO_EXCITED,
+    PET_COZY,
+    HYPE,
+    TIP
+}
+
 @Immutable
 data class MascotEyeState(
-    val isBlinking: Boolean = false,
+    val blinkProgress: Float = 0f,
     val glanceX: Float = 0f,
     val glanceY: Float = 0f,
-    val tapBounce: Boolean = false
-)
+    val headTiltDeg: Float = 0f,
+    val reactionKind: MascotReaction = MascotReaction.NONE,
+    val reactionTick: Int = 0,
+    val isPetting: Boolean = false,
+    val comboCount: Int = 0
+) {
+    val isBlinking: Boolean get() = blinkProgress > 0.52f
+    val tapBounce: Boolean get() = reactionKind != MascotReaction.NONE
+}
 
 @Immutable
 data class MascotUiState(
@@ -311,8 +327,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private var lastAutoChatAtMs: Long = 0L
     private var lastSilentPoseAtMs: Long = 0L
     private var nightWakeReturnJob: Job? = null
+    private var mascotReactionClearJob: Job? = null
     private var lastObservedTimePhase: DayTimePhase? = null
     private var initialGreetingFired = false
+    private var lastMascotTapAtMs: Long = 0L
+    private var mascotComboCount: Int = 0
 
     private data class CoreCloudState(
         val authReady: Boolean,
@@ -1023,10 +1042,19 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     fun tapTutorialMascot() {
         haptics.buttonTap()
-        viewModelScope.launch {
-            _mascotEyeState.value = _mascotEyeState.value.copy(tapBounce = true)
-            delay(240L)
-            _mascotEyeState.value = _mascotEyeState.value.copy(tapBounce = false)
+        mascotReactionClearJob?.cancel()
+        val nextTick = _mascotEyeState.value.reactionTick + 1
+        _mascotEyeState.value = _mascotEyeState.value.copy(
+            reactionKind = MascotReaction.TAP_BOUNCE,
+            reactionTick = nextTick,
+            headTiltDeg = listOf(-4.5f, 4.5f).random()
+        )
+        mascotReactionClearJob = viewModelScope.launch {
+            delay(360L)
+            _mascotEyeState.value = _mascotEyeState.value.copy(
+                reactionKind = MascotReaction.NONE,
+                headTiltDeg = 0f
+            )
         }
         playTutorialChirp("clap")
     }
@@ -2316,72 +2344,105 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startMascotLifeLoops() {
-        // 1. Eye Blinking loop (~3.6s) — isolated to _mascotEyeState so root UI never recomposes
+        // 1. Organic Eye Blinking + occasional Double Blink (~2.5s..4.3s) — never blinks when eyes are closed
         viewModelScope.launch {
             while (true) {
-                delay(3600L)
+                delay((2500L..4300L).random())
                 val staticMode = prefsStore.state.value.performance.staticMascot ||
                     prefsStore.state.value.performance.noAnimations
                 val current = _mascotState.value
-                val closedCalm = current.urgentMood == null &&
-                    current.activeTimePose in CLOSED_NIGHT_POSES
-                if (!staticMode && !closedCalm) {
-                    _mascotEyeState.value = _mascotEyeState.value.copy(isBlinking = true)
-                    delay(135L)
-                    _mascotEyeState.value = _mascotEyeState.value.copy(isBlinking = false)
+                val eye = _mascotEyeState.value
+                val closedEye = isMascotClosedEyeState(current, eye)
+                if (!staticMode && !closedEye) {
+                    suspend fun performSingleBlink() {
+                        _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 0.48f)
+                        delay(36L)
+                        _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 1f)
+                        delay(78L)
+                        _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 0.42f)
+                        delay(36L)
+                        _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 0f)
+                    }
+                    performSingleBlink()
+                    // ~26% chance of a natural quick double-blink
+                    if ((0..99).random() < 26) {
+                        delay(115L)
+                        performSingleBlink()
+                    }
                 }
             }
         }
 
-        // 2. Eye Glancing + Dialogue Lock Check loop (~2.9s)
+        // 2. Coupled Glance + Natural Head Tilt + Automatic Daytime Hype/Tips + Rare Night Sleep Checks
         viewModelScope.launch {
             while (true) {
-                delay(2900L)
+                delay((2300L..3400L).random())
                 val now = System.currentTimeMillis()
                 val staticMode = prefsStore.state.value.performance.staticMascot ||
                     prefsStore.state.value.performance.noAnimations
                 val current = _mascotState.value
+                val eye = _mascotEyeState.value
                 val lockActive = now < dialogueLockedUntilMs
-                val closedCalm = current.urgentMood == null &&
-                    current.activeTimePose in CLOSED_NIGHT_POSES
+                val closedEye = isMascotClosedEyeState(current, eye)
 
-                val (gx, gy) = if (staticMode || current.urgentMood != null || closedCalm) {
-                    0f to 0f
+                if (staticMode || current.urgentMood != null || closedEye) {
+                    if (eye.glanceX != 0f || eye.glanceY != 0f || eye.headTiltDeg != 0f) {
+                        _mascotEyeState.value = eye.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
+                    }
                 } else {
-                    GLANCE_TARGETS.random()
-                }
-                if (_mascotEyeState.value.glanceX != gx || _mascotEyeState.value.glanceY != gy) {
-                    _mascotEyeState.value = _mascotEyeState.value.copy(glanceX = gx, glanceY = gy)
+                    val (gx, gy) = GLANCE_TARGETS.random()
+                    val tilt = (gx * 2.15f + (-1.2f..1.2f).let { r ->
+                        r.start + Math.random().toFloat() * (r.endInclusive - r.start)
+                    }).coerceIn(-6.2f, 6.2f)
+                    if (eye.glanceX != gx || eye.glanceY != gy || eye.headTiltDeg != tilt) {
+                        _mascotEyeState.value = eye.copy(
+                            glanceX = gx,
+                            glanceY = gy,
+                            headTiltDeg = tilt
+                        )
+                    }
                 }
                 if (current.isDialogueLocked != lockActive) {
                     _mascotState.value = current.copy(isDialogueLocked = lockActive)
                 }
 
-                // Silent ambient expression shifts every ~26s during daytime
+                // Silent ambient expression shifts every ~24s during daytime only
                 if (!staticMode && current.urgentMood == null && current.timePhase != DayTimePhase.NIGHT &&
-                    now - lastSilentPoseAtMs >= 26_000L
+                    now - lastSilentPoseAtMs >= 24_000L
                 ) {
                     lastSilentPoseAtMs = now
                     rotateTimePoseOnly()
                 }
 
-                // Autonomous calm chat (~68s day, ~120s night) when dialogue lock is free
-                val chatGap = if (current.timePhase == DayTimePhase.NIGHT) 120_000L else 68_000L
+                // Autonomous interaction (~64s day with automatic Hype/Tip moments; rare ~300s @ 30% chance at night)
+                val chatGap = mascotAutoChatIntervalMs(current.timePhase)
                 if (!lockActive && initialGreetingFired &&
                     now - lastAutoChatAtMs >= chatGap
                 ) {
                     lastAutoChatAtMs = now
-                    val pool = posesForPhase(current.timePhase)
-                    if (current.timePhase == DayTimePhase.NIGHT) {
-                        val awake = (1 until pool.size).filter { it !in recentPoseIndices }
-                        val chosen = awake.ifEmpty { (1 until pool.size).toList() }.random()
-                        mascotPhasePoseIdx = chosen
-                        pushRecentPose(chosen)
-                        updateMascotSpeech(playChirp = true, speakTts = false)
-                        scheduleNightReturnToSleep(7000L)
+                    val phase = current.timePhase
+                    if (phase == DayTimePhase.NIGHT) {
+                        if (current.urgentMood == null && (0..99).random() < 30) {
+                            val sleepyPose = NIGHT_AUTONOMOUS_CHECKIN_POSES.random()
+                            val sleepIdx = NIGHT_POSES.indexOf(sleepyPose).takeIf { it >= 0 } ?: 0
+                            mascotPhasePoseIdx = sleepIdx
+                            pushRecentPose(sleepIdx)
+                            updateMascotSpeech(playChirp = false, speakTts = false)
+                            scheduleNightReturnToSleep(5500L)
+                        }
+                    } else if (shouldTriggerAutoDaytimeHypeOrTip(phase, current.urgentMood)) {
+                        val roll = (0..99).random()
+                        when {
+                            roll < 28 -> triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.HYPE, speakTts = false)
+                            roll < 54 -> triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.TIP, speakTts = false)
+                            else -> {
+                                val pool = posesForPhase(phase)
+                                mascotPhasePoseIdx = pickFreshPoseIndex(pool.size, mascotPhasePoseIdx)
+                                pushRecentPose(mascotPhasePoseIdx)
+                                updateMascotSpeech(playChirp = true, speakTts = false)
+                            }
+                        }
                     } else {
-                        mascotPhasePoseIdx = pickFreshPoseIndex(pool.size, mascotPhasePoseIdx)
-                        pushRecentPose(mascotPhasePoseIdx)
                         updateMascotSpeech(playChirp = true, speakTts = false)
                     }
                 }
@@ -2396,36 +2457,269 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             val current = _mascotState.value
             if (current.timePhase == DayTimePhase.NIGHT && current.urgentMood == null) {
                 mascotPhasePoseIdx = 0
+                val eye = _mascotEyeState.value
+                if (eye.glanceX != 0f || eye.glanceY != 0f || eye.headTiltDeg != 0f) {
+                    _mascotEyeState.value = eye.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
+                }
                 refreshMascotDialogueOnly()
             }
         }
     }
 
+    private fun triggerMascotReactionPulse(
+        kind: MascotReaction,
+        durationMs: Long = 760L,
+        combo: Int = 0,
+        tiltDeg: Float = listOf(-5.2f, 5.2f).random()
+    ) {
+        mascotReactionClearJob?.cancel()
+        val nextTick = _mascotEyeState.value.reactionTick + 1
+        _mascotEyeState.value = _mascotEyeState.value.copy(
+            reactionKind = kind,
+            reactionTick = nextTick,
+            comboCount = combo,
+            headTiltDeg = tiltDeg
+        )
+        mascotReactionClearJob = viewModelScope.launch {
+            delay(durationMs)
+            val current = _mascotEyeState.value
+            if (!current.isPetting) {
+                _mascotEyeState.value = current.copy(
+                    reactionKind = MascotReaction.NONE,
+                    headTiltDeg = 0f,
+                    comboCount = 0
+                )
+            }
+        }
+    }
+
+    private fun triggerAutomaticDaytimeMoodMoment(
+        phase: DayTimePhase,
+        kind: MascotReaction,
+        speakTts: Boolean
+    ) {
+        if (!shouldTriggerAutoDaytimeHypeOrTip(phase, _mascotState.value.urgentMood)) return
+        val prefs = prefsStore.state.value
+        val cleanName = (_profile.value?.displayName ?: "").trim()
+        val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
+        val vol = (_profile.value?.volume ?: 0.85).toFloat()
+        val now = System.currentTimeMillis()
+        dialogueLockedUntilMs = now + 14_000L
+        lastAutoChatAtMs = now
+
+        when (kind) {
+            MascotReaction.HYPE -> {
+                triggerMascotReactionPulse(
+                    kind = MascotReaction.HYPE,
+                    durationMs = 1150L,
+                    tiltDeg = listOf(-4.5f, 4.5f).random()
+                )
+                val pool = MascotDialogues.buildHypePool(prefs.lang, n)
+                mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
+                val picked = pool[mascotQuoteRoll]
+                val hypePose = if (phase == DayTimePhase.MORNING) TimePhasePose.FLEX else TimePhasePose.BEAST
+                _mascotState.value = _mascotState.value.copy(
+                    mood = MascotMood.READY,
+                    timePhase = phase,
+                    activeTimePose = hypePose,
+                    phaseColorHex = prefs.accentColorHex,
+                    activeLine = picked,
+                    speechEventId = _mascotState.value.speechEventId + 1,
+                    isDialogueLocked = true
+                )
+                audioEngine.playMascotChirp("celebrate", vol)
+                if (speakTts && prefs.mascotVoiceEnabled) {
+                    ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
+                }
+            }
+            MascotReaction.TIP -> {
+                triggerMascotReactionPulse(
+                    kind = MascotReaction.TIP,
+                    durationMs = 1000L,
+                    tiltDeg = 5.0f
+                )
+                val pool = MascotDialogues.buildQuickTipPool(prefs.lang, n)
+                mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
+                val picked = pool[mascotQuoteRoll]
+                _mascotState.value = _mascotState.value.copy(
+                    mood = MascotMood.READY,
+                    timePhase = phase,
+                    activeTimePose = TimePhasePose.CURIOUS,
+                    phaseColorHex = resolvePhaseThemeTokens(phase).accentBrightHex,
+                    activeLine = picked,
+                    speechEventId = _mascotState.value.speechEventId + 1,
+                    isDialogueLocked = true
+                )
+                audioEngine.playMascotChirp("ready", vol)
+                if (speakTts && prefs.mascotVoiceEnabled) {
+                    ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
+                }
+            }
+            else -> Unit
+        }
+    }
+
     fun tapMascot() {
         haptics.buttonTap()
-        viewModelScope.launch {
-            _mascotEyeState.value = _mascotEyeState.value.copy(tapBounce = true)
-            delay(720L)
-            _mascotEyeState.value = _mascotEyeState.value.copy(tapBounce = false)
-        }
-
         val now = System.currentTimeMillis()
-        if (now < dialogueLockedUntilMs) {
+        val cal = Calendar.getInstance()
+        val prefs = prefsStore.state.value
+        val phase = GymModelHelpers.resolveDayTimePhase(prefs.todayThemeMode, cal)
+        val pool = posesForPhase(phase)
+
+        // Nighttime behavior: sleepy, quiet, never excitable; quickly settles back to sleep
+        if (phase == DayTimePhase.NIGHT) {
+            mascotComboCount = 0
+            lastMascotTapAtMs = now
+            if (_mascotState.value.urgentMood == null) {
+                val chosenPose = NIGHT_TAP_WAKE_POSES.filter {
+                    it != _mascotState.value.activeTimePose
+                }.randomOrNull() ?: TimePhasePose.YAWN
+                mascotPhasePoseIdx = NIGHT_POSES.indexOf(chosenPose).takeIf { it >= 0 } ?: 1
+                pushRecentPose(mascotPhasePoseIdx)
+                val sleepyTilt = if (chosenPose in CLOSED_EYE_POSES) 0f else 2.2f
+                triggerMascotReactionPulse(
+                    kind = MascotReaction.TAP_BOUNCE,
+                    durationMs = 540L,
+                    combo = 0,
+                    tiltDeg = sleepyTilt
+                )
+                if (chosenPose in CLOSED_EYE_POSES) {
+                    _mascotEyeState.value = _mascotEyeState.value.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
+                }
+                scheduleNightReturnToSleep(5500L)
+            } else {
+                triggerMascotReactionPulse(
+                    kind = MascotReaction.TAP_BOUNCE,
+                    durationMs = 600L,
+                    combo = 0,
+                    tiltDeg = if (_mascotState.value.urgentMood in CLOSED_EYE_MOODS) 0f else 2.5f
+                )
+            }
+            mascotQuoteRoll = (mascotQuoteRoll + 1 + (0..7).random()) % 97
+            updateMascotSpeech(
+                playChirp = true,
+                speakTts = false,
+                bypassLock = true
+            )
             return
         }
 
-        val cal = Calendar.getInstance()
-        val phase = GymModelHelpers.resolveDayTimePhase(prefsStore.state.value.todayThemeMode, cal)
-        val pool = posesForPhase(phase)
+        // Daytime (Morning & Afternoon): expressive combo pokes + organic automatic hype & quick tips
+        mascotComboCount = if (now - lastMascotTapAtMs <= 1650L) {
+            (mascotComboCount + 1).coerceAtMost(99)
+        } else {
+            1
+        }
+        lastMascotTapAtMs = now
+
+        if (mascotComboCount >= 3) {
+            val excitedPose = if (phase == DayTimePhase.MORNING) TimePhasePose.FLEX else TimePhasePose.BEAST
+            triggerMascotReactionPulse(
+                kind = MascotReaction.COMBO_EXCITED,
+                durationMs = 1150L,
+                combo = mascotComboCount,
+                tiltDeg = if (mascotComboCount % 2 == 0) 6.5f else -6.5f
+            )
+            val cleanName = (_profile.value?.displayName ?: "").trim()
+            val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
+            val comboPool = MascotDialogues.buildComboPokePool(prefs.lang, n, mascotComboCount)
+            val picked = comboPool[(mascotComboCount - 3) % comboPool.size]
+            _mascotState.value = _mascotState.value.copy(
+                activeTimePose = excitedPose,
+                phaseColorHex = prefs.accentColorHex,
+                activeLine = picked,
+                speechEventId = _mascotState.value.speechEventId + 1
+            )
+            val vol = (_profile.value?.volume ?: 0.85).toFloat()
+            audioEngine.playMascotChirp("celebrate", vol)
+            return
+        }
+
+        if (shouldTriggerAutoDaytimeHypeOrTip(phase, _mascotState.value.urgentMood)) {
+            val roll = (0..99).random()
+            when {
+                roll < 24 -> {
+                    triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.HYPE, speakTts = true)
+                    return
+                }
+                roll < 48 -> {
+                    triggerAutomaticDaytimeMoodMoment(phase, MascotReaction.TIP, speakTts = true)
+                    return
+                }
+            }
+        }
+
         if (_mascotState.value.urgentMood == null) {
             mascotPhasePoseIdx = pickFreshPoseIndex(pool.size, mascotPhasePoseIdx)
             pushRecentPose(mascotPhasePoseIdx)
-            if (phase == DayTimePhase.NIGHT && mascotPhasePoseIdx != 0) {
-                scheduleNightReturnToSleep(9500L)
-            }
+        }
+        val nextPose = pool[mascotPhasePoseIdx % pool.size]
+        val isNextClosed = _mascotState.value.urgentMood in CLOSED_EYE_MOODS ||
+            (_mascotState.value.urgentMood == null && nextPose in CLOSED_EYE_POSES)
+        triggerMascotReactionPulse(
+            kind = MascotReaction.TAP_BOUNCE,
+            durationMs = 740L,
+            combo = mascotComboCount,
+            tiltDeg = if (isNextClosed) 0f else listOf(-5.2f, 5.2f).random()
+        )
+        if (isNextClosed) {
+            _mascotEyeState.value = _mascotEyeState.value.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
         }
         mascotQuoteRoll = (mascotQuoteRoll + 1 + (0..12).random()) % 97
-        updateMascotSpeech(playChirp = true, speakTts = true)
+        updateMascotSpeech(
+            playChirp = true,
+            speakTts = true,
+            bypassLock = true
+        )
+    }
+
+    fun petMascot(active: Boolean) {
+        if (!active) {
+            if (_mascotEyeState.value.isPetting) {
+                _mascotEyeState.value = _mascotEyeState.value.copy(
+                    isPetting = false,
+                    reactionKind = MascotReaction.NONE,
+                    headTiltDeg = 0f
+                )
+            }
+            return
+        }
+        haptics.buttonTap()
+        mascotReactionClearJob?.cancel()
+        val prefs = prefsStore.state.value
+        val cleanName = (_profile.value?.displayName ?: "").trim()
+        val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
+        val petPool = MascotDialogues.buildPettingPool(prefs.lang, n)
+        mascotQuoteRoll = (mascotQuoteRoll + 1) % petPool.size.coerceAtLeast(1)
+        val picked = petPool[mascotQuoteRoll % petPool.size]
+        val nextTick = _mascotEyeState.value.reactionTick + 1
+
+        _mascotEyeState.value = _mascotEyeState.value.copy(
+            isPetting = true,
+            reactionKind = MascotReaction.PET_COZY,
+            reactionTick = nextTick,
+            headTiltDeg = 0f,
+            glanceX = 0f,
+            glanceY = 0f
+        )
+        _mascotState.value = _mascotState.value.copy(
+            activeTimePose = TimePhasePose.COZY,
+            activeLine = picked,
+            speechEventId = _mascotState.value.speechEventId + 1
+        )
+        val vol = ((_profile.value?.volume ?: 0.85) * 0.65).toFloat().coerceIn(0.2f, 0.72f)
+        audioEngine.playMascotChirp("rest", vol)
+        mascotReactionClearJob = viewModelScope.launch {
+            delay(2200L)
+            if (_mascotEyeState.value.isPetting) {
+                _mascotEyeState.value = _mascotEyeState.value.copy(
+                    isPetting = false,
+                    reactionKind = MascotReaction.NONE,
+                    headTiltDeg = 0f
+                )
+            }
+        }
     }
 
     fun replayMascotVoice() {
@@ -2443,6 +2737,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         pushRecentPose(mascotPhasePoseIdx)
         val activePose = pool[mascotPhasePoseIdx % pool.size]
         _mascotState.value = _mascotState.value.copy(activeTimePose = activePose)
+        if (_mascotState.value.urgentMood == null && activePose in CLOSED_EYE_POSES) {
+            val eye = _mascotEyeState.value
+            if (eye.glanceX != 0f || eye.glanceY != 0f || eye.headTiltDeg != 0f) {
+                _mascotEyeState.value = eye.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
+            }
+        }
     }
 
     private fun refreshMascotDialogueOnly() {
@@ -2506,7 +2806,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         dialogueLockedUntilMs = if (lockDialogue) now + 14_000L else 0L
         lastAutoChatAtMs = now
 
-        _mascotState.value = _mascotState.value.copy(
+        val nextState = _mascotState.value.copy(
             mood = ctx.mood,
             timePhase = phase,
             urgentMood = urgent,
@@ -2516,9 +2816,22 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             speechEventId = _mascotState.value.speechEventId + 1,
             isDialogueLocked = lockDialogue
         )
+        _mascotState.value = nextState
+
+        if (isMascotClosedEyeState(nextState, _mascotEyeState.value)) {
+            val eye = _mascotEyeState.value
+            if (eye.glanceX != 0f || eye.glanceY != 0f || eye.headTiltDeg != 0f) {
+                _mascotEyeState.value = eye.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
+            }
+        }
 
         if (playChirp) {
-            val vol = (_profile.value?.volume ?: 0.85).toFloat()
+            val baseVol = (_profile.value?.volume ?: 0.85).toFloat()
+            val vol = if (phase == DayTimePhase.NIGHT && urgent == null) {
+                (baseVol * 0.45f).coerceIn(0.15f, 0.5f)
+            } else {
+                baseVol
+            }
             val variant = if (phase == DayTimePhase.NIGHT && urgent == null) "night" else ctx.mood.wireValue
             audioEngine.playMascotChirp(variant, vol)
         }
@@ -2619,11 +2932,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             hour < 17 -> 2 // FLEX
             else -> 3 // MUSIC
         }
-        DayTimePhase.NIGHT -> when {
-            hour >= 22 || hour < 4 -> 0 // SLEEP
-            hour >= 20 -> 7 // MOONLIT
-            else -> 3 // STARGAZE
-        }
+        DayTimePhase.NIGHT -> 0 // SLEEP — always starts tucked asleep at night
     }
 
     private fun posesForPhase(phase: DayTimePhase): List<TimePhasePose> = when (phase) {
@@ -2672,11 +2981,35 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             TimePhasePose.MOONLIT,
             TimePhasePose.RECHARGE
         )
-        private val CLOSED_NIGHT_POSES = setOf(
+        private val NIGHT_AUTONOMOUS_CHECKIN_POSES = listOf(
+            TimePhasePose.YAWN,
+            TimePhasePose.MOONLIT,
+            TimePhasePose.STARGAZE
+        )
+        private val NIGHT_TAP_WAKE_POSES = listOf(
+            TimePhasePose.YAWN,
+            TimePhasePose.COZY,
+            TimePhasePose.MOONLIT,
+            TimePhasePose.DREAM,
+            TimePhasePose.NIGHT_CHILL
+        )
+        internal val CLOSED_EYE_POSES = setOf(
             TimePhasePose.SLEEP,
             TimePhasePose.ZEN,
             TimePhasePose.COZY,
-            TimePhasePose.DREAM
+            TimePhasePose.DREAM,
+            TimePhasePose.TEA,
+            TimePhasePose.SUNRISE,
+            TimePhasePose.MUSIC,
+            TimePhasePose.SWEAT,
+            TimePhasePose.RECHARGE,
+            TimePhasePose.YAWN
+        )
+        internal val CLOSED_EYE_MOODS = setOf(
+            MascotMood.REST,
+            MascotMood.CLAP,
+            MascotMood.CELEBRATE,
+            MascotMood.MILESTONE
         )
         private val URGENT_MOODS = setOf(
             MascotMood.CLAP,
@@ -2695,5 +3028,20 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             2.0f to -1.0f,
             -2.0f to -1.0f
         )
+
+        internal fun isMascotClosedEyeState(mascot: MascotUiState, eye: MascotEyeState): Boolean {
+            if (eye.isPetting) return true
+            val urgent = mascot.urgentMood
+            if (urgent != null) return urgent in CLOSED_EYE_MOODS
+            return mascot.activeTimePose in CLOSED_EYE_POSES
+        }
+
+        internal fun shouldTriggerAutoDaytimeHypeOrTip(phase: DayTimePhase, urgentMood: MascotMood?): Boolean {
+            return urgentMood == null && (phase == DayTimePhase.MORNING || phase == DayTimePhase.AFTERNOON)
+        }
+
+        internal fun mascotAutoChatIntervalMs(phase: DayTimePhase): Long {
+            return if (phase == DayTimePhase.NIGHT) 300_000L else 64_000L
+        }
     }
 }

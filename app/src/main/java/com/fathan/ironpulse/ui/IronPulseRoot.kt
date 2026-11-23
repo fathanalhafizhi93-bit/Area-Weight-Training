@@ -265,6 +265,7 @@ fun IronPulseRoot(
                                                 !modalBlocking,
                                             homeOrbBoundsHolder = homeOrbBoundsHolder,
                                             onTapMascot = { viewModel.tapMascot() },
+                                            onPetMascot = { viewModel.petMascot(true) },
                                             onReplayMascotVoice = { viewModel.replayMascotVoice() },
                                             onStartRestPreset = { secs, exName ->
                                                 viewModel.startManualRestTimer(secs, exName ?: "")
@@ -473,6 +474,7 @@ fun IronPulseRoot(
                             homeOrbBoundsHolder = homeOrbBoundsHolder,
                             animActive = !modalBlocking,
                             onTapOrb = { viewModel.tapMascot() },
+                            onPetOrb = { viewModel.petMascot(true) },
                             onSaveAnchor = { sideRight, yRatio -> viewModel.setFloatingOrbAnchor(sideRight, yRatio) }
                         )
 

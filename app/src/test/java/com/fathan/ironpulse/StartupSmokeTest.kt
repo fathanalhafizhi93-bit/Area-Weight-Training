@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -21,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,6 +47,7 @@ import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DayTimePhase
+import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
@@ -57,6 +61,8 @@ import com.fathan.ironpulse.model.WorkoutLog
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.model.WorkoutSetLog
 import com.fathan.ironpulse.timer.RestTimerService
+import com.fathan.ironpulse.model.MascotMood
+import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
@@ -66,15 +72,23 @@ import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.ScheduleTopProgramStrip
+import com.fathan.ironpulse.ui.components.TodayMascot
 import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
+import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
+import com.fathan.ironpulse.ui.components.VisualColorPickerMode
+import com.fathan.ironpulse.ui.components.isClosedEyeExpression
+import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.AppTab
+import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
+import com.fathan.ironpulse.ui.viewmodel.MascotReaction
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -271,7 +285,7 @@ class StartupSmokeTest {
         composeRule.runOnUiThread {
             tabActiveSetter?.invoke(false)
             clockFlow.value = 1_730_000_001L
-            eyeFlow.value = MascotEyeState(isBlinking = true)
+            eyeFlow.value = MascotEyeState(blinkProgress = 1f)
         }
         composeRule.waitForIdle()
 
@@ -786,5 +800,225 @@ class StartupSmokeTest {
         composeRule.waitForIdle()
         assertEquals(AppTab.TODAY, visitedTabs.last())
         assertTrue(completed)
+    }
+
+    @Test
+    fun materialYouColorEngine_hsvRoundTripAndFriendlyNames() {
+        val sampleColor = Color(0xFF00E5FF)
+        val hsv = MaterialYouColorEngine.colorToHsv(sampleColor)
+        assertEquals(186f, hsv[0], 2f)
+        assertEquals(1f, hsv[1], 0.02f)
+        assertEquals(1f, hsv[2], 0.02f)
+        assertEquals("#00E5FF", MaterialYouColorEngine.colorToHex(Color.hsv(hsv[0], hsv[1], hsv[2])))
+
+        val presetName = MaterialYouColorEngine.friendlyColorName(
+            hex = "#C8FF2E",
+            presets = GymModelHelpers.ACCENT_COLOR_PRESETS,
+            lang = AppLanguage.ID
+        )
+        assertEquals("Hijau Limau", presetName)
+
+        val customName = MaterialYouColorEngine.friendlyColorName(
+            hex = "#4F46E5",
+            presets = GymModelHelpers.ACCENT_COLOR_PRESETS,
+            lang = AppLanguage.ID
+        )
+        assertFalse(customName.contains("#"))
+        assertTrue(customName.contains("Kustom"))
+    }
+
+    @Test
+    fun visualColorPicker_hidesHexCodesAndAppliesVisualAccentAndTint() {
+        var appliedAccentHex: String? = null
+        var appliedTintHex: String? = null
+
+        composeRule.setContent {
+            var activeMode by remember { mutableStateOf<VisualColorPickerMode?>(null) }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    accentColorHex = "#C8FF2E",
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                )
+            ) {
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    AccentAndTintSettingsCard(
+                        accentColorHex = appliedAccentHex ?: "#C8FF2E",
+                        materialTintColorHex = appliedTintHex,
+                        onSelectAccent = { appliedAccentHex = it },
+                        onOpenAccentPicker = { activeMode = VisualColorPickerMode.ACCENT },
+                        onOpenTintPicker = { activeMode = VisualColorPickerMode.SURFACE_TINT },
+                        onSelectMaterialTint = { appliedTintHex = it }
+                    )
+                }
+
+                val mode = activeMode
+                if (mode != null) {
+                    VisualColorPickerDialog(
+                        mode = mode,
+                        initialHex = if (mode == VisualColorPickerMode.ACCENT) "#C8FF2E" else "#1C1B22",
+                        quickPresets = if (mode == VisualColorPickerMode.ACCENT) {
+                            GymModelHelpers.ACCENT_COLOR_PRESETS
+                        } else {
+                            GymModelHelpers.MATERIAL_TINT_PRESETS
+                        },
+                        lang = AppLanguage.ID,
+                        onApplyHex = { chosen ->
+                            if (mode == VisualColorPickerMode.ACCENT) {
+                                appliedAccentHex = chosen
+                            } else {
+                                appliedTintHex = chosen
+                            }
+                            activeMode = null
+                        },
+                        onDismiss = { activeMode = null }
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        // Zero raw HEX codes or "# Kustom" in settings UI
+        composeRule.onNodeWithText("#C8FF2E").assertDoesNotExist()
+        composeRule.onNodeWithText("# Kustom").assertDoesNotExist()
+        composeRule.onNodeWithTag("accent_active_visual_badge").assertIsDisplayed()
+        composeRule.onNodeWithText("Hijau Limau").assertIsDisplayed()
+
+        // Open visual Accent Color Picker
+        composeRule.onNodeWithTag("accent_pick_color_button").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("visual_color_picker_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("color_picker_sv_canvas").assertIsDisplayed()
+        composeRule.onNodeWithTag("color_picker_hue_bar").assertIsDisplayed()
+        composeRule.onNodeWithTag("color_picker_live_preview").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("#RRGGBB").assertDoesNotExist()
+
+        // Drag across hue spectrum bar & SV canvas visually, then Apply
+        composeRule.onNodeWithTag("color_picker_hue_bar").performScrollTo().performTouchInput {
+            click(Offset(width * 0.55f, height * 0.5f))
+        }
+        composeRule.onNodeWithTag("color_picker_sv_canvas").performScrollTo().performTouchInput {
+            click(Offset(width * 0.78f, height * 0.25f))
+        }
+        composeRule.onNodeWithTag("color_picker_apply_button").performClick()
+        composeRule.waitForIdle()
+        assertNotNull(appliedAccentHex)
+
+        // Open visual Material Tint picker and apply
+        composeRule.onNodeWithTag("tint_pick_color_button").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("visual_color_picker_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("color_picker_apply_button").performClick()
+        composeRule.waitForIdle()
+        assertNotNull(appliedTintHex)
+    }
+
+    @Test
+    fun pulseMascot_omitsQuickActionButtonsAndSupportsTapAndPetting() {
+        var tappedCount = 0
+        var pettedCount = 0
+        val eyeFlow = MutableStateFlow(
+            MascotEyeState(
+                blinkProgress = 0.85f,
+                glanceX = 1.6f,
+                headTiltDeg = 4.2f,
+                reactionKind = MascotReaction.COMBO_EXCITED,
+                reactionTick = 1,
+                isPetting = false,
+                comboCount = 3
+            )
+        )
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.AMOLED_STEALTH,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                )
+            ) {
+                TodayMascot(
+                    mascot = MascotUiState(),
+                    eyeStateFlow = eyeFlow,
+                    voiceEnabled = false,
+                    onTapMascot = { tappedCount += 1 },
+                    onPetMascot = { pettedCount += 1 },
+                    onReplayVoice = {},
+                    modifier = Modifier.testTag("today_mascot_card")
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        // Quick action pills (Hype, Tip, Pose) must be completely removed
+        composeRule.onNodeWithTag("mascot_quick_hype").assertDoesNotExist()
+        composeRule.onNodeWithTag("mascot_quick_tip").assertDoesNotExist()
+        composeRule.onNodeWithTag("mascot_quick_pose").assertDoesNotExist()
+        composeRule.onNodeWithText("Semangati").assertDoesNotExist()
+        composeRule.onNodeWithText("Tips").assertDoesNotExist()
+        composeRule.onNodeWithText("Gaya").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("today_mascot_card").performClick()
+        assertEquals(1, tappedCount)
+
+        composeRule.onNodeWithTag("today_mascot_card").performTouchInput { longClick() }
+        composeRule.waitForIdle()
+        assertEquals(1, pettedCount)
+    }
+
+    @Test
+    fun pulseMascot_closedEyeStillnessAndDayNightAutoBehaviorRules() {
+        // Every closed-eye pose & mood must lock glance & tilt off
+        val closedPoses = listOf(
+            TimePhasePose.SLEEP,
+            TimePhasePose.ZEN,
+            TimePhasePose.COZY,
+            TimePhasePose.DREAM,
+            TimePhasePose.TEA,
+            TimePhasePose.SUNRISE,
+            TimePhasePose.MUSIC,
+            TimePhasePose.SWEAT,
+            TimePhasePose.RECHARGE,
+            TimePhasePose.YAWN
+        )
+        for (pose in closedPoses) {
+            val mascot = MascotUiState(urgentMood = null, activeTimePose = pose)
+            assertTrue("Expected $pose to count as closed-eye", GymViewModel.isMascotClosedEyeState(mascot, MascotEyeState()))
+            assertTrue("Expected UI $pose to lock closed-eye stillness", isClosedEyeExpression(mascot, isPetting = false))
+        }
+
+        val closedMoods = listOf(
+            MascotMood.REST,
+            MascotMood.CLAP,
+            MascotMood.CELEBRATE,
+            MascotMood.MILESTONE
+        )
+        for (mood in closedMoods) {
+            val mascot = MascotUiState(urgentMood = mood, activeTimePose = TimePhasePose.FLEX)
+            assertTrue("Expected mood $mood to count as closed-eye", GymViewModel.isMascotClosedEyeState(mascot, MascotEyeState()))
+            assertTrue("Expected UI mood $mood to lock closed-eye stillness", isClosedEyeExpression(mascot, isPetting = false))
+        }
+
+        // Open-eye daytime poses allow glance/tilt
+        val openPoses = listOf(TimePhasePose.FLEX, TimePhasePose.BEAST, TimePhasePose.CURIOUS, TimePhasePose.COFFEE)
+        for (pose in openPoses) {
+            val mascot = MascotUiState(urgentMood = null, activeTimePose = pose)
+            assertFalse("Expected $pose to allow open-eye glance", GymViewModel.isMascotClosedEyeState(mascot, MascotEyeState()))
+            assertFalse("Expected UI $pose to allow open-eye glance", isClosedEyeExpression(mascot, isPetting = false))
+            // Petting overrides any pose into closed-eye cozy state
+            assertTrue(GymViewModel.isMascotClosedEyeState(mascot, MascotEyeState(isPetting = true)))
+            assertTrue(isClosedEyeExpression(mascot, isPetting = true))
+        }
+
+        // Automatic Hype & Tip triggers only in Morning & Afternoon (never Night)
+        assertTrue(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.MORNING, null))
+        assertTrue(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.AFTERNOON, null))
+        assertFalse(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.NIGHT, null))
+        assertFalse(GymViewModel.shouldTriggerAutoDaytimeHypeOrTip(DayTimePhase.MORNING, MascotMood.TIMER_ACTIVE))
+
+        // Nighttime sleep chat gap is much longer (rare) than daytime
+        assertTrue(GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.NIGHT) >= 240_000L)
+        assertTrue(GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.MORNING) < GymViewModel.mascotAutoChatIntervalMs(DayTimePhase.NIGHT))
     }
 }

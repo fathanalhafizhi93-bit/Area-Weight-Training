@@ -530,4 +530,93 @@ object MascotDialogues {
             )
         }
     }
+
+    fun buildComboPokePool(lang: AppLanguage, n: String, comboCount: Int): List<MascotSpeechLine> {
+        fun t(id: String, en: String) = lang.t(id, en)
+        return listOf(
+            MascotSpeechLine(
+                "combo-1",
+                t("Hehe, geli tau$n! (x$comboCount)", "Hehe, that tickles$n! (x$comboCount)"),
+                t("Refleks jarimu cepat banget — simpan energi itu buat repetisi terakhir nanti!", "Quick reflexes! Save that snappy energy for your final reps!")
+            ),
+            MascotSpeechLine(
+                "combo-2",
+                t("Combo sentuh x$comboCount$n!", "Tap combo x$comboCount$n!"),
+                t("Wah penuh semangat nih! Aku juga siap ngegas bareng kamu hari ini!", "Loving the hype! I'm fired up and ready to train alongside you!")
+            ),
+            MascotSpeechLine(
+                "combo-3",
+                t("Woi, aku jadi pusing lucu$n!", "Whoa, getting playful dizzy$n!"),
+                t("Oke oke, Pulse full charge 100%! Ayo lanjut taklukkan sesi berikutnya.", "Okay okay, Pulse is at 100% charge! Let's crush the next set.")
+            )
+        )
+    }
+
+    fun buildPettingPool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
+        fun t(id: String, en: String) = lang.t(id, en)
+        return listOf(
+            MascotSpeechLine(
+                "pet-1",
+                t("Mmm... nyaman banget$n~", "Mmm... super cozy$n~"),
+                t("Makasih sudah elus aku! Mood latihan langsung naik lagi nih.", "Thanks for the pat! Workout mood just jumped right up.")
+            ),
+            MascotSpeechLine(
+                "pet-2",
+                t("Hehe hangat sekali$n~", "Hehe that feels so warm$n~"),
+                t("Tarik napas pelan bareng aku sebentar — setelah ini kita gas rapi lagi.", "Take a calm breath with me for a sec — then let's crush it cleanly.")
+            ),
+            MascotSpeechLine(
+                "pet-3",
+                t("Partner setiamu senang$n!", "Happy training buddy$n!"),
+                t("Tenang, aku selalu standby di sini setiap kali kamu butuh teman latihan.", "Always right here in your corner whenever you hit the gym.")
+            )
+        )
+    }
+
+    fun buildHypePool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
+        fun t(id: String, en: String) = lang.t(id, en)
+        return listOf(
+            MascotSpeechLine(
+                "hype-1",
+                t("MODE GAHAR AKTIF$n!", "BEAST MODE ON$n!"),
+                t("Kunci inti tubuhmu, buang napas saat mendorong, dan buktikan kekuatanmu hari ini!", "Brace your core, exhale through the drive, and own every rep today!")
+            ),
+            MascotSpeechLine(
+                "hype-2",
+                t("Gas penuh tanpa ragu$n!", "Full throttle, no doubts$n!"),
+                t("Satu set fokus lebih berharga dari sepuluh niat tanpa aksi. Let's go!", "One focused set beats ten intentions. Let's move!")
+            ),
+            MascotSpeechLine(
+                "hype-3",
+                t("Hari ini milikmu$n!", "Today belongs to you$n!"),
+                t("Fokus satu repetisi demi satu repetisi — rekor baru lahir dari kontrol yang rapi.", "One crisp rep at a time — new PRs are built on clean control.")
+            )
+        )
+    }
+
+    fun buildQuickTipPool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
+        fun t(id: String, en: String) = lang.t(id, en)
+        return listOf(
+            MascotSpeechLine(
+                "tip-1",
+                t("Tips Teknik$n: Turun Terkontrol", "Form Tip$n: Control the Eccentric"),
+                t("Turunkan beban 2–3 detik secara sadar sebelum mendorong naik — stimulus otot naik drastis!", "Lower the weight smoothly for 2–3 seconds before pressing up — huge muscle stimulus!")
+            ),
+            MascotSpeechLine(
+                "tip-2",
+                t("Tips Pemulihan$n: Hidrasi Terjaga", "Recovery Tip$n: Stay Hydrated"),
+                t("Minum sedikit air di sela istirahat set menjaga tenaga dan fokus tetap tajam sampai set terakhir.", "Sipping water between sets keeps power output and focus sharp till the end.")
+            ),
+            MascotSpeechLine(
+                "tip-3",
+                t("Tips Napas$n: Bracing Aman", "Breathing Tip$n: Solid Bracing"),
+                t("Tarik napas ke perut sebelum menurunkan beban, tahan inti kencang, lalu hembuskan saat lewat titik terberat.", "Breathe into your belly before the rep, brace your core tight, and exhale past the sticking point.")
+            ),
+            MascotSpeechLine(
+                "tip-4",
+                t("Tips Progres$n: Catat Konsisten", "Progress Tip$n: Track Consistently"),
+                t("Naikkan 1 repetisi atau sedikit beban saat set terakhir terasa ringan — progres kecil setiap minggu sangat besar hasilnya.", "Add 1 rep or a tiny load bump once the top set feels smooth — small weekly wins compound fast.")
+            )
+        )
+    }
 }

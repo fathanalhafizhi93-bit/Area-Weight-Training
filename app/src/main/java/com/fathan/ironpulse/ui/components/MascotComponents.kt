@@ -5,12 +5,14 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,11 +21,12 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,7 +41,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -91,8 +93,10 @@ import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
+import com.fathan.ironpulse.ui.viewmodel.MascotReaction
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class OrbBoundsHolder {
     var rect: Rect? = null
@@ -100,6 +104,28 @@ class OrbBoundsHolder {
 
 private class DockOriginHolder {
     var origin: Offset = Offset.Zero
+}
+
+internal fun isClosedEyeExpression(mascot: MascotUiState, isPetting: Boolean): Boolean {
+    if (isPetting) return true
+    val urgent = mascot.urgentMood
+    if (urgent != null) {
+        return urgent == MascotMood.REST ||
+            urgent == MascotMood.CLAP ||
+            urgent == MascotMood.CELEBRATE ||
+            urgent == MascotMood.MILESTONE
+    }
+    val pose = mascot.activeTimePose
+    return pose == TimePhasePose.SLEEP ||
+        pose == TimePhasePose.ZEN ||
+        pose == TimePhasePose.COZY ||
+        pose == TimePhasePose.DREAM ||
+        pose == TimePhasePose.TEA ||
+        pose == TimePhasePose.SUNRISE ||
+        pose == TimePhasePose.MUSIC ||
+        pose == TimePhasePose.SWEAT ||
+        pose == TimePhasePose.RECHARGE ||
+        pose == TimePhasePose.YAWN
 }
 
 @Composable
@@ -163,6 +189,7 @@ fun MascotOrbFace(
     val isRechargePose = urgent == null && pose == TimePhasePose.RECHARGE
 
     val isClosedCalmPose = isSleepPose || isZenPose || isCozyPose || isDreamPose
+    val isClosedEyeExpression = isClosedEyeExpression(mascot, eyeState.isPetting)
     val density = LocalDensity.current
 
     val staticOne = remember { mutableFloatStateOf(1f) }
@@ -197,7 +224,7 @@ fun MascotOrbFace(
 
     val tapScaleState = if (runAnim) {
         animateFloatAsState(
-            targetValue = if (eyeState.tapBounce) 1.14f else 1f,
+            targetValue = if (eyeState.tapBounce) 1.11f else 1f,
             animationSpec = IronPulseMotion.OrbSnapSpring,
             label = "tapScale"
         )
@@ -205,10 +232,57 @@ fun MascotOrbFace(
         staticOne
     }
 
+    // Natural squash-and-stretch impulse on tap / combo / pet / hype
+    val squashX = remember { Animatable(1f) }
+    val squashY = remember { Animatable(1f) }
+    LaunchedEffect(eyeState.reactionTick, runAnim) {
+        if (!runAnim || eyeState.reactionTick == 0) {
+            squashX.snapTo(1f)
+            squashY.snapTo(1f)
+            return@LaunchedEffect
+        }
+        val intense = eyeState.reactionKind == MascotReaction.COMBO_EXCITED ||
+            eyeState.reactionKind == MascotReaction.HYPE
+        val wide = if (intense) 1.15f else 1.09f
+        val flat = if (intense) 0.87f else 0.92f
+        val tall = if (intense) 1.09f else 1.05f
+        val slim = if (intense) 0.93f else 0.96f
+        launch {
+            squashX.snapTo(wide)
+            squashX.animateTo(slim, tween(110, easing = FastOutSlowInEasing))
+            squashX.animateTo(1f, spring(dampingRatio = 0.46f, stiffness = 420f))
+        }
+        launch {
+            squashY.snapTo(flat)
+            squashY.animateTo(tall, tween(110, easing = FastOutSlowInEasing))
+            squashY.animateTo(1f, spring(dampingRatio = 0.46f, stiffness = 420f))
+        }
+    }
+
+    val headTiltState = if (runAnim) {
+        animateFloatAsState(
+            targetValue = if (isClosedEyeExpression) 0f else eyeState.headTiltDeg,
+            animationSpec = spring(dampingRatio = 0.60f, stiffness = 240f),
+            label = "headTilt"
+        )
+    } else {
+        staticZero
+    }
+
+    val smoothBlinkState = if (runAnim) {
+        animateFloatAsState(
+            targetValue = if (isClosedEyeExpression) 0f else eyeState.blinkProgress.coerceIn(0f, 1f),
+            animationSpec = tween(durationMillis = 48),
+            label = "smoothBlink"
+        )
+    } else {
+        staticZero
+    }
+
     val glanceXState = if (runAnim) {
         animateFloatAsState(
-            targetValue = if (isClosedCalmPose || isMusicPose || isSparklePose) 0f else eyeState.glanceX,
-            animationSpec = tween(260),
+            targetValue = if (isClosedEyeExpression || isSparklePose) 0f else eyeState.glanceX,
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
             label = "glanceX"
         )
     } else {
@@ -216,8 +290,8 @@ fun MascotOrbFace(
     }
     val glanceYState = if (runAnim) {
         animateFloatAsState(
-            targetValue = if (isClosedCalmPose || isMusicPose || isSparklePose) 0f else eyeState.glanceY,
-            animationSpec = tween(260),
+            targetValue = if (isClosedEyeExpression || isSparklePose) 0f else eyeState.glanceY,
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
             label = "glanceY"
         )
     } else {
@@ -245,15 +319,16 @@ fun MascotOrbFace(
                 .border(2.dp, ringBorderColor, CircleShape)
         )
 
-        // Core dark circular orb (GPU graphicsLayer)
+        // Core dark circular orb (GPU graphicsLayer: bob + squash/stretch + natural head tilt)
         Box(
             modifier = Modifier
                 .size(size * 0.875f)
                 .graphicsLayer {
                     translationY = bobOffsetDpState.value * density.density
                     val ts = tapScaleState.value
-                    scaleX = ts
-                    scaleY = ts
+                    scaleX = ts * squashX.value
+                    scaleY = ts * squashY.value
+                    rotationZ = headTiltState.value
                 }
                 .clip(CircleShape)
                 .background(Color(0xF2121620))
@@ -333,9 +408,9 @@ fun MascotOrbFace(
                     }
                 }
 
-                // Eyes (with glance offset read inside Canvas DrawScope only)
-                val gx = px(glanceXState.value)
-                val gy = px(glanceYState.value)
+                // Eyes (with glance offset strictly locked to zero when eyes are closed)
+                val gx = if (isClosedEyeExpression) 0f else px(glanceXState.value)
+                val gy = if (isClosedEyeExpression) 0f else px(glanceYState.value)
                 fun gpt(x: Float, y: Float) = Offset(px(x) + gx, px(y) + gy)
 
                 when {
@@ -436,7 +511,7 @@ fun MascotOrbFace(
                         drawCircle(phaseColor, px(1.15f), gpt(21f, 25.9f))
                         drawCircle(phaseColor, px(1.15f), gpt(41f, 25.9f))
                     }
-                    isCalmEyes || isRechargePose || eyeState.isBlinking -> {
+                    isCalmEyes || isRechargePose || eyeState.isPetting -> {
                         pathA.reset()
                         pathA.moveTo(px(18f) + gx, px(28.2f) + gy)
                         pathA.cubicTo(px(20f) + gx, px(30.8f) + gy, px(24f) + gx, px(30.8f) + gy, px(26f) + gx, px(28.2f) + gy)
@@ -447,23 +522,49 @@ fun MascotOrbFace(
                         drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     else -> {
-                        val rEye = if (isPerkPose || isStretchPose || isFlexPose || isSalutePose) px(3.2f) else px(2.9f)
-                        drawCircle(Color(0xFFF4F5F7), rEye, gpt(22f, 27.5f))
-                        drawCircle(Color(0xFFF4F5F7), rEye, gpt(42f, 27.5f))
-                        drawCircle(phaseColor, px(0.95f), gpt(21f, 26.3f))
-                        drawCircle(phaseColor, px(0.95f), gpt(41f, 26.3f))
+                        val blinkT = smoothBlinkState.value
+                        if (blinkT > 0.72f) {
+                            pathA.reset()
+                            pathA.moveTo(px(18f) + gx, px(27.8f) + gy)
+                            pathA.cubicTo(px(20f) + gx, px(30.3f) + gy, px(24f) + gx, px(30.3f) + gy, px(26f) + gx, px(27.8f) + gy)
+                            pathB.reset()
+                            pathB.moveTo(px(38f) + gx, px(27.8f) + gy)
+                            pathB.cubicTo(px(40f) + gx, px(30.3f) + gy, px(44f) + gx, px(30.3f) + gy, px(46f) + gx, px(27.8f) + gy)
+                            drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.5f), cap = StrokeCap.Round))
+                            drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.5f), cap = StrokeCap.Round))
+                        } else {
+                            val rBase = if (isPerkPose || isStretchPose || isFlexPose || isSalutePose) px(3.25f) else px(2.95f)
+                            val openY = (1f - blinkT * 0.85f).coerceIn(0.18f, 1f)
+                            val rH = rBase * openY
+                            drawOval(
+                                color = Color(0xFFF4F5F7),
+                                topLeft = Offset(px(22f) + gx - rBase, px(27.5f) + gy - rH),
+                                size = Size(rBase * 2f, rH * 2f)
+                            )
+                            drawOval(
+                                color = Color(0xFFF4F5F7),
+                                topLeft = Offset(px(42f) + gx - rBase, px(27.5f) + gy - rH),
+                                size = Size(rBase * 2f, rH * 2f)
+                            )
+                            if (openY > 0.45f) {
+                                drawCircle(phaseColor, px(0.95f), gpt(21f, 26.3f))
+                                drawCircle(phaseColor, px(0.95f), gpt(41f, 26.3f))
+                            }
+                        }
                     }
                 }
 
-                // Cheek warmth
+                // Cheek warmth + Cozy Petting Blush
                 if (isCelebration || isTeaPose || isCoffeePose || isWinkPose || isStretchPose ||
                     isZenPose || isMusicPose || isSunrisePose || isSparklePose || isCozyPose ||
-                    isDreamPose || isSweatPose || isPerkPose
+                    isDreamPose || isSweatPose || isPerkPose || eyeState.isPetting ||
+                    eyeState.reactionKind == MascotReaction.COMBO_EXCITED
                 ) {
-                    val blushR = if (isCozyPose || isSparklePose) px(2.9f) else px(2.5f)
-                    val blushAlpha = if (isCozyPose) 0.34f else 0.22f
-                    drawCircle(phaseColor.copy(alpha = blushAlpha), blushR, pt(16.2f, 34f))
-                    drawCircle(phaseColor.copy(alpha = blushAlpha), blushR, pt(47.8f, 34f))
+                    val blushR = if (isCozyPose || isSparklePose || eyeState.isPetting) px(3.1f) else px(2.5f)
+                    val blushAlpha = if (eyeState.isPetting) 0.44f else if (isCozyPose) 0.34f else 0.22f
+                    val blushColor = if (eyeState.isPetting) Color(0xFFFB7185) else phaseColor
+                    drawCircle(blushColor.copy(alpha = blushAlpha), blushR, pt(16.2f, 34f))
+                    drawCircle(blushColor.copy(alpha = blushAlpha), blushR, pt(47.8f, 34f))
                 }
 
                 // Dynamic Mouth
@@ -630,11 +731,35 @@ fun MascotOrbFace(
                 if (isZenPose) {
                     drawCircle(phaseColor, px(3.2f), pt(32f, 14f), style = Stroke(px(1.7f)))
                 }
+                // Extra reaction micro-overlays for Combo Poke, Hype, Petting, and Quick Tips
+                if (eyeState.reactionKind == MascotReaction.COMBO_EXCITED || eyeState.reactionKind == MascotReaction.HYPE) {
+                    drawLine(phaseColor, pt(12.5f, 13f), pt(12.5f, 18.5f), px(2f), cap = StrokeCap.Round)
+                    drawLine(phaseColor, pt(9.8f, 15.8f), pt(15.2f, 15.8f), px(2f), cap = StrokeCap.Round)
+                    drawLine(Color(0xFFFDE68A), pt(51.5f, 13f), pt(51.5f, 18.5f), px(2f), cap = StrokeCap.Round)
+                    drawLine(Color(0xFFFDE68A), pt(48.8f, 15.8f), pt(54.2f, 15.8f), px(2f), cap = StrokeCap.Round)
+                }
+                if (eyeState.isPetting || eyeState.reactionKind == MascotReaction.PET_COZY) {
+                    val warmHeart = Color(0xFFFB7185)
+                    drawCircle(warmHeart, px(2.1f), pt(47.5f, 15.5f))
+                    drawCircle(warmHeart, px(2.1f), pt(51f, 15.5f))
+                    pathA.reset()
+                    pathA.moveTo(px(45.5f), px(16.5f))
+                    pathA.lineTo(px(49.25f), px(20.6f))
+                    pathA.lineTo(px(53f), px(16.5f))
+                    pathA.close()
+                    drawPath(pathA, warmHeart)
+                }
+                if (eyeState.reactionKind == MascotReaction.TIP) {
+                    drawCircle(Color(0xFFFBBF24), px(2.6f), pt(49.5f, 15.5f))
+                    drawLine(Color(0xFFFDE68A), pt(49.5f, 10.5f), pt(49.5f, 12.2f), px(1.6f), cap = StrokeCap.Round)
+                    drawLine(Color(0xFFFDE68A), pt(54f, 15.5f), pt(52.4f, 15.5f), px(1.6f), cap = StrokeCap.Round)
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TodayMascot(
     mascot: MascotUiState,
@@ -645,6 +770,7 @@ fun TodayMascot(
     hideForTutorial: Boolean = false,
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     onTapMascot: () -> Unit,
+    onPetMascot: () -> Unit = {},
     onReplayVoice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -657,14 +783,18 @@ fun TodayMascot(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = if (hideForTutorial) 0f else 1f }
-            .tactilePress(pressedScale = 0.98f, disabledByPerf = tokens.performance.noAnimations || hideForTutorial)
+            .tactilePress(pressedScale = 0.985f, disabledByPerf = tokens.performance.noAnimations || hideForTutorial)
             .ironGlassSurface(
                 tokens = tokens,
                 subtle = true,
                 borderOverride = phaseColor.copy(alpha = 0.28f),
                 radiusOverride = tokens.bubbleRadius
             )
-            .clickable(enabled = !hideForTutorial, onClick = onTapMascot)
+            .combinedClickable(
+                enabled = !hideForTutorial,
+                onClick = onTapMascot,
+                onLongClick = onPetMascot
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -741,6 +871,7 @@ fun TodayMascot(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FloatingMascotDock(
     mascot: MascotUiState,
@@ -752,6 +883,7 @@ fun FloatingMascotDock(
     homeOrbBoundsHolder: OrbBoundsHolder,
     animActive: Boolean = true,
     onTapOrb: () -> Unit,
+    onPetOrb: () -> Unit = {},
     onSaveAnchor: (sideRight: Boolean, yRatio: Float) -> Unit
 ) {
     val isDockActive by remember(shouldFloat) {
@@ -985,10 +1117,16 @@ fun FloatingMascotDock(
                                     }
                                 )
                             }
-                            .clickable {
-                                onTapOrb()
-                                bubbleOpen = !bubbleOpen || true
-                            }
+                            .combinedClickable(
+                                onClick = {
+                                    onTapOrb()
+                                    bubbleOpen = true
+                                },
+                                onLongClick = {
+                                    onPetOrb()
+                                    bubbleOpen = true
+                                }
+                            )
                     } else {
                         Modifier
                     }
