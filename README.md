@@ -1,4 +1,16 @@
+<div align="center">
+
 # IronPulse — Gym Reminder & Pelacak Latihan
+
+<p>
+  <img src="docs/images/ironpulse-hero-overlay.png" alt="IronPulse App Showcase — Schedule (Frutiger Aero), Today & Pulse Mascot, dan Workout Focus HUD" width="900" />
+</p>
+
+<p>
+  <sub><b>Jadwal & Alarm (Frutiger Aero)</b> · <b>Beranda, Maskot Pulse & Rest Timer</b> · <b>Workout Focus HUD</b></sub>
+</p>
+
+</div>
 
 **IronPulse** adalah aplikasi Android native berbasis **Kotlin** dan **Jetpack Compose (Material Design 3)** untuk mengatur jadwal gym mingguan, menjalankan alarm pengingat presisi di latar belakang, mencatat beban/set/repetisi maupun durasi latihan secara real-time, memantau riwayat kalender sesi, dan menjaga ritme istirahat antar set.
 
@@ -129,6 +141,8 @@ Konfigurasi build dan pustaka utama mengacu pada `gradle/libs.versions.toml` dan
 .
 ├── .github/workflows/
 │   └── android-apk.yml                 # CI/CD GitHub Actions (Test, Build Debug/Release APK, Release tag)
+├── docs/images/
+│   └── ironpulse-hero-overlay.png      # Gambar showcase hero transparan (overlay) untuk README
 ├── app/
 │   ├── build.gradle.kts                # Konfigurasi modul app (SDK 24..36, ProGuard release, signing)
 │   └── src/
