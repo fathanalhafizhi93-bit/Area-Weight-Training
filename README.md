@@ -3,11 +3,11 @@
 # IronPulse — Gym Reminder & Pelacak Latihan
 
 <p>
-  <img src="docs/images/ironpulse-mascot-themes-overlay.png" alt="Maskot Pulse IronPulse di 6 Tema OS — Material You, Carbon Forge, Ubuntu Yaru, Frutiger Aero, AMOLED Stealth, dan XMaterial You" width="880" />
+  <img src="docs/images/ironpulse-mascot-strip-overlay.png" alt="Strip Horizontal Maskot Pulse IronPulse — Material You, Carbon Forge, Ubuntu Yaru, Frutiger Aero, AMOLED Stealth, dan XMaterial You" width="100%" />
 </p>
 
 <p>
-  <sub><b>Maskot Interaktif Pulse pada 6 Tema OS</b> — dirender langsung dari palet warna, geometri kanvas &amp; tipografi resmi IronPulse</sub>
+  <sub><b>Maskot Interaktif Pulse di 6 Tema OS</b> — komposisi strip horizontal dengan efek <i>edge-fade</i> transparan dari aset &amp; tipografi resmi IronPulse</sub>
 </p>
 
 </div>
@@ -142,7 +142,7 @@ Konfigurasi build dan pustaka utama mengacu pada `gradle/libs.versions.toml` dan
 ├── .github/workflows/
 │   └── android-apk.yml                 # CI/CD GitHub Actions (Test, Build Debug/Release APK, Release tag)
 ├── docs/images/
-│   └── ironpulse-mascot-themes-overlay.png  # Showcase maskot Pulse 6 tema (transparan overlay) untuk README
+│   └── ironpulse-mascot-strip-overlay.png   # Strip horizontal maskot Pulse 6 tema (edge-fade overlay) untuk README
 ├── app/
 │   ├── build.gradle.kts                # Konfigurasi modul app (SDK 24..36, ProGuard release, signing)
 │   └── src/
