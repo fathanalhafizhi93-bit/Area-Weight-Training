@@ -3,11 +3,11 @@
 # IronPulse — Gym Reminder & Pelacak Latihan
 
 <p>
-  <img src="docs/images/ironpulse-hero-overlay.png" alt="IronPulse App Showcase — Schedule (Frutiger Aero), Today & Pulse Mascot, dan Workout Focus HUD" width="900" />
+  <img src="docs/images/ironpulse-mascot-themes-overlay.png" alt="Maskot Pulse IronPulse di 6 Tema OS — Material You, Carbon Forge, Ubuntu Yaru, Frutiger Aero, AMOLED Stealth, dan XMaterial You" width="880" />
 </p>
 
 <p>
-  <sub><b>Jadwal & Alarm (Frutiger Aero)</b> · <b>Beranda, Maskot Pulse & Rest Timer</b> · <b>Workout Focus HUD</b></sub>
+  <sub><b>Maskot Interaktif Pulse pada 6 Tema OS</b> — dirender langsung dari palet warna, geometri kanvas &amp; tipografi resmi IronPulse</sub>
 </p>
 
 </div>
@@ -142,7 +142,7 @@ Konfigurasi build dan pustaka utama mengacu pada `gradle/libs.versions.toml` dan
 ├── .github/workflows/
 │   └── android-apk.yml                 # CI/CD GitHub Actions (Test, Build Debug/Release APK, Release tag)
 ├── docs/images/
-│   └── ironpulse-hero-overlay.png      # Gambar showcase hero transparan (overlay) untuk README
+│   └── ironpulse-mascot-themes-overlay.png  # Showcase maskot Pulse 6 tema (transparan overlay) untuk README
 ├── app/
 │   ├── build.gradle.kts                # Konfigurasi modul app (SDK 24..36, ProGuard release, signing)
 │   └── src/
