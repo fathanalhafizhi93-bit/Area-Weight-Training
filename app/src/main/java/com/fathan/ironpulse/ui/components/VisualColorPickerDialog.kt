@@ -48,8 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ColorPresetOption
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 
 enum class VisualColorPickerMode {
     ACCENT,
@@ -135,7 +138,7 @@ fun VisualColorPickerDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedButton(
+                IronPulseOutlinedButton(
                     onClick = onDismiss,
                     shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -146,7 +149,7 @@ fun VisualColorPickerDialog(
                 ) {
                     Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
                 }
-                Button(
+                IronPulseButton(
                     onClick = {
                         val internalHex = MaterialYouColorEngine.colorToHex(selectedColor)
                         onApplyHex(internalHex)
@@ -431,14 +434,21 @@ fun VisualPickColorPill(
         )
     }
 
+    val pillShape = RoundedCornerShape(999.dp)
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        color = tokens.palette.surfaceContainerLow,
+        shape = pillShape,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
         modifier = modifier
             .heightIn(min = 38.dp)
             .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = pillShape,
+                baseColor = tokens.palette.surfaceContainerLow,
+                isAccent = false
+            )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),

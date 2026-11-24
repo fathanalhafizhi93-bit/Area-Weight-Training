@@ -1,15 +1,19 @@
 package com.fathan.ironpulse
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -26,9 +30,12 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.down
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.moveTo
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -36,6 +43,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
@@ -98,11 +106,14 @@ import com.fathan.ironpulse.ui.screens.SettingsScreen
 import com.fathan.ironpulse.ui.screens.TodayScreen
 import com.fathan.ironpulse.ui.screens.WorkoutSessionSummaryCard
 import com.fathan.ironpulse.ui.screens.resolveClockCornerOrbPalette
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.theme.resolveThemeFontPack
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
@@ -1948,9 +1959,14 @@ class StartupSmokeTest {
         var accentTextColor: Color? = null
         var canvasBg: Color? = null
         var cardShape: Shape? = null
+        var subtleCardShape: Shape? = null
         var buttonShape: Shape? = null
+        var inputShape: Shape? = null
         var cardRadius = 0.dp
         var buttonRadius = 0.dp
+        var inputRadius = 0.dp
+        var buttonHasGloss = true
+        var surfaceBorderColor: Color? = null
         val selectedModes = mutableListOf<DayTimeMode>()
 
         composeRule.setContent {
@@ -1977,9 +1993,14 @@ class StartupSmokeTest {
                 accentTextColor = t.accentTextColor
                 canvasBg = t.canvasBg
                 cardShape = t.cardShape
+                subtleCardShape = t.subtleCardShape
                 buttonShape = t.buttonShape
+                inputShape = t.inputShape
                 cardRadius = t.cardRadius
                 buttonRadius = t.buttonRadius
+                inputRadius = t.inputRadius
+                buttonHasGloss = t.buttonHasGloss
+                surfaceBorderColor = t.surfaceBorderColor
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     AmbientPhaseBackdrop()
@@ -2025,14 +2046,31 @@ class StartupSmokeTest {
         assertFalse("XMaterial You Morning must be rich dark obsidian theme", isLightTheme)
         assertFalse("XMaterial You Morning must not set isXMaterialNight", isXMaterialNight)
         assertTrue("XMaterial You must lock exclusive phase palettes", accentLocked)
-        assertTrue(
-            "XMaterial You cards must use distinctive architectural obsidian shapes",
-            cardShape != RoundedCornerShape(cardRadius)
+        assertEquals(28.dp, cardRadius)
+        assertEquals(
+            "XMaterial You cards must use symmetrical soft 28dp rounded corners",
+            RoundedCornerShape(28.dp),
+            cardShape
         )
-        assertTrue(
-            "XMaterial You buttons must use distinctive architectural obsidian shapes",
-            buttonShape != RoundedCornerShape(buttonRadius)
+        assertEquals(
+            "XMaterial You subtle cards must use soft 22dp rounded corners",
+            RoundedCornerShape(22.dp),
+            subtleCardShape
         )
+        assertEquals(999.dp, buttonRadius)
+        assertEquals(
+            "XMaterial You buttons must use full capsule pill shapes",
+            RoundedCornerShape(999.dp),
+            buttonShape
+        )
+        assertEquals(18.dp, inputRadius)
+        assertEquals(
+            "XMaterial You inputs must use symmetrical 18dp rounded corners",
+            RoundedCornerShape(18.dp),
+            inputShape
+        )
+        assertFalse("XMaterial You must use clean satin finish without Aero gloss", buttonHasGloss)
+        assertTrue("XMaterial You border must remain fine and understated", surfaceBorderColor!!.alpha <= 0.35f)
         assertEquals(Color(0xFFDFBE84), accentColor)
         assertEquals(Color(0xFF060608), canvasBg)
         assertTrue(wcagContrast(onSurfaceColor!!, Color(0xFF0E0F13)) >= 4.5)
@@ -2224,6 +2262,265 @@ class StartupSmokeTest {
         composeRule.onNodeWithTag(SettingsCategory.PROFILE.testTag).assertIsDisplayed()
         composeRule.onNodeWithTag("settings_hub_back_button").performClick()
         assertEquals(1, hubBackCalls)
+    }
+
+    @Test
+    fun uiTheme_exclusiveSplitAndVisualOnlyDescriptionsHaveNoTechnicalJargon() {
+        val standard = UiTheme.entries.filter { !it.isExclusive }
+        val exclusive = UiTheme.entries.filter { it.isExclusive }
+
+        assertEquals(
+            listOf(UiTheme.MATERIAL_YOU, UiTheme.CARBON_FORGE, UiTheme.AMOLED_STEALTH),
+            standard
+        )
+        assertEquals(
+            listOf(UiTheme.UBUNTU_YARU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU),
+            exclusive
+        )
+
+        val bannedTokens = listOf("120 fps", "shader", "gtk4", "baterai", "battery", "terkunci", "locked", "ringan", "lightweight", "mikro-dot")
+        UiTheme.entries.forEach { theme ->
+            assertTrue("subtitleId blank for $theme", theme.subtitleId.isNotBlank())
+            assertTrue("subtitleEn blank for $theme", theme.subtitleEn.isNotBlank())
+            val combined = "${theme.subtitleId} ${theme.subtitleEn}".lowercase(Locale.ROOT)
+            bannedTokens.forEach { token ->
+                assertFalse("Theme $theme description must not contain '$token': $combined", combined.contains(token))
+            }
+        }
+    }
+
+    @Test
+    fun ubuntuYaruTheme_locksYaruOrangeAndAubergineAndPreservesSavedCustomColors() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val store = PreferencesStore(context)
+        store.resetThemeCustomization()
+        store.setUiTheme(UiTheme.MATERIAL_YOU)
+        store.setAccentColor("#FF4D8D")
+        store.setMaterialTintColor("#112922")
+
+        // Switching to Ubuntu Yaru and back must NOT clobber the user's saved custom colors
+        store.setUiTheme(UiTheme.UBUNTU_YARU)
+        assertEquals(UiTheme.UBUNTU_YARU, store.state.value.uiTheme)
+        assertEquals("#FF4D8D", store.state.value.accentColorHex)
+        assertEquals("#112922", store.state.value.materialTintColorHex)
+
+        store.setUiTheme(UiTheme.MATERIAL_YOU)
+        assertEquals("#FF4D8D", store.state.value.accentColorHex)
+        assertEquals("#112922", store.state.value.materialTintColorHex)
+        store.resetThemeCustomization()
+
+        var resolvedAccentLocked = false
+        var resolvedAccent: Color? = null
+        var resolvedTint: Color? = null
+        var resolvedCanvasBg: Color? = null
+        var resolvedSecondaryBg: Color? = null
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.UBUNTU_YARU,
+                    accentColorHex = "#FF4D8D",
+                    materialTintColorHex = "#112922",
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                )
+            ) {
+                val t = LocalIronPulseTokens.current
+                resolvedAccentLocked = t.accentLocked
+                resolvedAccent = t.accentColor
+                resolvedTint = t.effectiveTintColor
+                resolvedCanvasBg = t.canvasBg
+                resolvedSecondaryBg = t.canvasSecondaryBg
+
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    AccentAndTintSettingsCard(
+                        accentColorHex = "#FF4D8D",
+                        materialTintColorHex = "#112922",
+                        onSelectAccent = {},
+                        onOpenAccentPicker = {},
+                        onOpenTintPicker = {},
+                        onSelectMaterialTint = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertTrue("Ubuntu Yaru must lock accent & aubergine customization", resolvedAccentLocked)
+        assertEquals(Color(0xFFE95420), resolvedAccent)
+        assertEquals(Color(0xFF2E182A), resolvedTint)
+        assertEquals(Color(0xFF1F1C21), resolvedCanvasBg)
+        assertEquals(Color(0xFF381630), resolvedSecondaryBg)
+
+        composeRule.onNodeWithTag("accent_locked_banner").assertIsDisplayed()
+        composeRule.onNodeWithText("Jingga Yaru & Aubergine Terkunci").assertIsDisplayed()
+        composeRule.onNodeWithTag("accent_pick_color_button").assertDoesNotExist()
+        composeRule.onNodeWithTag("tint_pick_color_button").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun settingsThemeSubpage_groupsStandardAndExclusiveThemesWithoutPerCardBadges() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(context)
+        }
+        val viewModel = GymViewModel(context)
+        val uiState = IronPulseUiState(
+            authReady = true,
+            userUid = "u_theme_groups",
+            appPrefs = AppPreferences(
+                uiTheme = UiTheme.MATERIAL_YOU,
+                lang = AppLanguage.ID,
+                performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+            )
+        )
+
+        composeRule.setContent {
+            IronPulseTheme(prefs = uiState.appPrefs) {
+                CompositionLocalProvider(LocalTabActive provides true) {
+                    SettingsScreen(
+                        state = uiState,
+                        viewModel = viewModel,
+                        contentPadding = PaddingValues(0.dp),
+                        onBack = {},
+                        onRequestNotificationPermission = {},
+                        onOpenExactAlarmSettings = {},
+                        onPickCustomRingtone = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(SettingsCategory.THEME.testTag).performClick()
+        composeRule.waitForIdle()
+
+        // Both groups rendered cleanly inside ThemesGridCard on modern phone viewport
+        composeRule.onNodeWithTag("themes_group_standard").assertIsDisplayed()
+        composeRule.onNodeWithText("Tema Standar").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_card_material-you").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_card_carbon-forge").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_card_amoled-stealth").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("themes_group_exclusive").assertIsDisplayed()
+        composeRule.onNodeWithText("Tema Eksklusif").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_card_ubuntu-yaru").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_card_frutiger-aero").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_card_xmaterial-you").assertIsDisplayed()
+
+        // Ensure separation is by group ONLY (no extra "Eksklusif" pills on individual cards)
+        composeRule.onAllNodesWithText("Eksklusif").fetchSemanticsNodes().let { nodes ->
+            assertEquals(0, nodes.size)
+        }
+    }
+
+    @Test
+    fun frutigerAeroTheme_rendersGlossyButtonsTonalControlsAndSubtleCardsCleanly() {
+        var phaseSetter: ((DayTimePhase) -> Unit)? = null
+        var primaryClicks = 0
+        var secondaryClicks = 0
+        var tonalClicks = 0
+        var buttonHasGloss = false
+
+        composeRule.setContent {
+            var activePhase by remember { mutableStateOf(DayTimePhase.MORNING) }
+            phaseSetter = { activePhase = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.FRUTIGER_AERO,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                ),
+                timePhase = activePhase
+            ) {
+                val t = LocalIronPulseTokens.current
+                buttonHasGloss = t.buttonHasGloss
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .ironGlassSurface(t, subtle = false)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .ironGlassSurface(t, subtle = true)
+                            .padding(12.dp)
+                    ) {
+                        Text("Subtle Aero Glass Panel", color = t.palette.onSurface)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IronPulseButton(
+                            onClick = { primaryClicks++ },
+                            shape = t.buttonShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = t.accentColor,
+                                contentColor = t.onAccentColor
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("aero_primary_gloss_btn")
+                        ) {
+                            Text("Primary Gel")
+                        }
+                        IronPulseOutlinedButton(
+                            onClick = { secondaryClicks++ },
+                            shape = t.buttonShape,
+                            border = BorderStroke(1.dp, t.surfaceBorderColor),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("aero_outlined_gloss_btn")
+                        ) {
+                            Text("Frosted Gel", color = t.palette.onSurface)
+                        }
+                    }
+                    Surface(
+                        onClick = { tonalClicks++ },
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color.Transparent,
+                        border = BorderStroke(1.dp, t.surfaceBorderColor),
+                        modifier = Modifier
+                            .ironTonalControl(
+                                tokens = t,
+                                shape = RoundedCornerShape(999.dp),
+                                baseColor = t.controlBg,
+                                isAccent = false
+                            )
+                            .testTag("aero_tonal_pill")
+                    ) {
+                        Text(
+                            text = "Tonal Aqua Pill",
+                            color = t.palette.onSurface,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertTrue("Frutiger Aero must keep buttonHasGloss enabled", buttonHasGloss)
+        composeRule.onNodeWithText("Subtle Aero Glass Panel").assertIsDisplayed()
+        composeRule.onNodeWithTag("aero_primary_gloss_btn").performClick()
+        composeRule.onNodeWithTag("aero_outlined_gloss_btn").performClick()
+        composeRule.onNodeWithTag("aero_tonal_pill").performClick()
+        composeRule.waitForIdle()
+
+        // Verify Night Aero twilight gloss renders & responds cleanly as well
+        composeRule.runOnUiThread { phaseSetter?.invoke(DayTimePhase.NIGHT) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Subtle Aero Glass Panel").assertIsDisplayed()
+        composeRule.onNodeWithTag("aero_primary_gloss_btn").performClick()
+        composeRule.onNodeWithTag("aero_outlined_gloss_btn").performClick()
+        composeRule.onNodeWithTag("aero_tonal_pill").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(2, primaryClicks)
+        assertEquals(2, secondaryClicks)
+        assertEquals(2, tonalClicks)
     }
 }
 

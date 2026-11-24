@@ -82,9 +82,12 @@ import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.TactileStepperControl
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
@@ -188,9 +191,16 @@ fun WorkoutScreen(
                         Surface(
                             onClick = onBackToToday,
                             shape = tokens.buttonShape,
-                            color = tokens.controlBg,
+                            color = Color.Transparent,
                             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                            modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                            modifier = Modifier
+                                .tactilePress(disabledByPerf = noAnim)
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = tokens.buttonShape,
+                                    baseColor = tokens.controlBg,
+                                    isAccent = false
+                                )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -220,13 +230,19 @@ fun WorkoutScreen(
                             Surface(
                                 onClick = { viewModel.setWorkoutFocusHudEnabled(!hudEnabled) },
                                 shape = RoundedCornerShape(999.dp),
-                                color = if (hudEnabled) tokens.accentColor else tokens.wellBg,
+                                color = Color.Transparent,
                                 border = BorderStroke(
                                     1.dp,
                                     if (hudEnabled) tokens.accentColor else tokens.surfaceBorderColor
                                 ),
                                 modifier = Modifier
                                     .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+                                    .ironTonalControl(
+                                        tokens = tokens,
+                                        shape = RoundedCornerShape(999.dp),
+                                        baseColor = if (hudEnabled) tokens.accentColor else tokens.wellBg,
+                                        isAccent = hudEnabled
+                                    )
                                     .testTag("workout_hud_toggle")
                             ) {
                                 Row(
@@ -298,8 +314,12 @@ fun WorkoutScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(tokens.wellBg)
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(999.dp),
+                                    baseColor = tokens.wellBg,
+                                    isAccent = false
+                                )
                                 .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(999.dp))
                                 .padding(3.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -313,8 +333,18 @@ fun WorkoutScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .tactilePress(pressedScale = 0.96f, disabledByPerf = noAnim)
-                                        .clip(RoundedCornerShape(999.dp))
-                                        .background(if (selected) tokens.accentColor else Color.Transparent)
+                                        .then(
+                                            if (selected) {
+                                                Modifier.ironTonalControl(
+                                                    tokens = tokens,
+                                                    shape = RoundedCornerShape(999.dp),
+                                                    baseColor = tokens.accentColor,
+                                                    isAccent = true
+                                                )
+                                            } else {
+                                                Modifier.clip(RoundedCornerShape(999.dp))
+                                            }
+                                        )
                                         .clickable { viewModeFocus = isFocus }
                                         .padding(horizontal = 12.dp, vertical = 7.dp),
                                     contentAlignment = Alignment.Center
@@ -374,7 +404,7 @@ fun WorkoutScreen(
                             fontWeight = FontWeight.Bold,
                             color = tokens.palette.onSurface
                         )
-                        Button(
+                        IronPulseButton(
                             onClick = {
                                 if (activeSchedule?.isGymDay == false) onOpenSchedule()
                                 else onOpenExercisesForDay(state.todayDayKey)
@@ -602,11 +632,7 @@ private fun ExerciseSwitcherRail(
             Surface(
                 onClick = { onSelectExercise(entry.exerciseId) },
                 shape = RoundedCornerShape(999.dp),
-                color = when {
-                    isSelected -> tokens.accentColor
-                    allDone -> Color(0x2616A34A)
-                    else -> tokens.controlBg
-                },
+                color = Color.Transparent,
                 border = BorderStroke(
                     1.dp,
                     when {
@@ -616,7 +642,18 @@ private fun ExerciseSwitcherRail(
                         else -> tokens.surfaceBorderColor
                     }
                 ),
-                modifier = Modifier.tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                modifier = Modifier
+                    .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = when {
+                            isSelected -> tokens.accentColor
+                            allDone -> Color(0x2616A34A)
+                            else -> tokens.controlBg
+                        },
+                        isAccent = isSelected
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
@@ -762,9 +799,16 @@ private fun WorkoutFloatingRestBar(
             Surface(
                 onClick = { onAdjust(15) },
                 shape = RoundedCornerShape(10.dp),
-                color = tokens.controlBg,
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                modifier = Modifier
+                    .tactilePress(disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(10.dp),
+                        baseColor = tokens.controlBg,
+                        isAccent = false
+                    )
             ) {
                 Text(
                     text = "+15$secUnit",
@@ -779,8 +823,15 @@ private fun WorkoutFloatingRestBar(
             Surface(
                 onClick = onTogglePause,
                 shape = RoundedCornerShape(10.dp),
-                color = tokens.accentColor,
-                modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                color = Color.Transparent,
+                modifier = Modifier
+                    .tactilePress(disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(10.dp),
+                        baseColor = tokens.accentColor,
+                        isAccent = true
+                    )
             ) {
                 Box(modifier = Modifier.padding(8.dp)) {
                     ThemedIcon(
@@ -968,9 +1019,16 @@ private fun ExerciseCockpitCard(
             Surface(
                 onClick = { onStartRest(spec?.restSeconds ?: 60) },
                 shape = RoundedCornerShape(999.dp),
-                color = tokens.accentColor.copy(alpha = 0.14f),
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.38f)),
-                modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                modifier = Modifier
+                    .tactilePress(disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = tokens.accentColor.copy(alpha = 0.14f),
+                        isAccent = false
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
@@ -996,9 +1054,16 @@ private fun ExerciseCockpitCard(
                 Surface(
                     onClick = onToggleNotes,
                     shape = RoundedCornerShape(999.dp),
-                    color = tokens.controlBg,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                    modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                    modifier = Modifier
+                        .tactilePress(disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(999.dp),
+                            baseColor = tokens.controlBg,
+                            isAccent = false
+                        )
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
@@ -1062,13 +1127,15 @@ private fun ExerciseCockpitCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        if (timerRunning) {
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(16.dp),
+                        baseColor = if (timerRunning) {
                             if (tokens.isLightTheme) Color(0xCCDCF5FF) else Color(0xB30C1924)
                         } else {
                             tokens.wellBg
-                        }
+                        },
+                        isAccent = false
                     )
                     .border(
                         1.dp,
@@ -1127,8 +1194,12 @@ private fun ExerciseCockpitCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(tokens.controlBg)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(999.dp),
+                            baseColor = tokens.controlBg,
+                            isAccent = false
+                        )
                         .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(999.dp))
                         .padding(3.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1142,12 +1213,16 @@ private fun ExerciseCockpitCard(
                             modifier = Modifier
                                 .weight(1f)
                                 .tactilePress(pressedScale = 0.96f, disabledByPerf = noAnim)
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(
-                                    when {
-                                        active && dir == TimerDirection.COUNTDOWN -> Color(0xFF38BDF8)
-                                        active -> tokens.accentColor
-                                        else -> Color.Transparent
+                                .then(
+                                    if (active) {
+                                        Modifier.ironTonalControl(
+                                            tokens = tokens,
+                                            shape = RoundedCornerShape(999.dp),
+                                            baseColor = if (dir == TimerDirection.COUNTDOWN) Color(0xFF38BDF8) else tokens.accentColor,
+                                            isAccent = true
+                                        )
+                                    } else {
+                                        Modifier.clip(RoundedCornerShape(999.dp))
                                     }
                                 )
                                 .clickable { onChangeTimerDirection(dir) }
@@ -1190,7 +1265,7 @@ private fun ExerciseCockpitCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
+                    IronPulseButton(
                         onClick = { onToggleExerciseTimer(activeSetNumber) },
                         shape = RoundedCornerShape(999.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -1226,7 +1301,7 @@ private fun ExerciseCockpitCard(
                         )
                     }
 
-                    OutlinedButton(
+                    IronPulseOutlinedButton(
                         onClick = onResetExerciseTimer,
                         shape = RoundedCornerShape(999.dp),
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
@@ -1240,7 +1315,7 @@ private fun ExerciseCockpitCard(
                     }
 
                     if (elapsedSeconds > 0 || timerRunning) {
-                        Button(
+                        IronPulseButton(
                             onClick = onSaveExerciseTimer,
                             shape = RoundedCornerShape(999.dp),
                             colors = ButtonDefaults.buttonColors(
@@ -1305,8 +1380,12 @@ private fun ExerciseCockpitCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(rowBg)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(16.dp),
+                            baseColor = rowBg,
+                            isAccent = false
+                        )
                         .border(1.dp, rowBorder, RoundedCornerShape(16.dp))
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1428,7 +1507,7 @@ private fun ExerciseCockpitCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onAddSet,
                 enabled = entry.sets.size < 12,
                 shape = tokens.buttonShape,
@@ -1443,7 +1522,7 @@ private fun ExerciseCockpitCard(
                 Text(lang.t("Tambah Set", "Add Set"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tokens.palette.onSurface)
             }
 
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onRemoveSet,
                 enabled = entry.sets.size > 1,
                 shape = tokens.buttonShape,
@@ -1482,12 +1561,7 @@ private fun SetCompletePillButton(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = when {
-            completed -> Color(0xFF16A34A)
-            isBlockedByCooldown -> tokens.wellBg
-            isNextActiveSet -> tokens.accentColor
-            else -> tokens.controlBg
-        },
+        color = Color.Transparent,
         border = BorderStroke(
             1.dp,
             when {
@@ -1497,7 +1571,19 @@ private fun SetCompletePillButton(
                 else -> tokens.subtleBorderColor
             }
         ),
-        modifier = Modifier.tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+        modifier = Modifier
+            .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(999.dp),
+                baseColor = when {
+                    completed -> Color(0xFF16A34A)
+                    isBlockedByCooldown -> tokens.wellBg
+                    isNextActiveSet -> tokens.accentColor
+                    else -> tokens.controlBg
+                },
+                isAccent = completed || isNextActiveSet
+            )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
@@ -1638,7 +1724,7 @@ internal fun WorkoutSessionSummaryCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onBackToToday,
                 shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -1662,7 +1748,7 @@ internal fun WorkoutSessionSummaryCard(
                     color = tokens.palette.onSurface
                 )
             }
-            Button(
+            IronPulseButton(
                 onClick = onOpenHistory,
                 shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -1701,8 +1787,12 @@ private fun SummaryStatPill(
     val tokens = LocalIronPulseTokens.current
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(tokens.wellBg)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(12.dp),
+                baseColor = tokens.wellBg,
+                isAccent = false
+            )
             .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)

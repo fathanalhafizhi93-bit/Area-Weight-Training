@@ -69,8 +69,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.AppLanguage
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.ActiveTestAlarmState
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
@@ -179,7 +182,7 @@ fun NamePromptModal(
             }
 
             Spacer(modifier = Modifier.height(18.dp))
-            Button(
+            IronPulseButton(
                 onClick = {
                     val cleaned = nameInput.trim()
                     if (cleaned.isEmpty()) {
@@ -324,7 +327,7 @@ fun CooldownAlertModal(
 
             Spacer(modifier = Modifier.height(20.dp))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
+                IronPulseOutlinedButton(
                     onClick = onDismiss,
                     shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -335,7 +338,7 @@ fun CooldownAlertModal(
                     Text(lang.t("Tunggu ($cooldownRemaining d)", "Wait (${cooldownRemaining}s)"), color = tokens.palette.onSurface)
                 }
 
-                Button(
+                IronPulseButton(
                     onClick = onBypass,
                     shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
@@ -653,8 +656,14 @@ fun ActiveAlarmOverlay(
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = tokens.palette.surfaceContainerHigh,
-                        border = BorderStroke(1.dp, tokens.surfaceBorderColor)
+                        color = Color.Transparent,
+                        border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                        modifier = Modifier.ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(999.dp),
+                            baseColor = tokens.palette.surfaceContainerHigh,
+                            isAccent = false
+                        )
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
@@ -671,7 +680,7 @@ fun ActiveAlarmOverlay(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Button(
+                    IronPulseButton(
                         onClick = onStartWorkout,
                         shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
@@ -684,7 +693,7 @@ fun ActiveAlarmOverlay(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(lang.t("Matikan & Mulai Latihan", "Dismiss & Start Workout"), fontWeight = FontWeight.Bold)
                     }
-                    OutlinedButton(
+                    IronPulseOutlinedButton(
                         onClick = onSnooze,
                         shape = tokens.buttonShape,
                         border = BorderStroke(1.dp, tokens.surfaceBorderColor),

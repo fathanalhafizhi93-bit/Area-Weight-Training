@@ -55,49 +55,56 @@ enum class UiTheme(
     val titleId: String,
     val titleEn: String,
     val subtitleId: String,
-    val subtitleEn: String
+    val subtitleEn: String,
+    val isExclusive: Boolean
 ) {
     MATERIAL_YOU(
         wireValue = "material-you",
         titleId = "Material You (M3)",
         titleEn = "Material You (M3)",
-        subtitleId = "Lapisan tonal dinamis M3 dengan aksen bersih & tombol pil halus",
-        subtitleEn = "Dynamic M3 tonal elevation with crisp surface framing & pill controls"
+        subtitleId = "Lapisan tonal lembut dengan bentuk pil modern",
+        subtitleEn = "Soft tonal layers with rounded pill controls",
+        isExclusive = false
     ),
     CARBON_FORGE(
         wireValue = "carbon-forge",
         titleId = "Carbon Forge",
         titleEn = "Carbon Forge",
-        subtitleId = "Serat karbon 2x2 tajam dengan aksen bevel metalik",
-        subtitleEn = "Crisp 2x2 woven carbon texture with subtle metallic bevel accents"
+        subtitleId = "Anyaman serat karbon gelap dengan garis bevel metalik",
+        subtitleEn = "Dark woven carbon pattern with sharp metallic bevels",
+        isExclusive = false
     ),
     UBUNTU_YARU(
         wireValue = "ubuntu-yaru",
         titleId = "Ubuntu Yaru",
         titleEn = "Ubuntu Yaru",
-        subtitleId = "Matte gelap GTK4 hangat dengan sentuhan aubergine & jingga Yaru",
-        subtitleEn = "Authentic warm GTK4 dark matte with aubergine warmth & Yaru orange"
+        subtitleId = "Matte gelap hangat berpadu jingga Yaru dan ungu aubergine",
+        subtitleEn = "Warm dark matte surfaces in Yaru orange and aubergine",
+        isExclusive = true
     ),
     AMOLED_STEALTH(
         wireValue = "amoled-stealth",
         titleId = "AMOLED Stealth",
         titleEn = "AMOLED Stealth",
-        subtitleId = "Hitam pekat OLED sejati hemat baterai dengan shader mikro-dot 120 FPS",
-        subtitleEn = "True pitch-black OLED battery saver with crisp 120 FPS micro-dot texture"
+        subtitleId = "Hitam pekat kontras tinggi dengan aksen garis presisi",
+        subtitleEn = "True pitch-black surfaces with sharp high-contrast lines",
+        isExclusive = false
     ),
     FRUTIGER_AERO(
         wireValue = "frutiger-aero",
         titleId = "Frutiger Aero (Y2K)",
         titleEn = "Frutiger Aero (Y2K)",
-        subtitleId = "Langit biru cerah, kaca glossy ringan 120 FPS, dan aksen biru Aero terkunci",
-        subtitleEn = "Bright sky-blue translucent gloss at 120 FPS with signature locked Aero blue"
+        subtitleId = "Kaca bening bernuansa langit biru cerah dan senja",
+        subtitleEn = "Glossy translucent glass in bright sky blue and twilight",
+        isExclusive = true
     ),
     XMATERIAL_YOU(
         wireValue = "xmaterial-you",
         titleId = "XMaterial You",
         titleEn = "XMaterial You",
-        subtitleId = "Obsidian gelap elegan dengan kilau kaca halus dan aksen fase Pagi, Siang & Malam",
-        subtitleEn = "Quiet-luxury dark obsidian glass with subtle metallic accents across Dawn, Day & Night"
+        subtitleId = "Obsidian gelap tenang dengan aksen logam pagi, siang, dan malam",
+        subtitleEn = "Calm dark obsidian glass with dawn, day, and night metal accents",
+        isExclusive = true
     );
 
     companion object {

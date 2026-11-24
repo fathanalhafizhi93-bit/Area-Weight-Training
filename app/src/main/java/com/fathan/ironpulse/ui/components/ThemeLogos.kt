@@ -378,22 +378,9 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
     val w = size.width
     val h = size.height
     val pad = w * 0.06f
-    val bigR = w * 0.30f
-    val smallR = w * 0.10f
-
-    // Sculpted Smoked Obsidian Seal (architectural folio silhouette)
-    val obsidianSeal = Path().apply {
-        moveTo(pad + bigR, pad)
-        lineTo(w - pad - smallR, pad)
-        quadraticBezierTo(w - pad, pad, w - pad, pad + smallR)
-        lineTo(w - pad, h - pad - bigR)
-        quadraticBezierTo(w - pad, h - pad, w - pad - bigR, h - pad)
-        lineTo(pad + smallR, h - pad)
-        quadraticBezierTo(pad, h - pad, pad, h - pad - smallR)
-        lineTo(pad, pad + bigR)
-        quadraticBezierTo(pad, pad, pad + bigR, pad)
-        close()
-    }
+    val rectW = w - pad * 2f
+    val rectH = h - pad * 2f
+    val corner = CornerRadius(w * 0.28f, w * 0.28f)
 
     val (metalMain, metalHighlight) = when (phase) {
         DayTimePhase.MORNING -> Color(0xFFDFBE84) to Color(0xFFF3E0BE)
@@ -401,30 +388,32 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
         DayTimePhase.NIGHT -> Color(0xFFB0A4E3) to Color(0xFFDDD6FA)
     }
 
-    drawPath(
-        path = obsidianSeal,
+    drawRoundRect(
         brush = Brush.verticalGradient(
-            colors = listOf(Color(0xFF181A22), Color(0xFF0E0F14), Color(0xFF08090C))
-        )
+            colors = listOf(Color(0xFF171922), Color(0xFF0E0F14), Color(0xFF090A0D))
+        ),
+        topLeft = Offset(pad, pad),
+        size = Size(rectW, rectH),
+        cornerRadius = corner
     )
-    // Quiet diagonal satin reflection
-    drawPath(
-        path = obsidianSeal,
-        brush = Brush.linearGradient(
-            colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent, Color.Transparent),
-            start = Offset(0f, 0f),
-            end = Offset(w * 0.85f, h * 0.85f)
-        )
+    // Calm top satin reflection
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color.White.copy(alpha = 0.075f), Color.Transparent)
+        ),
+        topLeft = Offset(pad, pad),
+        size = Size(rectW, rectH * 0.55f),
+        cornerRadius = corner
     )
     // Fine metallic hairline bevel
-    drawPath(
-        path = obsidianSeal,
-        brush = Brush.linearGradient(
-            colors = listOf(metalHighlight.copy(alpha = 0.85f), metalMain.copy(alpha = 0.45f), Color(0xFF282A34)),
-            start = Offset(0f, 0f),
-            end = Offset(w, h)
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(metalHighlight.copy(alpha = 0.72f), metalMain.copy(alpha = 0.34f), Color(0xFF282A35))
         ),
-        style = Stroke(width = w * 0.045f, join = StrokeJoin.Round)
+        topLeft = Offset(pad, pad),
+        size = Size(rectW, rectH),
+        cornerRadius = corner,
+        style = Stroke(width = w * 0.042f)
     )
 
     // Crisp Alabaster Ivory pulse trace with restrained precious-metal terminal node
@@ -629,12 +618,7 @@ fun ThemedPhaseLogoEmblem(
             UiTheme.UBUNTU_YARU -> RoundedCornerShape(13.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(12.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
-            UiTheme.XMATERIAL_YOU -> RoundedCornerShape(
-                topStart = 14.dp,
-                topEnd = 5.dp,
-                bottomEnd = 14.dp,
-                bottomStart = 5.dp
-            )
+            UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
         }
     }
 

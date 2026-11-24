@@ -59,8 +59,10 @@ import com.fathan.ironpulse.ui.components.ThemeBrandLockup
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import kotlinx.coroutines.flow.StateFlow
@@ -187,10 +189,17 @@ fun AuthScreen(
                     fontSize = 22.sp
                 )
 
+                val toggleContainerShape = RoundedCornerShape(12.dp)
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = tokens.wellBg.copy(alpha = 0.85f),
-                    border = BorderStroke(1.dp, tokens.surfaceBorderColor)
+                    shape = toggleContainerShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                    modifier = Modifier.ironTonalControl(
+                        tokens = tokens,
+                        shape = toggleContainerShape,
+                        baseColor = tokens.wellBg.copy(alpha = 0.85f),
+                        isAccent = false
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(4.dp),
@@ -202,8 +211,12 @@ fun AuthScreen(
                                 modifier = Modifier
                                     .testTag("lang_toggle_${option.wireValue}")
                                     .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (selected) tokens.accentColor else Color.Transparent)
+                                    .ironTonalControl(
+                                        tokens = tokens,
+                                        shape = RoundedCornerShape(8.dp),
+                                        baseColor = if (selected) tokens.accentColor else Color.Transparent,
+                                        isAccent = selected
+                                    )
                                     .clickable { onSelectLang(option) }
                                     .padding(horizontal = 10.dp, vertical = 5.dp),
                                 contentAlignment = Alignment.Center
@@ -325,7 +338,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Button(
+                IronPulseButton(
                     onClick = onSignInClick,
                     enabled = !authLoading,
                     shape = tokens.buttonShape,

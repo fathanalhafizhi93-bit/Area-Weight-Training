@@ -102,67 +102,17 @@ class PreferencesStore(context: Context) {
         val current = _state.value
         if (next == current.uiTheme) return
 
-        var nextAccent = current.accentColorHex
-        var nextTint = current.materialTintColorHex
-
-        if (next == UiTheme.UBUNTU_YARU && current.uiTheme != UiTheme.UBUNTU_YARU) {
-            prefs.edit()
-                .putString(KEY_PRE_YARU_ACCENT, current.accentColorHex)
-                .putString(KEY_PRE_YARU_TINT, current.materialTintColorHex ?: "__AUTO__")
-                .apply()
-            nextAccent = MaterialYouColorEngine.YARU_ORANGE_ACCENT
-            nextTint = null
-        } else if (current.uiTheme == UiTheme.UBUNTU_YARU && next != UiTheme.UBUNTU_YARU) {
-            val savedAccent = prefs.getString(KEY_PRE_YARU_ACCENT, null)
-            val savedTint = prefs.getString(KEY_PRE_YARU_TINT, null)
-            prefs.edit()
-                .remove(KEY_PRE_YARU_ACCENT)
-                .remove(KEY_PRE_YARU_TINT)
-                .apply()
-
-            if (current.accentColorHex.equals(MaterialYouColorEngine.YARU_ORANGE_ACCENT, ignoreCase = true)) {
-                nextAccent = MaterialYouColorEngine.normalizeHexColor(
-                    savedAccent,
-                    MaterialYouColorEngine.DEFAULT_ACCENT_COLOR
-                )
-            }
-            if (current.materialTintColorHex == null && savedTint != null) {
-                nextTint = if (savedTint == "__AUTO__") {
-                    null
-                } else {
-                    MaterialYouColorEngine.normalizeHexColor(
-                        savedTint,
-                        MaterialYouColorEngine.defaultTintForTheme(next)
-                    )
-                }
-            }
-        }
-
         prefs.edit()
             .putString(KEY_UI_THEME, next.wireValue)
-            .putString(KEY_ACCENT_COLOR, nextAccent)
-            .apply {
-                if (nextTint == null) remove(KEY_MATERIAL_TINT) else putString(KEY_MATERIAL_TINT, nextTint)
-            }
             .apply()
 
-        _state.value = current.copy(
-            uiTheme = next,
-            accentColorHex = nextAccent,
-            materialTintColorHex = nextTint
-        )
+        _state.value = current.copy(uiTheme = next)
     }
 
     fun resetThemeCustomization() {
         val current = _state.value
-        val nextAccent = if (current.uiTheme == UiTheme.UBUNTU_YARU) {
-            MaterialYouColorEngine.YARU_ORANGE_ACCENT
-        } else {
-            MaterialYouColorEngine.DEFAULT_ACCENT_COLOR
-        }
+        val nextAccent = MaterialYouColorEngine.DEFAULT_ACCENT_COLOR
         prefs.edit()
-            .remove(KEY_PRE_YARU_ACCENT)
-            .remove(KEY_PRE_YARU_TINT)
             .remove(KEY_MATERIAL_TINT)
             .putString(KEY_ACCENT_COLOR, nextAccent)
             .apply()
@@ -266,8 +216,6 @@ class PreferencesStore(context: Context) {
         private const val KEY_UI_THEME = "ui_theme"
         private const val KEY_ACCENT_COLOR = "accent_color"
         private const val KEY_MATERIAL_TINT = "material_tint"
-        private const val KEY_PRE_YARU_ACCENT = "pre_yaru_accent"
-        private const val KEY_PRE_YARU_TINT = "pre_yaru_tint"
         private const val KEY_HAPTICS = "haptics_enabled"
         private const val KEY_MASCOT_VOICE = "mascot_voice_enabled"
         private const val KEY_PERF_NO_ANIM = "perf_no_anim"

@@ -61,8 +61,11 @@ import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.OfficialProgramTemplate
 import com.fathan.ironpulse.model.SavedCustomSchedule
 import com.fathan.ironpulse.model.UiTheme
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 
 sealed interface SchedulePreviewTarget {
     data class Saved(val profile: SavedCustomSchedule) : SchedulePreviewTarget
@@ -127,13 +130,18 @@ fun ScheduleTopProgramStrip(
 
             Surface(
                 shape = tokens.buttonShape,
-                color = tokens.accentColor.copy(alpha = 0.16f),
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.42f)),
                 modifier = Modifier
                     .testTag("save_custom_schedule_button")
                     .heightIn(min = 48.dp)
                     .tactilePress(enabled = !applyingSchedule, disabledByPerf = noAnim)
-                    .clip(tokens.buttonShape)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = tokens.buttonShape,
+                        baseColor = tokens.accentColor.copy(alpha = 0.16f),
+                        isAccent = false
+                    )
                     .clickable(enabled = !applyingSchedule) { onOpenSaveDialog() }
             ) {
                 Row(
@@ -253,13 +261,18 @@ private fun ScheduleStripCard(
     val cardShape = if (tokens.isXMaterial) tokens.subtleCardShape else RoundedCornerShape(14.dp)
     Surface(
         shape = cardShape,
-        color = containerCol,
+        color = Color.Transparent,
         border = BorderStroke(if (isActive) 1.5.dp else 1.dp, borderCol),
         modifier = Modifier
             .width(172.dp)
             .testTag(testTagName)
             .tactilePress(enabled = enabled, pressedScale = 0.97f, disabledByPerf = noAnim)
-            .clip(cardShape)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = cardShape,
+                baseColor = containerCol,
+                isAccent = isActive
+            )
             .clickable(enabled = enabled) { onClick() }
     ) {
         Column(
@@ -271,13 +284,20 @@ private fun ScheduleStripCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val badgeBg = when {
+                    isActive -> tokens.accentColor
+                    isOfficial -> tokens.accentColor.copy(alpha = 0.14f)
+                    else -> tokens.phaseTokens.accent.copy(alpha = 0.16f)
+                }
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = when {
-                        isActive -> tokens.accentColor
-                        isOfficial -> tokens.accentColor.copy(alpha = 0.14f)
-                        else -> tokens.phaseTokens.accent.copy(alpha = 0.16f)
-                    }
+                    color = Color.Transparent,
+                    modifier = Modifier.ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = badgeBg,
+                        isAccent = isActive
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
@@ -419,7 +439,7 @@ fun SaveCustomScheduleDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedButton(
+                IronPulseOutlinedButton(
                     onClick = onDismiss,
                     shape = tokens.buttonShape,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -430,7 +450,7 @@ fun SaveCustomScheduleDialog(
                 ) {
                     Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
                 }
-                Button(
+                IronPulseButton(
                     onClick = {
                         val cleaned = nameInput.trim().ifEmpty {
                             lang.t("Jadwal Kustom", "Custom Schedule")
@@ -501,10 +521,15 @@ fun SaveCustomScheduleDialog(
                     suggestions.forEach { preset ->
                         Surface(
                             shape = RoundedCornerShape(999.dp),
-                            color = tokens.wellBg,
+                            color = Color.Transparent,
                             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                             modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(999.dp),
+                                    baseColor = tokens.wellBg,
+                                    isAccent = false
+                                )
                                 .clickable { nameInput = preset }
                         ) {
                             Text(
@@ -572,7 +597,7 @@ fun ScheduleProgramPreviewSheet(
         UiTheme.CARBON_FORGE -> CutCornerShape(topStart = 12.dp, topEnd = 12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 28.dp, topEnd = 12.dp)
+        UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         UiTheme.FRUTIGER_AERO, UiTheme.MATERIAL_YOU -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     }
     val sheetBg = when (tokens.uiTheme) {
@@ -580,11 +605,7 @@ fun ScheduleProgramPreviewSheet(
         UiTheme.UBUNTU_YARU -> Color(0xFF2B272D)
         UiTheme.CARBON_FORGE -> tokens.effectiveTintColor
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xFF14274E) else Color(0xFFF2FAFF)
-        UiTheme.XMATERIAL_YOU -> when (tokens.timePhase) {
-            com.fathan.ironpulse.model.DayTimePhase.MORNING -> Color(0xFF1D0F24)
-            com.fathan.ironpulse.model.DayTimePhase.AFTERNOON -> Color(0xFF0B2236)
-            com.fathan.ironpulse.model.DayTimePhase.NIGHT -> Color(0xFF14173B)
-        }
+        UiTheme.XMATERIAL_YOU -> Color(0xFF0D0E13)
         UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerHigh
     }
 
@@ -624,8 +645,14 @@ fun ScheduleProgramPreviewSheet(
             ) {
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = tokens.accentColor.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.36f))
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.36f)),
+                    modifier = Modifier.ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = tokens.accentColor.copy(alpha = 0.16f),
+                        isAccent = false
+                    )
                 ) {
                     Text(
                         text = when (target) {
@@ -645,12 +672,17 @@ fun ScheduleProgramPreviewSheet(
                         if (onRequestRename != null) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = tokens.wellBg,
+                                color = Color.Transparent,
                                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                                 modifier = Modifier
                                     .size(40.dp)
                                     .testTag("rename_custom_schedule_button")
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .ironTonalControl(
+                                        tokens = tokens,
+                                        shape = RoundedCornerShape(10.dp),
+                                        baseColor = tokens.wellBg,
+                                        isAccent = false
+                                    )
                                     .clickable(enabled = !applying) { onRequestRename(target.profile) }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -666,12 +698,17 @@ fun ScheduleProgramPreviewSheet(
                         if (onDeleteSaved != null) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFEF4444).copy(alpha = 0.12f),
+                                color = Color.Transparent,
                                 border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.32f)),
                                 modifier = Modifier
                                     .size(40.dp)
                                     .testTag("delete_custom_schedule_button")
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .ironTonalControl(
+                                        tokens = tokens,
+                                        shape = RoundedCornerShape(10.dp),
+                                        baseColor = Color(0xFFEF4444).copy(alpha = 0.14f),
+                                        isAccent = false
+                                    )
                                     .clickable(enabled = !applying) { onDeleteSaved(target.profile) }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -714,14 +751,22 @@ fun ScheduleProgramPreviewSheet(
                 DayKey.entries.forEach { day ->
                     val sched = previewMap[day]
                     val isGym = sched?.isGymDay == true
+                    val previewDayBg = if (isGym) tokens.wellBg else tokens.palette.surfaceContainerLow.copy(alpha = 0.65f)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isGym) tokens.wellBg else tokens.palette.surfaceContainerLow.copy(alpha = 0.65f),
+                        color = Color.Transparent,
                         border = BorderStroke(
                             1.dp,
                             if (isGym) tokens.surfaceBorderColor else tokens.surfaceBorderColor.copy(alpha = 0.5f)
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .ironTonalControl(
+                                tokens = tokens,
+                                shape = RoundedCornerShape(12.dp),
+                                baseColor = previewDayBg,
+                                isAccent = false
+                            )
                     ) {
                         Column(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -739,7 +784,13 @@ fun ScheduleProgramPreviewSheet(
                                 ) {
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = if (isGym) tokens.accentColor.copy(alpha = 0.16f) else tokens.wellBg
+                                        color = Color.Transparent,
+                                        modifier = Modifier.ironTonalControl(
+                                            tokens = tokens,
+                                            shape = RoundedCornerShape(6.dp),
+                                            baseColor = if (isGym) tokens.accentColor.copy(alpha = 0.16f) else tokens.wellBg,
+                                            isAccent = false
+                                        )
                                     ) {
                                         Text(
                                             text = day.shortLabel(lang),
@@ -795,8 +846,12 @@ fun ScheduleProgramPreviewSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(tokens.wellBg)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(12.dp),
+                        baseColor = tokens.wellBg,
+                        isAccent = false
+                    )
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -860,7 +915,7 @@ fun ScheduleProgramPreviewSheet(
             }
 
             // Apply CTA
-            Button(
+            IronPulseButton(
                 onClick = { onApply(preserveAlarms) },
                 enabled = !applying,
                 shape = tokens.buttonShape,

@@ -76,6 +76,7 @@ import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
@@ -86,10 +87,13 @@ import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseThemeTokens
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
@@ -396,36 +400,42 @@ fun TodayScreen(
             item(key = "start_workout_cta", contentType = "cta") {
                 val ctaRadius = (tokens.cardRadius * 0.78f).coerceAtLeast(10.dp)
                 val ctaShape = if (tokens.isXMaterial) {
-                    RoundedCornerShape(topStart = 24.dp, topEnd = 9.dp, bottomEnd = 24.dp, bottomStart = 9.dp)
+                    RoundedCornerShape(24.dp)
                 } else {
                     RoundedCornerShape(ctaRadius)
                 }
+                val isAero = tokens.uiTheme == UiTheme.FRUTIGER_AERO
                 Surface(
                     onClick = { onOpenWorkout(null) },
                     shape = ctaShape,
-                    color = tokens.accentColor,
+                    color = if (isAero) Color.Transparent else tokens.accentColor,
                     contentColor = tokens.onAccentColor,
+                    border = if (isAero) {
+                        BorderStroke(
+                            1.dp,
+                            if (tokens.isAeroNight) Color(0x99BAE6FD) else Color.White.copy(alpha = 0.80f)
+                        )
+                    } else null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("start_workout_cta")
                         .tactilePress(disabledByPerf = noAnim)
+                        .then(
+                            if (isAero) {
+                                Modifier.ironTonalControl(
+                                    tokens = tokens,
+                                    shape = ctaShape,
+                                    baseColor = tokens.accentColor,
+                                    isAccent = true
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(
-                                if (tokens.buttonHasGloss) {
-                                    Modifier.background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color.White.copy(alpha = 0.26f),
-                                            0.48f to Color.White.copy(alpha = 0.04f),
-                                            1.0f to Color.Black.copy(alpha = 0.12f)
-                                        )
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -538,7 +548,7 @@ fun TodayScreen(
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Button(
+                    IronPulseButton(
                         onClick = onOpenSchedule,
                         shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
@@ -585,7 +595,7 @@ fun TodayScreen(
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Button(
+                    IronPulseButton(
                         onClick = { onOpenExercisesForDay(state.todayDayKey) },
                         shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
@@ -718,8 +728,12 @@ fun TodayScreen(
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
-                                .clip(CircleShape)
-                                .background(if (allDone) Color(0x3316A34A) else tokens.subtleChipBg),
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = CircleShape,
+                                    baseColor = if (allDone) Color(0x3316A34A) else tokens.subtleChipBg,
+                                    isAccent = allDone
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             ThemedIcon(
@@ -975,10 +989,11 @@ private fun RestTimerHeroCard(
                         .weight(1f)
                         .height(38.dp)
                         .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-                        .clip(presetChipShape)
-                        .background(
-                            if (activePreset) tokens.accentColor.copy(alpha = 0.16f)
-                            else tokens.wellBg
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = presetChipShape,
+                            baseColor = if (activePreset) tokens.accentColor.copy(alpha = 0.20f) else tokens.wellBg,
+                            isAccent = activePreset
                         )
                         .border(
                             1.dp,
@@ -993,7 +1008,7 @@ private fun RestTimerHeroCard(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (activePreset) tokens.accentColor else tokens.palette.onSurfaceVariant
+                        color = if (activePreset) tokens.accentTextColor else tokens.palette.onSurfaceVariant
                     )
                 }
             }
@@ -1005,7 +1020,7 @@ private fun RestTimerHeroCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = { onAdjustRest(-15) },
                 shape = buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
@@ -1017,7 +1032,7 @@ private fun RestTimerHeroCard(
                 Text("-15$secUnit", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = tokens.palette.onSurface)
             }
 
-            Button(
+            IronPulseButton(
                 onClick = onToggleRestPauseOrStart,
                 shape = buttonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -1047,7 +1062,7 @@ private fun RestTimerHeroCard(
                 )
             }
 
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = { onAdjustRest(15) },
                 shape = buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
@@ -1062,11 +1077,23 @@ private fun RestTimerHeroCard(
             Surface(
                 onClick = onResetRest,
                 shape = buttonShape,
-                color = tokens.controlBg,
+                color = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) Color.Transparent else tokens.controlBg,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 modifier = Modifier
                     .size(44.dp)
                     .tactilePress(disabledByPerf = noAnim)
+                    .then(
+                        if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
+                            Modifier.ironTonalControl(
+                                tokens = tokens,
+                                shape = buttonShape,
+                                baseColor = tokens.controlBg,
+                                isAccent = false
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     ThemedIcon(

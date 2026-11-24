@@ -56,8 +56,10 @@ import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
+import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -194,8 +196,12 @@ fun HistoryScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(46.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(tokens.subtleChipBg)
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(12.dp),
+                                    baseColor = tokens.subtleChipBg,
+                                    isAccent = false
+                                )
                         )
                     }
                 }
@@ -354,8 +360,12 @@ fun HistoryScreen(
                                                 .weight(1f)
                                                 .aspectRatio(1f)
                                                 .tactilePress(pressedScale = 0.90f, disabledByPerf = noAnim)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .background(bg)
+                                                .ironTonalControl(
+                                                    tokens = tokens,
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    baseColor = bg,
+                                                    isAccent = isFull
+                                                )
                                                 .border(if (isSelected) 2.dp else 1.dp, border, RoundedCornerShape(10.dp))
                                                 .clickable { selectedDateKey = cell.dateKey },
                                             contentAlignment = Alignment.Center
@@ -445,10 +455,16 @@ fun HistoryScreen(
                             val full = selectedLog.completed || (totalSets > 0 && doneSets == totalSets)
                             Surface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = if (full) tokens.accentColor.copy(alpha = 0.16f) else tokens.infoColor.copy(alpha = 0.16f),
+                                color = Color.Transparent,
                                 border = BorderStroke(
                                     1.dp,
                                     if (full) tokens.accentColor.copy(alpha = 0.45f) else tokens.infoColor.copy(alpha = 0.45f)
+                                ),
+                                modifier = Modifier.ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(999.dp),
+                                    baseColor = if (full) tokens.accentColor.copy(alpha = 0.16f) else tokens.infoColor.copy(alpha = 0.16f),
+                                    isAccent = false
                                 )
                             ) {
                                 Text(
@@ -479,7 +495,7 @@ fun HistoryScreen(
                                 color = tokens.palette.onSurfaceVariant
                             )
                             if (selectedDateKey == state.todayDateKey) {
-                                Button(
+                                IronPulseButton(
                                     onClick = onStartTodayWorkout,
                                     shape = tokens.buttonShape,
                                     colors = ButtonDefaults.buttonColors(
@@ -583,10 +599,11 @@ fun HistoryScreen(
                                             }
                                             Box(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(
-                                                        if (s.completed) tokens.accentColor.copy(alpha = 0.14f)
-                                                        else tokens.wellBg
+                                                    .ironTonalControl(
+                                                        tokens = tokens,
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        baseColor = if (s.completed) tokens.accentColor.copy(alpha = 0.14f) else tokens.wellBg,
+                                                        isAccent = false
                                                     )
                                                     .border(
                                                         1.dp,
@@ -678,8 +695,12 @@ private fun SessionStatPill(
     val tokens = LocalIronPulseTokens.current
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(tokens.wellBg)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(10.dp),
+                baseColor = tokens.wellBg,
+                isAccent = false
+            )
             .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(10.dp))
             .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,

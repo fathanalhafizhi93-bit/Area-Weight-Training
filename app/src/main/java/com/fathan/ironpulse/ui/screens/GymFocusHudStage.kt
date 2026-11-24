@@ -80,8 +80,11 @@ import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
 import kotlinx.coroutines.flow.StateFlow
@@ -187,7 +190,7 @@ fun GymFocusHudStage(
                     onClick = onPrevExercise,
                     enabled = hasPrev,
                     shape = tokens.buttonShape,
-                    color = if (hasPrev) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                    color = Color.Transparent,
                     border = BorderStroke(
                         1.dp,
                         if (hasPrev) tokens.surfaceBorderColor else tokens.subtleBorderColor.copy(alpha = 0.5f)
@@ -195,6 +198,13 @@ fun GymFocusHudStage(
                     modifier = Modifier
                         .size(48.dp)
                         .tactilePress(enabled = hasPrev, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = tokens.buttonShape,
+                            baseColor = if (hasPrev) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                            isAccent = false,
+                            glossAlphaMultiplier = if (hasPrev) 1f else 0.45f
+                        )
                         .testTag("hud_prev_exercise")
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -235,7 +245,7 @@ fun GymFocusHudStage(
                     onClick = onNextExercise,
                     enabled = hasNext,
                     shape = tokens.buttonShape,
-                    color = if (hasNext) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                    color = Color.Transparent,
                     border = BorderStroke(
                         1.dp,
                         if (hasNext) tokens.surfaceBorderColor else tokens.subtleBorderColor.copy(alpha = 0.5f)
@@ -243,6 +253,13 @@ fun GymFocusHudStage(
                     modifier = Modifier
                         .size(48.dp)
                         .tactilePress(enabled = hasNext, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = tokens.buttonShape,
+                            baseColor = if (hasNext) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                            isAccent = false,
+                            glossAlphaMultiplier = if (hasNext) 1f else 0.45f
+                        )
                         .testTag("hud_next_exercise")
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -291,11 +308,17 @@ fun GymFocusHudStage(
                     Surface(
                         onClick = onToggleNotes,
                         shape = RoundedCornerShape(999.dp),
-                        color = tokens.controlBg,
+                        color = Color.Transparent,
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
                         modifier = Modifier
                             .heightIn(min = 34.dp)
                             .tactilePress(disabledByPerf = noAnim)
+                            .ironTonalControl(
+                                tokens = tokens,
+                                shape = RoundedCornerShape(999.dp),
+                                baseColor = tokens.controlBg,
+                                isAccent = false
+                            )
                             .testTag("hud_notes_toggle")
                     ) {
                         Row(
@@ -397,11 +420,17 @@ fun GymFocusHudStage(
                             }
                         },
                         shape = tokens.buttonShape,
-                        color = bgColor,
+                        color = Color.Transparent,
                         border = BorderStroke(1.5.dp, borderColor),
                         modifier = Modifier
                             .height(48.dp)
                             .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
+                            .ironTonalControl(
+                                tokens = tokens,
+                                shape = tokens.buttonShape,
+                                baseColor = bgColor,
+                                isAccent = isSelected
+                            )
                             .testTag("hud_set_pill_${s.setNumber}")
                     ) {
                         Row(
@@ -433,11 +462,18 @@ fun GymFocusHudStage(
                 onClick = onRemoveSet,
                 enabled = entry.sets.size > 1,
                 shape = tokens.buttonShape,
-                color = if (entry.sets.size > 1) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                 modifier = Modifier
                     .size(48.dp)
                     .tactilePress(enabled = entry.sets.size > 1, disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = tokens.buttonShape,
+                        baseColor = if (entry.sets.size > 1) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                        isAccent = false,
+                        glossAlphaMultiplier = if (entry.sets.size > 1) 1f else 0.45f
+                    )
                     .testTag("hud_remove_set")
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -454,11 +490,18 @@ fun GymFocusHudStage(
                 onClick = onAddSet,
                 enabled = entry.sets.size < 12,
                 shape = tokens.buttonShape,
-                color = if (entry.sets.size < 12) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.5f)),
                 modifier = Modifier
                     .size(48.dp)
                     .tactilePress(enabled = entry.sets.size < 12, disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = tokens.buttonShape,
+                        baseColor = if (entry.sets.size < 12) tokens.controlBg else tokens.wellBg.copy(alpha = 0.5f),
+                        isAccent = false,
+                        glossAlphaMultiplier = if (entry.sets.size < 12) 1f else 0.45f
+                    )
                     .testTag("hud_add_set")
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -510,10 +553,16 @@ fun GymFocusHudStage(
 
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = if (activeSet.completed) Color(0x2616A34A) else tokens.accentColor.copy(alpha = 0.14f),
+                    color = Color.Transparent,
                     border = BorderStroke(
                         1.dp,
                         if (activeSet.completed) Color(0x6616A34A) else tokens.accentColor.copy(alpha = 0.4f)
+                    ),
+                    modifier = Modifier.ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = if (activeSet.completed) Color(0x2616A34A) else tokens.accentColor.copy(alpha = 0.14f),
+                        isAccent = false
                     )
                 ) {
                     Text(
@@ -671,9 +720,16 @@ private fun HudMetaChip(text: String) {
     val tokens = LocalIronPulseTokens.current
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = tokens.wellBg,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, tokens.subtleBorderColor),
-        modifier = Modifier.heightIn(min = 34.dp)
+        modifier = Modifier
+            .heightIn(min = 34.dp)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(999.dp),
+                baseColor = tokens.wellBg,
+                isAccent = false
+            )
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -767,8 +823,14 @@ private fun HudRestTimerRingCard(
 
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = ringColor.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, ringColor.copy(alpha = 0.45f))
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, ringColor.copy(alpha = 0.45f)),
+                    modifier = Modifier.ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = ringColor.copy(alpha = 0.16f),
+                        isAccent = false
+                    )
                 ) {
                     Text(
                         text = when {
@@ -834,12 +896,18 @@ private fun HudRestTimerRingCard(
                 Surface(
                     onClick = { onAdjustRest(-15) },
                     shape = tokens.buttonShape,
-                    color = tokens.controlBg,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp)
                         .tactilePress(disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = tokens.buttonShape,
+                            baseColor = tokens.controlBg,
+                            isAccent = false
+                        )
                         .testTag("hud_rest_minus_15")
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -853,7 +921,7 @@ private fun HudRestTimerRingCard(
                     }
                 }
 
-                Button(
+                IronPulseButton(
                     onClick = onToggleRestPause,
                     shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
@@ -884,12 +952,18 @@ private fun HudRestTimerRingCard(
                 Surface(
                     onClick = { onAdjustRest(15) },
                     shape = tokens.buttonShape,
-                    color = tokens.controlBg,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp)
                         .tactilePress(disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = tokens.buttonShape,
+                            baseColor = tokens.controlBg,
+                            isAccent = false
+                        )
                         .testTag("hud_rest_plus_15")
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -904,7 +978,7 @@ private fun HudRestTimerRingCard(
                 }
             }
 
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onDismissRest,
                 shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
@@ -970,7 +1044,7 @@ private fun HudRestTimerRingCard(
                     Surface(
                         onClick = { onStartRest(secs) },
                         shape = tokens.buttonShape,
-                        color = if (isRecommended) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
+                        color = Color.Transparent,
                         border = BorderStroke(
                             1.dp,
                             if (isRecommended) tokens.accentColor.copy(alpha = 0.5f) else tokens.surfaceBorderColor
@@ -978,6 +1052,12 @@ private fun HudRestTimerRingCard(
                         modifier = Modifier
                             .height(48.dp)
                             .tactilePress(disabledByPerf = noAnim)
+                            .ironTonalControl(
+                                tokens = tokens,
+                                shape = tokens.buttonShape,
+                                baseColor = if (isRecommended) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
+                                isAccent = isRecommended
+                            )
                             .testTag("hud_rest_preset_$secs")
                     ) {
                         Box(
@@ -1022,8 +1102,12 @@ private fun HudGiantStepper(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(tokens.wellBg)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(16.dp),
+                baseColor = tokens.wellBg,
+                isAccent = false
+            )
             .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(16.dp))
             .padding(12.dp)
             .testTag(cardTag),
@@ -1117,12 +1201,18 @@ private fun HudGiantStepper(
                     onDecrement()
                 },
                 shape = tokens.buttonShape,
-                color = tokens.controlBg,
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp)
                     .tactilePress(pressedScale = 0.92f, disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = tokens.buttonShape,
+                        baseColor = tokens.controlBg,
+                        isAccent = false
+                    )
                     .testTag(decTag)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -1142,12 +1232,18 @@ private fun HudGiantStepper(
                     onIncrement()
                 },
                 shape = tokens.buttonShape,
-                color = tokens.accentColor.copy(alpha = 0.18f),
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.45f)),
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp)
                     .tactilePress(pressedScale = 0.92f, disabledByPerf = noAnim)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = tokens.buttonShape,
+                        baseColor = tokens.accentColor.copy(alpha = 0.18f),
+                        isAccent = false
+                    )
                     .testTag(incTag)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -1199,8 +1295,12 @@ private fun HudExerciseTimerStage(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (timerRunning) Color(0xB30C1924) else tokens.wellBg)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(16.dp),
+                baseColor = if (timerRunning) Color(0xB30C1924) else tokens.wellBg,
+                isAccent = false
+            )
             .border(
                 1.dp,
                 if (timerRunning) Color(0x8C38BDF8) else tokens.subtleBorderColor,
@@ -1213,8 +1313,12 @@ private fun HudExerciseTimerStage(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(999.dp))
-                .background(tokens.controlBg)
+                .ironTonalControl(
+                    tokens = tokens,
+                    shape = RoundedCornerShape(999.dp),
+                    baseColor = tokens.controlBg,
+                    isAccent = false
+                )
                 .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(999.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1229,8 +1333,18 @@ private fun HudExerciseTimerStage(
                         .weight(1f)
                         .heightIn(min = 40.dp)
                         .tactilePress(pressedScale = 0.96f, disabledByPerf = noAnim)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(if (active) Color(0xFF38BDF8) else Color.Transparent)
+                        .then(
+                            if (active) {
+                                Modifier.ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(999.dp),
+                                    baseColor = Color(0xFF38BDF8),
+                                    isAccent = true
+                                )
+                            } else {
+                                Modifier.clip(RoundedCornerShape(999.dp))
+                            }
+                        )
                         .clickable { onChangeTimerDirection(dir) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1277,7 +1391,7 @@ private fun HudExerciseTimerStage(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(
+            IronPulseButton(
                 onClick = { onToggleExerciseTimer(activeSet.setNumber) },
                 shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -1307,7 +1421,7 @@ private fun HudExerciseTimerStage(
                 )
             }
 
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onResetExerciseTimer,
                 shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
@@ -1329,7 +1443,7 @@ private fun HudExerciseTimerStage(
         }
 
         if (elapsedSeconds > 0 || timerRunning) {
-            Button(
+            IronPulseButton(
                 onClick = onSaveExerciseTimer,
                 shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -1375,11 +1489,7 @@ private fun HudCompleteSetButton(
     Surface(
         onClick = onClick,
         shape = tokens.buttonShape,
-        color = when {
-            completed -> Color(0x2616A34A)
-            isBlockedByCooldown -> tokens.wellBg
-            else -> tokens.accentColor
-        },
+        color = Color.Transparent,
         border = BorderStroke(
             1.5.dp,
             when {
@@ -1392,6 +1502,16 @@ private fun HudCompleteSetButton(
             .fillMaxWidth()
             .height(56.dp)
             .tactilePress(pressedScale = 0.965f, disabledByPerf = noAnim)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = tokens.buttonShape,
+                baseColor = when {
+                    completed -> Color(0x2616A34A)
+                    isBlockedByCooldown -> tokens.wellBg
+                    else -> tokens.accentColor
+                },
+                isAccent = !completed && !isBlockedByCooldown
+            )
             .testTag("hud_complete_set_button")
     ) {
         Row(

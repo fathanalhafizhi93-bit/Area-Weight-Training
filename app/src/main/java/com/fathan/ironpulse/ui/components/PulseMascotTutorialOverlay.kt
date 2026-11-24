@@ -82,8 +82,11 @@ import androidx.compose.ui.unit.sp
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.TimePhasePose
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
@@ -626,11 +629,7 @@ fun PulseMascotTutorialOverlay(
                                         onPlayChirp("ready")
                                     },
                                     shape = RoundedCornerShape(999.dp),
-                                    color = if (selected) {
-                                        tokens.accentColor.copy(alpha = 0.22f)
-                                    } else {
-                                        tokens.palette.surfaceContainer.copy(alpha = 0.92f)
-                                    },
+                                    color = Color.Transparent,
                                     border = BorderStroke(
                                         width = if (selected) 1.5.dp else 1.dp,
                                         color = if (selected) tokens.accentColor else tokens.surfaceBorderColor
@@ -638,6 +637,16 @@ fun PulseMascotTutorialOverlay(
                                     modifier = Modifier
                                         .weight(1f)
                                         .heightIn(min = 48.dp)
+                                        .ironTonalControl(
+                                            tokens = tokens,
+                                            shape = RoundedCornerShape(999.dp),
+                                            baseColor = if (selected) {
+                                                tokens.accentColor.copy(alpha = 0.22f)
+                                            } else {
+                                                tokens.palette.surfaceContainer.copy(alpha = 0.92f)
+                                            },
+                                            isAccent = selected
+                                        )
                                         .testTag(tag)
                                 ) {
                                     Row(
@@ -828,8 +837,12 @@ private fun PulseSpeechBubble(
                 modifier = Modifier
                     .weight(1f, fill = tailSide == BubbleTailSide.LEFT)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(bubbleFill)
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(18.dp),
+                        baseColor = bubbleFill,
+                        isAccent = false
+                    )
                     .border(1.2.dp, bubbleBorder, RoundedCornerShape(18.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -921,9 +934,16 @@ private fun TapScreenContinuePill(
     val tokens = LocalIronPulseTokens.current
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = tokens.accentColor.copy(alpha = 0.16f),
+        color = Color.Transparent,
         border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.45f)),
-        modifier = modifier.graphicsLayer { this.alpha = alpha }
+        modifier = modifier
+            .graphicsLayer { this.alpha = alpha }
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(999.dp),
+                baseColor = tokens.accentColor.copy(alpha = 0.16f),
+                isAccent = false
+            )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
@@ -956,10 +976,16 @@ private fun SkipTutorialPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = tokens.palette.surfaceContainer.copy(alpha = 0.90f),
+        color = Color.Transparent,
         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
         modifier = modifier
             .heightIn(min = 48.dp)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(999.dp),
+                baseColor = tokens.palette.surfaceContainer.copy(alpha = 0.90f),
+                isAccent = false
+            )
             .testTag("pulse_tutorial_skip_button")
     ) {
         Box(
@@ -1045,7 +1071,7 @@ private fun PulseSkipBubbleCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onConfirmSkip,
                 shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -1060,7 +1086,7 @@ private fun PulseSkipBubbleCard(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Button(
+            IronPulseButton(
                 onClick = onResume,
                 shape = tokens.buttonShape,
                 colors = ButtonDefaults.buttonColors(

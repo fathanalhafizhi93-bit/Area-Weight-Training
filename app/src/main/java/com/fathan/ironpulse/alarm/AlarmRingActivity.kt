@@ -62,8 +62,11 @@ import com.fathan.ironpulse.audio.NativeAudioEngine
 import com.fathan.ironpulse.data.PreferencesStore
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 
 class AlarmRingActivity : ComponentActivity() {
 
@@ -204,8 +207,14 @@ class AlarmRingActivity : ComponentActivity() {
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Surface(
                                     shape = RoundedCornerShape(999.dp),
-                                    color = tokens.palette.surfaceContainerHigh,
-                                    border = BorderStroke(1.dp, tokens.surfaceBorderColor)
+                                    color = Color.Transparent,
+                                    border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                                    modifier = Modifier.ironTonalControl(
+                                        tokens = tokens,
+                                        shape = RoundedCornerShape(999.dp),
+                                        baseColor = tokens.controlBg,
+                                        isAccent = false
+                                    )
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
@@ -231,7 +240,7 @@ class AlarmRingActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Button(
+                                IronPulseButton(
                                     onClick = {
                                         stopAlarmEffects()
                                         val launch = Intent(this@AlarmRingActivity, MainActivity::class.java).apply {
@@ -262,7 +271,7 @@ class AlarmRingActivity : ComponentActivity() {
                                     )
                                 }
 
-                                OutlinedButton(
+                                IronPulseOutlinedButton(
                                     onClick = {
                                         stopAlarmEffects()
                                         AlarmScheduler.scheduleSnooze(

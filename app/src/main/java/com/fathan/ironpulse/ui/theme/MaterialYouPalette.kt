@@ -78,7 +78,7 @@ object MaterialYouColorEngine {
     fun defaultTintForTheme(theme: UiTheme): String = when (theme) {
         UiTheme.MATERIAL_YOU -> "#1C1B22"
         UiTheme.CARBON_FORGE -> "#12151B"
-        UiTheme.UBUNTU_YARU -> "#2C2C2C"
+        UiTheme.UBUNTU_YARU -> "#2E182A"
         UiTheme.AMOLED_STEALTH -> "#07080B"
         UiTheme.FRUTIGER_AERO -> "#DDF5FF"
         UiTheme.XMATERIAL_YOU -> "#0E0F13"

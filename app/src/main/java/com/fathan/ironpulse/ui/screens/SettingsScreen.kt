@@ -92,11 +92,14 @@ import com.fathan.ironpulse.ui.components.resolvePreviewAccentForTheme
 import com.fathan.ironpulse.ui.components.fluidModalEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.theme.resolveThemeFontPack
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
@@ -569,8 +572,12 @@ private fun SettingsCategoryRow(
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .clip(tokens.buttonShape)
-                .background(tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.12f else 0.14f))
+                .ironTonalControl(
+                    tokens = tokens,
+                    shape = tokens.buttonShape,
+                    baseColor = tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.14f),
+                    isAccent = false
+                )
                 .border(1.dp, tokens.accentColor.copy(alpha = 0.28f), tokens.buttonShape),
             contentAlignment = Alignment.Center
         ) {
@@ -639,12 +646,18 @@ private fun SettingsPinnedHeader(
         Surface(
             onClick = onBack,
             shape = tokens.buttonShape,
-            color = tokens.controlBg,
+            color = Color.Transparent,
             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
             modifier = Modifier
                 .defaultMinSize(minHeight = 40.dp)
                 .testTag(backButtonTag)
                 .tactilePress(disabledByPerf = noAnim)
+                .ironTonalControl(
+                    tokens = tokens,
+                    shape = tokens.buttonShape,
+                    baseColor = tokens.controlBg,
+                    isAccent = false
+                )
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -678,8 +691,14 @@ private fun SettingsPinnedHeader(
 
         Surface(
             shape = RoundedCornerShape(999.dp),
-            color = tokens.accentColor.copy(alpha = 0.13f),
-            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.26f))
+            color = Color.Transparent,
+            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.26f)),
+            modifier = Modifier.ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(999.dp),
+                baseColor = tokens.accentColor.copy(alpha = 0.14f),
+                isAccent = false
+            )
         ) {
             Text(
                 text = if (activeCategory == null) tokens.fontPack.osBadgeLabel else lang.t("Pengaturan", "Settings"),
@@ -755,12 +774,19 @@ private fun ProfileHeroCard(
                 )
             }
 
+            val syncBadgeShape = RoundedCornerShape(999.dp)
             Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = if (state.isOffline) Color(0x26FBBF24) else Color(0x1E34D399),
+                shape = syncBadgeShape,
+                color = Color.Transparent,
                 border = BorderStroke(
                     1.dp,
                     if (state.isOffline) Color(0x55FBBF24) else Color(0x4D34D399)
+                ),
+                modifier = Modifier.ironTonalControl(
+                    tokens = tokens,
+                    shape = syncBadgeShape,
+                    baseColor = if (state.isOffline) Color(0x26FBBF24) else Color(0x1E34D399),
+                    isAccent = false
                 )
             ) {
                 Row(
@@ -851,7 +877,7 @@ private fun ProfileDisplayNameCard(
             ),
             modifier = Modifier.fillMaxWidth()
         )
-        Button(
+        IronPulseButton(
             onClick = {
                 val cleaned = nameDraft.trim()
                 if (cleaned.isNotEmpty()) {
@@ -896,7 +922,7 @@ private fun ProfileSignOutCard(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        OutlinedButton(
+        IronPulseOutlinedButton(
             onClick = onRequestSignOut,
             shape = tokens.buttonShape,
             border = BorderStroke(1.dp, tokens.dangerColor.copy(alpha = 0.55f)),
@@ -926,6 +952,9 @@ private fun ThemesGridCard(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
 
+    val standardThemes = remember { UiTheme.entries.filter { !it.isExclusive } }
+    val exclusiveThemes = remember { UiTheme.entries.filter { it.isExclusive } }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -950,8 +979,8 @@ private fun ThemesGridCard(
                 )
                 Text(
                     text = lang.t(
-                        "Tema ringan & cepat tanpa efek berat.",
-                        "Lightweight, fast themes built for smooth performance."
+                        "Pilih gaya visual antarmuka yang paling cocok untukmu.",
+                        "Choose the visual style that fits your training space."
                     ),
                     fontSize = 11.5.sp,
                     color = tokens.palette.onSurfaceVariant
@@ -964,8 +993,47 @@ private fun ThemesGridCard(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            UiTheme.entries.forEach { theme ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("themes_group_standard"),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = lang.t("Tema Standar", "Standard Themes"),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp,
+                color = tokens.mutedTextColor
+            )
+            standardThemes.forEach { theme ->
+                ThemePreviewCard(
+                    theme = theme,
+                    selected = selectedTheme == theme,
+                    lang = lang,
+                    accentColor = tokens.accentColor,
+                    onSelect = { onSelectTheme(theme) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        HorizontalDivider(color = tokens.subtleBorderColor)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("themes_group_exclusive"),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = lang.t("Tema Eksklusif", "Exclusive Themes"),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp,
+                color = tokens.accentTextColor
+            )
+            exclusiveThemes.forEach { theme ->
                 ThemePreviewCard(
                     theme = theme,
                     selected = selectedTheme == theme,
@@ -1033,9 +1101,16 @@ fun AccentAndTintSettingsCard(
             )
             Surface(
                 shape = RoundedCornerShape(999.dp),
-                color = tokens.accentColor.copy(alpha = 0.14f),
+                color = Color.Transparent,
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.35f)),
-                modifier = Modifier.testTag("accent_active_visual_badge")
+                modifier = Modifier
+                    .testTag("accent_active_visual_badge")
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = tokens.accentColor.copy(alpha = 0.16f),
+                        isAccent = false
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
@@ -1060,13 +1135,14 @@ fun AccentAndTintSettingsCard(
 
         if (tokens.accentLocked) {
             val isXMaterialLocked = tokens.uiTheme == UiTheme.XMATERIAL_YOU
-            val lockBadgeShape = if (isXMaterialLocked) {
-                RoundedCornerShape(topStart = 12.dp, topEnd = 4.dp, bottomEnd = 12.dp, bottomStart = 4.dp)
-            } else {
-                CircleShape
+            val isYaruLocked = tokens.uiTheme == UiTheme.UBUNTU_YARU
+            val lockBadgeShape = when {
+                isXMaterialLocked -> CircleShape
+                isYaruLocked -> RoundedCornerShape(10.dp)
+                else -> CircleShape
             }
-            val lockBadgeBrush = if (isXMaterialLocked) {
-                when (tokens.timePhase) {
+            val lockBadgeBrush = when {
+                isXMaterialLocked -> when (tokens.timePhase) {
                     DayTimePhase.MORNING -> Brush.linearGradient(
                         listOf(Color(0xFFDFBE84), Color(0xFFB39055))
                     )
@@ -1077,40 +1153,61 @@ fun AccentAndTintSettingsCard(
                         listOf(Color(0xFFB0A4E3), Color(0xFF7B6FB3))
                     )
                 }
-            } else {
-                Brush.verticalGradient(
+                isYaruLocked -> Brush.linearGradient(
+                    listOf(Color(0xFFE95420), Color(0xFF77216F))
+                )
+                else -> Brush.verticalGradient(
                     0.0f to Color(0xFF66DAFF),
                     0.5f to Color(0xFF0099E5),
                     1.0f to Color(0xFF006FB8)
                 )
             }
-            val lockedTitle = if (isXMaterialLocked) {
-                lang.t("Palet Obsidian XMaterial You Terkunci", "XMaterial You Obsidian Palette Locked")
-            } else {
-                lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked")
+            val lockedTitle = when {
+                isXMaterialLocked -> lang.t("Palet Obsidian XMaterial You Terkunci", "XMaterial You Obsidian Palette Locked")
+                isYaruLocked -> lang.t("Jingga Yaru & Aubergine Terkunci", "Yaru Orange & Aubergine Locked")
+                else -> lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked")
             }
-            val lockedDesc = if (isXMaterialLocked) {
-                lang.t(
+            val lockedDesc = when {
+                isXMaterialLocked -> lang.t(
                     "XMaterial You memadukan obsidian gelap yang tenang dengan aksen logam fase waktu (Fajar Emas, Siang Platinum, Malam Moonstone). Warna kustommu tetap aman untuk tema lain.",
                     "XMaterial You pairs calm dark obsidian surfaces with refined phase-metal accents (Obsidian Dawn, Obsidian Day, Obsidian Night). Your custom color stays saved for other themes."
                 )
-            } else {
-                lang.t(
+                isYaruLocked -> lang.t(
+                    "Ubuntu Yaru mengunci aksen jingga Yaru dan permukaan aubergine matte agar karakter visualnya tetap utuh. Warna kustommu tetap aman untuk tema standar.",
+                    "Ubuntu Yaru locks Yaru orange and warm aubergine matte surfaces to preserve its signature visual character. Your custom color stays saved for standard themes."
+                )
+                else -> lang.t(
                     "Tema Frutiger Aero mengunci warna aksen biru langit khas Y2K agar nuansa kaca glossy tetap serasi. Pilihan warna kustommu tetap aman untuk tema lainnya.",
                     "Frutiger Aero locks its signature Y2K sky-blue accent to keep the glossy glass look cohesive. Your custom color stays saved for other themes."
                 )
             }
 
+            val lockedBannerShape = when {
+                isXMaterialLocked -> tokens.subtleCardShape
+                isYaruLocked -> RoundedCornerShape(12.dp)
+                else -> RoundedCornerShape(14.dp)
+            }
+            val lockedBannerBg = when {
+                isXMaterialLocked -> Color(0xFF101218)
+                isYaruLocked -> Color(0xFF2B2029)
+                else -> tokens.accentColor.copy(alpha = 0.14f)
+            }
             Surface(
-                shape = if (isXMaterialLocked) tokens.subtleCardShape else RoundedCornerShape(14.dp),
-                color = if (isXMaterialLocked) Color(0xFF101218) else tokens.accentColor.copy(alpha = 0.12f),
+                shape = lockedBannerShape,
+                color = Color.Transparent,
                 border = BorderStroke(
-                    if (isXMaterialLocked) 0.95.dp else 1.dp,
-                    tokens.accentColor.copy(alpha = if (isXMaterialLocked) 0.42f else 0.42f)
+                    if (isXMaterialLocked) 0.9.dp else 1.dp,
+                    tokens.accentColor.copy(alpha = 0.42f)
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("accent_locked_banner")
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = lockedBannerShape,
+                        baseColor = lockedBannerBg,
+                        isAccent = false
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -1124,7 +1221,7 @@ fun AccentAndTintSettingsCard(
                             .background(lockBadgeBrush)
                             .border(
                                 1.dp,
-                                Color.White.copy(alpha = if (isXMaterialLocked) 0.35f else 0.80f),
+                                Color.White.copy(alpha = if (isXMaterialLocked || isYaruLocked) 0.35f else 0.80f),
                                 lockBadgeShape
                             ),
                         contentAlignment = Alignment.Center
@@ -1157,13 +1254,20 @@ fun AccentAndTintSettingsCard(
             }
 
             if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
+                val stripShape = RoundedCornerShape(14.dp)
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = tokens.wellBg,
+                    shape = stripShape,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, tokens.subtleBorderColor),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("aero_phase_preview_strip")
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = stripShape,
+                            baseColor = tokens.wellBg,
+                            isAccent = false
+                        )
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
@@ -1192,8 +1296,14 @@ fun AccentAndTintSettingsCard(
                             }
                             Surface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = if (tokens.isAeroNight) Color(0x3338BDF8) else tokens.accentColor.copy(alpha = 0.14f),
-                                border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.45f))
+                                color = Color.Transparent,
+                                border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.45f)),
+                                modifier = Modifier.ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(999.dp),
+                                    baseColor = if (tokens.isAeroNight) Color(0x3338BDF8) else tokens.accentColor.copy(alpha = 0.16f),
+                                    isAccent = false
+                                )
                             ) {
                                 Text(
                                     text = if (tokens.isAeroNight) {
@@ -1225,10 +1335,11 @@ fun AccentAndTintSettingsCard(
                                     DayTimeMode.NIGHT -> selectedDayTimeMode == DayTimeMode.NIGHT
                                     else -> false
                                 }
+                                val pillShape = RoundedCornerShape(999.dp)
                                 Surface(
                                     onClick = { onSelectDayTimeMode?.invoke(mode) },
-                                    shape = RoundedCornerShape(999.dp),
-                                    color = if (isActive) tokens.accentColor else tokens.controlBg,
+                                    shape = pillShape,
+                                    color = Color.Transparent,
                                     border = BorderStroke(
                                         1.dp,
                                         if (isActive) {
@@ -1242,6 +1353,12 @@ fun AccentAndTintSettingsCard(
                                         .height(38.dp)
                                         .testTag(tag)
                                         .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                                        .ironTonalControl(
+                                            tokens = tokens,
+                                            shape = pillShape,
+                                            baseColor = if (isActive) tokens.accentColor else tokens.controlBg,
+                                            isAccent = isActive
+                                        )
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(
@@ -1292,7 +1409,7 @@ fun AccentAndTintSettingsCard(
                                 )
                             }
                             Surface(
-                                shape = RoundedCornerShape(topStart = 10.dp, topEnd = 4.dp, bottomEnd = 10.dp, bottomStart = 4.dp),
+                                shape = RoundedCornerShape(999.dp),
                                 color = tokens.accentColor.copy(alpha = 0.14f),
                                 border = BorderStroke(0.9.dp, tokens.accentTextColor.copy(alpha = 0.45f))
                             ) {
@@ -1542,14 +1659,22 @@ private fun TodayPhaseMoodCard(
                 Triple(DayTimeMode.NIGHT, lang.t("Malam", "Night"), nightDot)
             ).forEach { (mode, label, dot) ->
                 val active = selectedMode == mode
+                val moodShape = RoundedCornerShape(12.dp)
+                val moodBg = if (active) dot.copy(alpha = if (tokens.isLightTheme) 0.16f else 0.16f) else tokens.palette.surfaceContainerLow
                 Surface(
                     onClick = { onSelectMode(mode) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (active) dot.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f) else tokens.palette.surfaceContainerLow,
+                    shape = moodShape,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, if (active) dot else tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
                         .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = moodShape,
+                            baseColor = moodBg,
+                            isAccent = active
+                        )
                 ) {
                     Column(
                         modifier = Modifier.padding(vertical = 10.dp),
@@ -1614,8 +1739,14 @@ private fun PerformanceSettingsCard(
             if (activePreset == null) {
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = tokens.subtleChipBg,
-                    border = BorderStroke(1.dp, tokens.subtleBorderColor)
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, tokens.subtleBorderColor),
+                    modifier = Modifier.ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = tokens.subtleChipBg,
+                        isAccent = false
+                    )
                 ) {
                     Text(
                         text = lang.t("Kustom", "Custom"),
@@ -1641,7 +1772,7 @@ private fun PerformanceSettingsCard(
                 Surface(
                     onClick = { onApplyPreset(preset) },
                     shape = tokens.buttonShape,
-                    color = if (isSelected) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
+                    color = Color.Transparent,
                     border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
                         color = if (isSelected) tokens.accentColor else tokens.surfaceBorderColor
@@ -1649,6 +1780,12 @@ private fun PerformanceSettingsCard(
                     modifier = Modifier
                         .weight(1f)
                         .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = tokens.buttonShape,
+                            baseColor = if (isSelected) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                            isAccent = isSelected
+                        )
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
@@ -1726,18 +1863,19 @@ private fun ThemePreviewCard(
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
         UiTheme.FRUTIGER_AERO -> RoundedCornerShape(18.dp)
-        UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 20.dp, topEnd = 6.dp, bottomEnd = 20.dp, bottomStart = 6.dp)
+        UiTheme.XMATERIAL_YOU -> RoundedCornerShape(28.dp)
         UiTheme.MATERIAL_YOU -> RoundedCornerShape(18.dp)
     }
 
+    val outerBaseColor = if (selected) {
+        readableAccent.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f)
+    } else {
+        tokens.controlBg
+    }
     Surface(
         onClick = onSelect,
         shape = cardShape,
-        color = if (selected) {
-            readableAccent.copy(alpha = if (tokens.isLightTheme) 0.10f else 0.16f)
-        } else {
-            tokens.controlBg
-        },
+        color = Color.Transparent,
         border = BorderStroke(
             width = if (selected) 1.5.dp else 1.dp,
             color = if (selected) readableAccent else tokens.surfaceBorderColor
@@ -1745,6 +1883,12 @@ private fun ThemePreviewCard(
         modifier = modifier
             .testTag("theme_card_${theme.wireValue}")
             .tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = cardShape,
+                baseColor = outerBaseColor,
+                isAccent = selected
+            )
     ) {
         Row(
             modifier = Modifier
@@ -1759,7 +1903,7 @@ private fun ThemePreviewCard(
                 UiTheme.UBUNTU_YARU -> RoundedCornerShape(8.dp)
                 UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
                 UiTheme.FRUTIGER_AERO -> RoundedCornerShape(14.dp)
-                UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 14.dp, topEnd = 4.dp, bottomEnd = 14.dp, bottomStart = 4.dp)
+                UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
             }
             val xMaterialBorderBrush = remember(tokens.timePhase) {
                 val metal = when (tokens.timePhase) {
@@ -1767,10 +1911,10 @@ private fun ThemePreviewCard(
                     DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2)
                     DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
                 }
-                Brush.linearGradient(
-                    0.0f to metal.copy(alpha = 0.68f),
-                    0.45f to Color.White.copy(alpha = 0.18f),
-                    1.0f to metal.copy(alpha = 0.34f)
+                Brush.verticalGradient(
+                    0.0f to metal.copy(alpha = 0.44f),
+                    0.5f to Color.White.copy(alpha = 0.12f),
+                    1.0f to Color(0xFF23252F)
                 )
             }
             Column(
@@ -1835,10 +1979,10 @@ private fun ThemePreviewCard(
                                     DayTimePhase.AFTERNOON -> Color(0xFF8CC5C2)
                                     DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
                                 }
-                                Brush.radialGradient(
-                                    colors = listOf(phaseMetal.copy(alpha = 0.18f), Color.Transparent),
-                                    center = Offset(size.width * 0.90f, size.height * 0.18f),
-                                    radius = (size.width * 0.78f).coerceAtLeast(1f)
+                                Brush.verticalGradient(
+                                    0.0f to phaseMetal.copy(alpha = 0.08f),
+                                    0.45f to Color.Transparent,
+                                    1.0f to Color(0xFF06070A)
                                 )
                             }
                         }
@@ -1855,11 +1999,22 @@ private fun ThemePreviewCard(
                                 close()
                             }
                         } else null
+                        val aeroGlossDome = if (isAeroPreview) {
+                            Path().apply {
+                                moveTo(0f, 0f)
+                                lineTo(size.width, 0f)
+                                lineTo(size.width, size.height * 0.42f)
+                                cubicTo(
+                                    size.width * 0.66f, size.height * 0.56f,
+                                    size.width * 0.34f, size.height * 0.36f,
+                                    0f, size.height * 0.50f
+                                )
+                                close()
+                            }
+                        } else null
                         val xMatSheen = if (isXMaterialPreview) {
-                            Brush.linearGradient(
-                                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.06f), Color.Transparent),
-                                start = Offset(0f, 0f),
-                                end = Offset(size.width, size.height)
+                            Brush.verticalGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.045f), Color.Transparent)
                             )
                         } else null
                         onDrawBehind {
@@ -1874,6 +2029,18 @@ private fun ThemePreviewCard(
                                             listOf(Color(0x662DD4BF), Color(0x800D9488))
                                         } else {
                                             listOf(Color(0x7039D353), Color(0x880EA5A4))
+                                        }
+                                    )
+                                )
+                            }
+                            if (aeroGlossDome != null) {
+                                drawPath(
+                                    path = aeroGlossDome,
+                                    brush = Brush.verticalGradient(
+                                        if (isAeroNightPreview) {
+                                            listOf(Color(0x4DE0F4FF), Color(0x14BAE6FD))
+                                        } else {
+                                            listOf(Color(0x8CFFFFFF), Color(0x28FFFFFF))
                                         }
                                     )
                                 )
@@ -2070,8 +2237,14 @@ private fun ThemePreviewCard(
                     )
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = readableAccent.copy(alpha = if (tokens.isLightTheme) 0.13f else 0.16f),
-                        border = BorderStroke(1.dp, readableAccent.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.36f))
+                        color = Color.Transparent,
+                        border = BorderStroke(1.dp, readableAccent.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.36f)),
+                        modifier = Modifier.ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(999.dp),
+                            baseColor = readableAccent.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f),
+                            isAccent = false
+                        )
                     ) {
                         Text(
                             text = fontPack.osBadgeLabel,
@@ -2216,11 +2389,17 @@ private fun AlarmAudioSettingsCard(
                 Surface(
                     onClick = { viewModel.updateProfile(snoozeMinutes = mins) },
                     shape = tokens.buttonShape,
-                    color = if (active) tokens.accentColor else tokens.palette.surfaceContainerLow,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
                         .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = tokens.buttonShape,
+                            baseColor = if (active) tokens.accentColor else tokens.palette.surfaceContainerLow,
+                            isAccent = active
+                        )
                 ) {
                     Text(
                         text = if (lang == AppLanguage.EN) "$mins Min" else "$mins Menit",
@@ -2300,9 +2479,16 @@ private fun AlarmFeedbackSettingsCard(
                 Surface(
                     onClick = { viewModel.testHapticPattern() },
                     shape = RoundedCornerShape(999.dp),
-                    color = tokens.controlBg,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                    modifier = Modifier.tactilePress(pressedScale = 0.92f, disabledByPerf = noAnim)
+                    modifier = Modifier
+                        .tactilePress(pressedScale = 0.92f, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(999.dp),
+                            baseColor = tokens.controlBg,
+                            isAccent = false
+                        )
                 ) {
                     Text(
                         text = lang.t("Uji", "Test"),
@@ -2402,7 +2588,7 @@ private fun AlarmDiagnosticsCard(
                 )
             }
             if (!state.hasNotificationPermission) {
-                Button(
+                IronPulseButton(
                     onClick = onRequestNotificationPermission,
                     shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
@@ -2440,7 +2626,7 @@ private fun AlarmDiagnosticsCard(
                     color = if (state.canScheduleExactAlarms) tokens.successColor else tokens.warningColor
                 )
             }
-            OutlinedButton(
+            IronPulseOutlinedButton(
                 onClick = onOpenExactAlarmSettings,
                 shape = tokens.buttonShape,
                 border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -2450,7 +2636,7 @@ private fun AlarmDiagnosticsCard(
             }
         }
 
-        Button(
+        IronPulseButton(
             onClick = { viewModel.schedule5SecondNativeTestAlarm() },
             shape = tokens.buttonShape,
             colors = ButtonDefaults.buttonColors(
@@ -2503,7 +2689,7 @@ private fun RingtoneManagerHeaderCard(
             color = tokens.palette.onSurfaceVariant
         )
 
-        OutlinedButton(
+        IronPulseOutlinedButton(
             onClick = onPickCustomRingtone,
             enabled = !uploading,
             shape = tokens.buttonShape,
@@ -2555,8 +2741,12 @@ private fun CustomRingtoneItemCard(
                 onClick = onPreview,
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(CircleShape)
-                    .background(tokens.accentColor.copy(alpha = 0.16f))
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = CircleShape,
+                        baseColor = tokens.accentColor.copy(alpha = 0.18f),
+                        isAccent = isPreviewing
+                    )
             ) {
                 ThemedIcon(
                     icon = if (isPreviewing) IronPulseIcon.STOP else IronPulseIcon.PLAY,
@@ -2645,8 +2835,12 @@ private fun BuiltinRingtoneItemCard(
                 onClick = onPreview,
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(CircleShape)
-                    .background(tokens.accentColor.copy(alpha = 0.16f))
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = CircleShape,
+                        baseColor = tokens.accentColor.copy(alpha = 0.18f),
+                        isAccent = isPreviewing
+                    )
             ) {
                 ThemedIcon(
                     icon = if (isPreviewing) IronPulseIcon.STOP else IronPulseIcon.PLAY,
@@ -2711,12 +2905,20 @@ private fun RingtoneAssignChip(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
+    val chipShape = RoundedCornerShape(10.dp)
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = if (active) tokens.accentColor.copy(alpha = 0.16f) else tokens.wellBg,
+        shape = chipShape,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-        modifier = modifier.tactilePress(pressedScale = 0.95f, disabledByPerf = tokens.performance.noAnimations)
+        modifier = modifier
+            .tactilePress(pressedScale = 0.95f, disabledByPerf = tokens.performance.noAnimations)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = chipShape,
+                baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.wellBg,
+                isAccent = active
+            )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
@@ -2799,14 +3001,21 @@ private fun SystemLanguageCard(
         ) {
             AppLanguage.entries.forEach { option ->
                 val active = selectedLang == option
+                val langShape = RoundedCornerShape(12.dp)
                 Surface(
                     onClick = { onSelectLang(option) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (active) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
+                    shape = langShape,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
                         .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = langShape,
+                            baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                            isAccent = active
+                        )
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -2876,14 +3085,21 @@ private fun SystemClockFormatCard(
                 ClockFormat.H12 to lang.t("12 Jam (6:30 Sore)", "12-Hour (6:30 PM)")
             ).forEach { (fmt, label) ->
                 val active = clockFormat == fmt
+                val fmtShape = RoundedCornerShape(12.dp)
                 Surface(
                     onClick = { onSelectFormat(fmt) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (active) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
+                    shape = fmtShape,
+                    color = Color.Transparent,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
                     modifier = Modifier
                         .weight(1f)
                         .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = fmtShape,
+                            baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                            isAccent = active
+                        )
                 ) {
                     Text(
                         text = label,
@@ -2972,14 +3188,21 @@ private fun SystemActionRow(
     onClick: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
+    val rowShape = RoundedCornerShape(12.dp)
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = tokens.wellBg,
+        shape = rowShape,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, tokens.subtleBorderColor),
         modifier = Modifier
             .fillMaxWidth()
             .tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
+            .ironTonalControl(
+                tokens = tokens,
+                shape = rowShape,
+                baseColor = tokens.wellBg,
+                isAccent = false
+            )
     ) {
         Row(
             modifier = Modifier
@@ -2991,8 +3214,12 @@ private fun SystemActionRow(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(tokens.accentColor.copy(alpha = 0.14f)),
+                    .ironTonalControl(
+                        tokens = tokens,
+                        shape = RoundedCornerShape(10.dp),
+                        baseColor = tokens.accentColor.copy(alpha = 0.16f),
+                        isAccent = false
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 ThemedIcon(

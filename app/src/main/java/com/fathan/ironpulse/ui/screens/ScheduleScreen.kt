@@ -82,8 +82,11 @@ import com.fathan.ironpulse.ui.components.ThemedIronDialog
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
+import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
+import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import java.util.Locale
@@ -169,8 +172,14 @@ fun ScheduleScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(999.dp),
-                            color = tokens.accentColor.copy(alpha = 0.14f),
-                            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f))
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f)),
+                            modifier = Modifier.ironTonalControl(
+                                tokens = tokens,
+                                shape = RoundedCornerShape(999.dp),
+                                baseColor = tokens.accentColor.copy(alpha = 0.14f),
+                                isAccent = false
+                            )
                         ) {
                             Text(
                                 text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm", "Alarms")}",
@@ -184,8 +193,14 @@ fun ScheduleScreen(
                         if (!state.activeScheduleProfileName.isNullOrBlank()) {
                             Surface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = tokens.wellBg,
-                                border = BorderStroke(1.dp, tokens.surfaceBorderColor)
+                                color = Color.Transparent,
+                                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
+                                modifier = Modifier.ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(999.dp),
+                                    baseColor = tokens.wellBg,
+                                    isAccent = false
+                                )
                             ) {
                                 Text(
                                     text = state.activeScheduleProfileName,
@@ -270,7 +285,7 @@ fun ScheduleScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedButton(
+                    IronPulseOutlinedButton(
                         onClick = { timePickerDay = null },
                         shape = tokens.buttonShape,
                         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
@@ -281,7 +296,7 @@ fun ScheduleScreen(
                     ) {
                         Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
                     }
-                    Button(
+                    IronPulseButton(
                         onClick = {
                             val hhmm = String.format(Locale.US, "%02d:%02d", pickerState.hour, pickerState.minute)
                             viewModel.updateScheduleFields(dayKey = editingDay, alarmTime = hhmm)
@@ -477,9 +492,16 @@ private fun DayScheduleCard(
                 Surface(
                     onClick = onToggleGymDay,
                     shape = RoundedCornerShape(10.dp),
-                    color = if (sched.isGymDay) tokens.accentColor else tokens.controlBg,
+                    color = Color.Transparent,
                     border = if (sched.isGymDay) null else BorderStroke(1.dp, tokens.subtleBorderColor),
-                    modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                    modifier = Modifier
+                        .tactilePress(disabledByPerf = noAnim)
+                        .ironTonalControl(
+                            tokens = tokens,
+                            shape = RoundedCornerShape(10.dp),
+                            baseColor = if (sched.isGymDay) tokens.accentColor else tokens.controlBg,
+                            isAccent = sched.isGymDay
+                        )
                 ) {
                     Text(
                         text = if (sched.isGymDay) lang.t("Hari Gym", "Gym Day") else "Rest Day",
@@ -494,9 +516,16 @@ private fun DayScheduleCard(
                     Surface(
                         onClick = onOpenExercises,
                         shape = RoundedCornerShape(10.dp),
-                        color = tokens.controlBg,
+                        color = Color.Transparent,
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                        modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                        modifier = Modifier
+                            .tactilePress(disabledByPerf = noAnim)
+                            .ironTonalControl(
+                                tokens = tokens,
+                                shape = RoundedCornerShape(10.dp),
+                                baseColor = tokens.controlBg,
+                                isAccent = false
+                            )
                     ) {
                         Row(
                             modifier = Modifier.padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
@@ -582,11 +611,17 @@ private fun DayScheduleCard(
                     Surface(
                         onClick = onStartEditingFocus,
                         shape = tokens.inputShape,
-                        color = tokens.wellBg,
+                        color = Color.Transparent,
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
                         modifier = Modifier
                             .fillMaxWidth()
                             .tactilePress(pressedScale = 0.985f, disabledByPerf = noAnim)
+                            .ironTonalControl(
+                                tokens = tokens,
+                                shape = tokens.inputShape,
+                                baseColor = tokens.wellBg,
+                                isAccent = false
+                            )
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -640,12 +675,18 @@ private fun DayScheduleCard(
                         Surface(
                             onClick = onOpenTimePicker,
                             shape = tokens.inputShape,
-                            color = tokens.wellBg,
+                            color = Color.Transparent,
                             border = BorderStroke(1.dp, tokens.subtleBorderColor),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(46.dp)
                                 .tactilePress(disabledByPerf = noAnim)
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = tokens.inputShape,
+                                    baseColor = tokens.wellBg,
+                                    isAccent = false
+                                )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp),
@@ -673,7 +714,7 @@ private fun DayScheduleCard(
                         Surface(
                             onClick = onToggleAlarmEnabled,
                             shape = tokens.inputShape,
-                            color = if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
+                            color = Color.Transparent,
                             border = BorderStroke(
                                 1.dp,
                                 if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.5f) else tokens.subtleBorderColor
@@ -681,6 +722,12 @@ private fun DayScheduleCard(
                             modifier = Modifier
                                 .size(46.dp)
                                 .tactilePress(disabledByPerf = noAnim)
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = tokens.inputShape,
+                                    baseColor = if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
+                                    isAccent = sched.alarmEnabled
+                                )
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 ThemedIcon(
@@ -713,12 +760,18 @@ private fun DayScheduleCard(
                         Surface(
                             onClick = { ringtoneMenuOpen = true },
                             shape = tokens.inputShape,
-                            color = tokens.wellBg,
+                            color = Color.Transparent,
                             border = BorderStroke(1.dp, tokens.subtleBorderColor),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(46.dp)
                                 .tactilePress(disabledByPerf = noAnim)
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = tokens.inputShape,
+                                    baseColor = tokens.wellBg,
+                                    isAccent = false
+                                )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp),
