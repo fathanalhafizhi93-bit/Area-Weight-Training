@@ -84,9 +84,9 @@ import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
-import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import java.util.Locale
@@ -170,37 +170,25 @@ fun ScheduleScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
+                        IronPulseTonalSurface(
                             shape = RoundedCornerShape(999.dp),
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f)),
-                            modifier = Modifier.ironTonalControl(
-                                tokens = tokens,
-                                shape = RoundedCornerShape(999.dp),
-                                baseColor = tokens.accentColor.copy(alpha = 0.14f),
-                                isAccent = false
-                            )
+                            baseColor = tokens.accentColor.copy(alpha = 0.14f),
+                            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f))
                         ) {
                             Text(
                                 text = "$activeGymDaysCount/7 ${lang.t("Hari Gym", "Gym Days")} · $activeAlarmsCount ${lang.t("Alarm", "Alarms")}",
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = tokens.accentColor,
+                                color = tokens.accentTextColor,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
                         if (!state.activeScheduleProfileName.isNullOrBlank()) {
-                            Surface(
+                            IronPulseTonalSurface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = Color.Transparent,
-                                border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                                modifier = Modifier.ironTonalControl(
-                                    tokens = tokens,
-                                    shape = RoundedCornerShape(999.dp),
-                                    baseColor = tokens.wellBg,
-                                    isAccent = false
-                                )
+                                baseColor = tokens.wellBg,
+                                border = BorderStroke(1.dp, tokens.surfaceBorderColor)
                             ) {
                                 Text(
                                     text = state.activeScheduleProfileName,
@@ -489,19 +477,12 @@ private fun DayScheduleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
+                IronPulseTonalSurface(
                     onClick = onToggleGymDay,
                     shape = RoundedCornerShape(10.dp),
-                    color = Color.Transparent,
-                    border = if (sched.isGymDay) null else BorderStroke(1.dp, tokens.subtleBorderColor),
-                    modifier = Modifier
-                        .tactilePress(disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = RoundedCornerShape(10.dp),
-                            baseColor = if (sched.isGymDay) tokens.accentColor else tokens.controlBg,
-                            isAccent = sched.isGymDay
-                        )
+                    baseColor = if (sched.isGymDay) tokens.accentColor else tokens.controlBg,
+                    isAccent = sched.isGymDay,
+                    border = if (sched.isGymDay) null else BorderStroke(1.dp, tokens.subtleBorderColor)
                 ) {
                     Text(
                         text = if (sched.isGymDay) lang.t("Hari Gym", "Gym Day") else "Rest Day",
@@ -513,22 +494,14 @@ private fun DayScheduleCard(
                 }
 
                 if (sched.isGymDay) {
-                    Surface(
+                    IronPulseTonalSurface(
                         onClick = onOpenExercises,
                         shape = RoundedCornerShape(10.dp),
-                        color = Color.Transparent,
-                        border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                        modifier = Modifier
-                            .tactilePress(disabledByPerf = noAnim)
-                            .ironTonalControl(
-                                tokens = tokens,
-                                shape = RoundedCornerShape(10.dp),
-                                baseColor = tokens.controlBg,
-                                isAccent = false
-                            )
+                        baseColor = tokens.controlBg,
+                        border = BorderStroke(1.dp, tokens.subtleBorderColor)
                     ) {
                         Row(
-                            modifier = Modifier.padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+                            modifier = Modifier.padding(start = 10.dp, end = 6.dp, top = 9.dp, bottom = 9.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -608,20 +581,13 @@ private fun DayScheduleCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    Surface(
+                    IronPulseTonalSurface(
                         onClick = onStartEditingFocus,
                         shape = tokens.inputShape,
-                        color = Color.Transparent,
+                        baseColor = tokens.wellBg,
+                        pressedScale = 0.985f,
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .tactilePress(pressedScale = 0.985f, disabledByPerf = noAnim)
-                            .ironTonalControl(
-                                tokens = tokens,
-                                shape = tokens.inputShape,
-                                baseColor = tokens.wellBg,
-                                isAccent = false
-                            )
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -672,21 +638,13 @@ private fun DayScheduleCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
+                        IronPulseTonalSurface(
                             onClick = onOpenTimePicker,
                             shape = tokens.inputShape,
-                            color = Color.Transparent,
+                            baseColor = tokens.wellBg,
                             border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(46.dp)
-                                .tactilePress(disabledByPerf = noAnim)
-                                .ironTonalControl(
-                                    tokens = tokens,
-                                    shape = tokens.inputShape,
-                                    baseColor = tokens.wellBg,
-                                    isAccent = false
-                                )
+                            modifier = Modifier.weight(1f),
+                            visualModifier = Modifier.height(46.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp),
@@ -711,23 +669,16 @@ private fun DayScheduleCard(
                             }
                         }
 
-                        Surface(
+                        IronPulseTonalSurface(
                             onClick = onToggleAlarmEnabled,
                             shape = tokens.inputShape,
-                            color = Color.Transparent,
+                            baseColor = if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
+                            isAccent = sched.alarmEnabled,
                             border = BorderStroke(
                                 1.dp,
                                 if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.5f) else tokens.subtleBorderColor
                             ),
-                            modifier = Modifier
-                                .size(46.dp)
-                                .tactilePress(disabledByPerf = noAnim)
-                                .ironTonalControl(
-                                    tokens = tokens,
-                                    shape = tokens.inputShape,
-                                    baseColor = if (sched.alarmEnabled) tokens.accentColor.copy(alpha = 0.16f) else tokens.controlBg,
-                                    isAccent = sched.alarmEnabled
-                                )
+                            visualModifier = Modifier.size(46.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 ThemedIcon(
@@ -757,21 +708,13 @@ private fun DayScheduleCard(
                         color = tokens.mutedTextColor
                     )
                     Box {
-                        Surface(
+                        IronPulseTonalSurface(
                             onClick = { ringtoneMenuOpen = true },
                             shape = tokens.inputShape,
-                            color = Color.Transparent,
+                            baseColor = tokens.wellBg,
                             border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(46.dp)
-                                .tactilePress(disabledByPerf = noAnim)
-                                .ironTonalControl(
-                                    tokens = tokens,
-                                    shape = tokens.inputShape,
-                                    baseColor = tokens.wellBg,
-                                    isAccent = false
-                                )
+                            modifier = Modifier.fillMaxWidth(),
+                            visualModifier = Modifier.height(46.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp),

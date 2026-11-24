@@ -84,6 +84,7 @@ import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
@@ -623,31 +624,26 @@ fun PulseMascotTutorialOverlay(
                                 Triple(AppLanguage.EN, "English", "pulse_tutorial_lang_en")
                             ).forEach { (option, label, tag) ->
                                 val selected = lang == option
-                                Surface(
+                                IronPulseTonalSurface(
                                     onClick = {
                                         onSelectLanguage(option)
                                         onPlayChirp("ready")
                                     },
                                     shape = RoundedCornerShape(999.dp),
-                                    color = Color.Transparent,
+                                    baseColor = if (selected) {
+                                        tokens.accentColor.copy(alpha = 0.22f)
+                                    } else {
+                                        tokens.palette.surfaceContainer.copy(alpha = 0.92f)
+                                    },
+                                    isAccent = selected,
                                     border = BorderStroke(
                                         width = if (selected) 1.5.dp else 1.dp,
                                         color = if (selected) tokens.accentColor else tokens.surfaceBorderColor
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .heightIn(min = 48.dp)
-                                        .ironTonalControl(
-                                            tokens = tokens,
-                                            shape = RoundedCornerShape(999.dp),
-                                            baseColor = if (selected) {
-                                                tokens.accentColor.copy(alpha = 0.22f)
-                                            } else {
-                                                tokens.palette.surfaceContainer.copy(alpha = 0.92f)
-                                            },
-                                            isAccent = selected
-                                        )
-                                        .testTag(tag)
+                                        .testTag(tag),
+                                    visualModifier = Modifier.heightIn(min = 48.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -932,18 +928,11 @@ private fun TapScreenContinuePill(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    Surface(
+    IronPulseTonalSurface(
         shape = RoundedCornerShape(999.dp),
-        color = Color.Transparent,
+        baseColor = tokens.accentColor.copy(alpha = 0.16f),
         border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.45f)),
-        modifier = modifier
-            .graphicsLayer { this.alpha = alpha }
-            .ironTonalControl(
-                tokens = tokens,
-                shape = RoundedCornerShape(999.dp),
-                baseColor = tokens.accentColor.copy(alpha = 0.16f),
-                isAccent = false
-            )
+        modifier = modifier.graphicsLayer { this.alpha = alpha }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
@@ -973,20 +962,13 @@ private fun SkipTutorialPill(
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = Color.Transparent,
+        baseColor = tokens.palette.surfaceContainer.copy(alpha = 0.90f),
         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = RoundedCornerShape(999.dp),
-                baseColor = tokens.palette.surfaceContainer.copy(alpha = 0.90f),
-                isAccent = false
-            )
-            .testTag("pulse_tutorial_skip_button")
+        modifier = modifier.testTag("pulse_tutorial_skip_button"),
+        visualModifier = Modifier.heightIn(min = 40.dp)
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),

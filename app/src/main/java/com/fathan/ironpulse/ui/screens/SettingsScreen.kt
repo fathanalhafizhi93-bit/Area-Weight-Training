@@ -94,6 +94,7 @@ import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
@@ -643,21 +644,13 @@ private fun SettingsPinnedHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(
+        IronPulseTonalSurface(
             onClick = onBack,
             shape = tokens.buttonShape,
-            color = Color.Transparent,
+            baseColor = tokens.controlBg,
             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-            modifier = Modifier
-                .defaultMinSize(minHeight = 40.dp)
-                .testTag(backButtonTag)
-                .tactilePress(disabledByPerf = noAnim)
-                .ironTonalControl(
-                    tokens = tokens,
-                    shape = tokens.buttonShape,
-                    baseColor = tokens.controlBg,
-                    isAccent = false
-                )
+            modifier = Modifier.testTag(backButtonTag),
+            visualModifier = Modifier.defaultMinSize(minHeight = 40.dp)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -689,16 +682,10 @@ private fun SettingsPinnedHeader(
             modifier = Modifier.weight(1f)
         )
 
-        Surface(
+        IronPulseTonalSurface(
             shape = RoundedCornerShape(999.dp),
-            color = Color.Transparent,
-            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.26f)),
-            modifier = Modifier.ironTonalControl(
-                tokens = tokens,
-                shape = RoundedCornerShape(999.dp),
-                baseColor = tokens.accentColor.copy(alpha = 0.14f),
-                isAccent = false
-            )
+            baseColor = tokens.accentColor.copy(alpha = 0.14f),
+            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.26f))
         ) {
             Text(
                 text = if (activeCategory == null) tokens.fontPack.osBadgeLabel else lang.t("Pengaturan", "Settings"),
@@ -775,18 +762,12 @@ private fun ProfileHeroCard(
             }
 
             val syncBadgeShape = RoundedCornerShape(999.dp)
-            Surface(
+            IronPulseTonalSurface(
                 shape = syncBadgeShape,
-                color = Color.Transparent,
+                baseColor = if (state.isOffline) Color(0x26FBBF24) else Color(0x1E34D399),
                 border = BorderStroke(
                     1.dp,
                     if (state.isOffline) Color(0x55FBBF24) else Color(0x4D34D399)
-                ),
-                modifier = Modifier.ironTonalControl(
-                    tokens = tokens,
-                    shape = syncBadgeShape,
-                    baseColor = if (state.isOffline) Color(0x26FBBF24) else Color(0x1E34D399),
-                    isAccent = false
                 )
             ) {
                 Row(
@@ -1099,18 +1080,11 @@ fun AccentAndTintSettingsCard(
                 fontWeight = FontWeight.Bold,
                 color = tokens.palette.onSurface
             )
-            Surface(
+            IronPulseTonalSurface(
                 shape = RoundedCornerShape(999.dp),
-                color = Color.Transparent,
+                baseColor = tokens.accentColor.copy(alpha = 0.16f),
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.35f)),
-                modifier = Modifier
-                    .testTag("accent_active_visual_badge")
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(999.dp),
-                        baseColor = tokens.accentColor.copy(alpha = 0.16f),
-                        isAccent = false
-                    )
+                modifier = Modifier.testTag("accent_active_visual_badge")
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
@@ -1192,9 +1166,9 @@ fun AccentAndTintSettingsCard(
                 isYaruLocked -> Color(0xFF2B2029)
                 else -> tokens.accentColor.copy(alpha = 0.14f)
             }
-            Surface(
+            IronPulseTonalSurface(
                 shape = lockedBannerShape,
-                color = Color.Transparent,
+                baseColor = lockedBannerBg,
                 border = BorderStroke(
                     if (isXMaterialLocked) 0.9.dp else 1.dp,
                     tokens.accentColor.copy(alpha = 0.42f)
@@ -1202,12 +1176,6 @@ fun AccentAndTintSettingsCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("accent_locked_banner")
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = lockedBannerShape,
-                        baseColor = lockedBannerBg,
-                        isAccent = false
-                    )
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -1255,19 +1223,13 @@ fun AccentAndTintSettingsCard(
 
             if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
                 val stripShape = RoundedCornerShape(14.dp)
-                Surface(
+                IronPulseTonalSurface(
                     shape = stripShape,
-                    color = Color.Transparent,
+                    baseColor = tokens.wellBg,
                     border = BorderStroke(1.dp, tokens.subtleBorderColor),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("aero_phase_preview_strip")
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = stripShape,
-                            baseColor = tokens.wellBg,
-                            isAccent = false
-                        )
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
@@ -1294,16 +1256,10 @@ fun AccentAndTintSettingsCard(
                                     color = tokens.palette.onSurfaceVariant
                                 )
                             }
-                            Surface(
+                            IronPulseTonalSurface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = Color.Transparent,
-                                border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.45f)),
-                                modifier = Modifier.ironTonalControl(
-                                    tokens = tokens,
-                                    shape = RoundedCornerShape(999.dp),
-                                    baseColor = if (tokens.isAeroNight) Color(0x3338BDF8) else tokens.accentColor.copy(alpha = 0.16f),
-                                    isAccent = false
-                                )
+                                baseColor = if (tokens.isAeroNight) Color(0x3338BDF8) else tokens.accentColor.copy(alpha = 0.16f),
+                                border = BorderStroke(1.dp, tokens.accentTextColor.copy(alpha = 0.45f))
                             ) {
                                 Text(
                                     text = if (tokens.isAeroNight) {
@@ -1336,10 +1292,12 @@ fun AccentAndTintSettingsCard(
                                     else -> false
                                 }
                                 val pillShape = RoundedCornerShape(999.dp)
-                                Surface(
+                                IronPulseTonalSurface(
                                     onClick = { onSelectDayTimeMode?.invoke(mode) },
                                     shape = pillShape,
-                                    color = Color.Transparent,
+                                    baseColor = if (isActive) tokens.accentColor else tokens.controlBg,
+                                    isAccent = isActive,
+                                    pressedScale = 0.95f,
                                     border = BorderStroke(
                                         1.dp,
                                         if (isActive) {
@@ -1350,15 +1308,8 @@ fun AccentAndTintSettingsCard(
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(38.dp)
-                                        .testTag(tag)
-                                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                                        .ironTonalControl(
-                                            tokens = tokens,
-                                            shape = pillShape,
-                                            baseColor = if (isActive) tokens.accentColor else tokens.controlBg,
-                                            isAccent = isActive
-                                        )
+                                        .testTag(tag),
+                                    visualModifier = Modifier.height(38.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(
@@ -1661,20 +1612,14 @@ private fun TodayPhaseMoodCard(
                 val active = selectedMode == mode
                 val moodShape = RoundedCornerShape(12.dp)
                 val moodBg = if (active) dot.copy(alpha = if (tokens.isLightTheme) 0.16f else 0.16f) else tokens.palette.surfaceContainerLow
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { onSelectMode(mode) },
                     shape = moodShape,
-                    color = Color.Transparent,
+                    baseColor = moodBg,
+                    isAccent = active,
+                    pressedScale = 0.95f,
                     border = BorderStroke(1.dp, if (active) dot else tokens.surfaceBorderColor),
-                    modifier = Modifier
-                        .weight(1f)
-                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = moodShape,
-                            baseColor = moodBg,
-                            isAccent = active
-                        )
+                    modifier = Modifier.weight(1f)
                 ) {
                     Column(
                         modifier = Modifier.padding(vertical = 10.dp),
@@ -1737,16 +1682,10 @@ private fun PerformanceSettingsCard(
                 color = tokens.palette.onSurface
             )
             if (activePreset == null) {
-                Surface(
+                IronPulseTonalSurface(
                     shape = RoundedCornerShape(999.dp),
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                    modifier = Modifier.ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(999.dp),
-                        baseColor = tokens.subtleChipBg,
-                        isAccent = false
-                    )
+                    baseColor = tokens.subtleChipBg,
+                    border = BorderStroke(1.dp, tokens.subtleBorderColor)
                 ) {
                     Text(
                         text = lang.t("Kustom", "Custom"),
@@ -1769,23 +1708,17 @@ private fun PerformanceSettingsCard(
                 PerformancePresetId.ULTRA to lang.t("Ultra Ringan", "Ultra Light")
             ).forEach { (preset, label) ->
                 val isSelected = activePreset == preset
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { onApplyPreset(preset) },
                     shape = tokens.buttonShape,
-                    color = Color.Transparent,
+                    baseColor = if (isSelected) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                    isAccent = isSelected,
+                    pressedScale = 0.95f,
                     border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
                         color = if (isSelected) tokens.accentColor else tokens.surfaceBorderColor
                     ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = tokens.buttonShape,
-                            baseColor = if (isSelected) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
-                            isAccent = isSelected
-                        )
+                    modifier = Modifier.weight(1f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
@@ -1796,7 +1729,7 @@ private fun PerformanceSettingsCard(
                             ThemedIcon(
                                 icon = IronPulseIcon.CHECK,
                                 contentDescription = null,
-                                tint = tokens.accentColor,
+                                tint = tokens.accentTextColor,
                                 size = 14.dp
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -1805,7 +1738,7 @@ private fun PerformanceSettingsCard(
                             text = label,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSelected) tokens.accentColor else tokens.palette.onSurface,
+                            color = if (isSelected) tokens.accentTextColor else tokens.palette.onSurface,
                             maxLines = 1
                         )
                     }
@@ -1872,23 +1805,17 @@ private fun ThemePreviewCard(
     } else {
         tokens.controlBg
     }
-    Surface(
+    IronPulseTonalSurface(
         onClick = onSelect,
         shape = cardShape,
-        color = Color.Transparent,
+        baseColor = outerBaseColor,
+        isAccent = selected,
+        pressedScale = 0.97f,
         border = BorderStroke(
             width = if (selected) 1.5.dp else 1.dp,
             color = if (selected) readableAccent else tokens.surfaceBorderColor
         ),
-        modifier = modifier
-            .testTag("theme_card_${theme.wireValue}")
-            .tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = cardShape,
-                baseColor = outerBaseColor,
-                isAccent = selected
-            )
+        modifier = modifier.testTag("theme_card_${theme.wireValue}")
     ) {
         Row(
             modifier = Modifier
@@ -2235,16 +2162,10 @@ private fun ThemePreviewCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    Surface(
+                    IronPulseTonalSurface(
                         shape = RoundedCornerShape(999.dp),
-                        color = Color.Transparent,
-                        border = BorderStroke(1.dp, readableAccent.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.36f)),
-                        modifier = Modifier.ironTonalControl(
-                            tokens = tokens,
-                            shape = RoundedCornerShape(999.dp),
-                            baseColor = readableAccent.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f),
-                            isAccent = false
-                        )
+                        baseColor = readableAccent.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f),
+                        border = BorderStroke(1.dp, readableAccent.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.36f))
                     ) {
                         Text(
                             text = fontPack.osBadgeLabel,
@@ -2386,20 +2307,14 @@ private fun AlarmAudioSettingsCard(
         ) {
             listOf(5, 10, 15).forEach { mins ->
                 val active = snoozeMinutes == mins
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { viewModel.updateProfile(snoozeMinutes = mins) },
                     shape = tokens.buttonShape,
-                    color = Color.Transparent,
+                    baseColor = if (active) tokens.accentColor else tokens.palette.surfaceContainerLow,
+                    isAccent = active,
+                    pressedScale = 0.95f,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-                    modifier = Modifier
-                        .weight(1f)
-                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = tokens.buttonShape,
-                            baseColor = if (active) tokens.accentColor else tokens.palette.surfaceContainerLow,
-                            isAccent = active
-                        )
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         text = if (lang == AppLanguage.EN) "$mins Min" else "$mins Menit",
@@ -2476,19 +2391,12 @@ private fun AlarmFeedbackSettingsCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { viewModel.testHapticPattern() },
                     shape = RoundedCornerShape(999.dp),
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                    modifier = Modifier
-                        .tactilePress(pressedScale = 0.92f, disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = RoundedCornerShape(999.dp),
-                            baseColor = tokens.controlBg,
-                            isAccent = false
-                        )
+                    baseColor = tokens.controlBg,
+                    pressedScale = 0.92f,
+                    border = BorderStroke(1.dp, tokens.surfaceBorderColor)
                 ) {
                     Text(
                         text = lang.t("Uji", "Test"),
@@ -2737,16 +2645,12 @@ private fun CustomRingtoneItemCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            IconButton(
+            IronPulseTonalSurface(
                 onClick = onPreview,
-                modifier = Modifier
-                    .size(36.dp)
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = CircleShape,
-                        baseColor = tokens.accentColor.copy(alpha = 0.18f),
-                        isAccent = isPreviewing
-                    )
+                shape = CircleShape,
+                baseColor = tokens.accentColor.copy(alpha = 0.18f),
+                isAccent = isPreviewing,
+                visualModifier = Modifier.size(36.dp)
             ) {
                 ThemedIcon(
                     icon = if (isPreviewing) IronPulseIcon.STOP else IronPulseIcon.PLAY,
@@ -2831,21 +2735,17 @@ private fun BuiltinRingtoneItemCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            IconButton(
+            IronPulseTonalSurface(
                 onClick = onPreview,
-                modifier = Modifier
-                    .size(36.dp)
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = CircleShape,
-                        baseColor = tokens.accentColor.copy(alpha = 0.18f),
-                        isAccent = isPreviewing
-                    )
+                shape = CircleShape,
+                baseColor = tokens.accentColor.copy(alpha = 0.18f),
+                isAccent = isPreviewing,
+                visualModifier = Modifier.size(36.dp)
             ) {
                 ThemedIcon(
                     icon = if (isPreviewing) IronPulseIcon.STOP else IronPulseIcon.PLAY,
                     contentDescription = "Preview",
-                    tint = tokens.accentColor,
+                    tint = tokens.accentTextColor,
                     size = 18.dp
                 )
             }
@@ -2906,19 +2806,14 @@ private fun RingtoneAssignChip(
 ) {
     val tokens = LocalIronPulseTokens.current
     val chipShape = RoundedCornerShape(10.dp)
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = chipShape,
-        color = Color.Transparent,
+        baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.wellBg,
+        isAccent = active,
+        pressedScale = 0.95f,
         border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
         modifier = modifier
-            .tactilePress(pressedScale = 0.95f, disabledByPerf = tokens.performance.noAnimations)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = chipShape,
-                baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.wellBg,
-                isAccent = active
-            )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
@@ -2926,14 +2821,14 @@ private fun RingtoneAssignChip(
             horizontalArrangement = Arrangement.Center
         ) {
             if (active) {
-                ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.accentColor, size = 14.dp)
+                ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.accentTextColor, size = 14.dp)
                 Spacer(modifier = Modifier.width(4.dp))
             }
             Text(
                 text = label,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (active) tokens.accentColor else tokens.mutedTextColor,
+                color = if (active) tokens.accentTextColor else tokens.mutedTextColor,
                 maxLines = 1
             )
         }
@@ -3002,20 +2897,14 @@ private fun SystemLanguageCard(
             AppLanguage.entries.forEach { option ->
                 val active = selectedLang == option
                 val langShape = RoundedCornerShape(12.dp)
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { onSelectLang(option) },
                     shape = langShape,
-                    color = Color.Transparent,
+                    baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                    isAccent = active,
+                    pressedScale = 0.95f,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-                    modifier = Modifier
-                        .weight(1f)
-                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = langShape,
-                            baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
-                            isAccent = active
-                        )
+                    modifier = Modifier.weight(1f)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -3026,11 +2915,11 @@ private fun SystemLanguageCard(
                             text = option.displayName,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (active) tokens.accentColor else tokens.palette.onSurface,
+                            color = if (active) tokens.accentTextColor else tokens.palette.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         if (active) {
-                            ThemedIcon(IronPulseIcon.CHECK_CIRCLE, contentDescription = null, tint = tokens.accentColor, size = 16.dp)
+                            ThemedIcon(IronPulseIcon.CHECK_CIRCLE, contentDescription = null, tint = tokens.accentTextColor, size = 16.dp)
                         }
                     }
                 }
@@ -3086,26 +2975,20 @@ private fun SystemClockFormatCard(
             ).forEach { (fmt, label) ->
                 val active = clockFormat == fmt
                 val fmtShape = RoundedCornerShape(12.dp)
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { onSelectFormat(fmt) },
                     shape = fmtShape,
-                    color = Color.Transparent,
+                    baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                    isAccent = active,
+                    pressedScale = 0.95f,
                     border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-                    modifier = Modifier
-                        .weight(1f)
-                        .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = fmtShape,
-                            baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
-                            isAccent = active
-                        )
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         text = label,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (active) tokens.accentColor else tokens.palette.onSurface,
+                        color = if (active) tokens.accentTextColor else tokens.palette.onSurface,
                         modifier = Modifier.padding(12.dp)
                     )
                 }
@@ -3189,20 +3072,13 @@ private fun SystemActionRow(
 ) {
     val tokens = LocalIronPulseTokens.current
     val rowShape = RoundedCornerShape(12.dp)
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = rowShape,
-        color = Color.Transparent,
+        baseColor = tokens.wellBg,
+        pressedScale = 0.97f,
         border = BorderStroke(1.dp, tokens.subtleBorderColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .tactilePress(pressedScale = 0.97f, disabledByPerf = tokens.performance.noAnimations)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = rowShape,
-                baseColor = tokens.wellBg,
-                isAccent = false
-            )
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier

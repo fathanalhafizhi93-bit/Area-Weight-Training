@@ -71,9 +71,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
-import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.ActiveTestAlarmState
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
@@ -654,16 +654,10 @@ fun ActiveAlarmOverlay(
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
+                    IronPulseTonalSurface(
                         shape = RoundedCornerShape(999.dp),
-                        color = Color.Transparent,
-                        border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                        modifier = Modifier.ironTonalControl(
-                            tokens = tokens,
-                            shape = RoundedCornerShape(999.dp),
-                            baseColor = tokens.palette.surfaceContainerHigh,
-                            isAccent = false
-                        )
+                        baseColor = tokens.palette.surfaceContainerHigh,
+                        border = BorderStroke(1.dp, tokens.surfaceBorderColor)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),

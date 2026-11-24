@@ -7,7 +7,12 @@ import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -18,12 +23,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -46,6 +54,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
@@ -60,6 +69,7 @@ import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.UiTheme
+import com.fathan.ironpulse.ui.components.tactilePress
 
 @Immutable
 data class PhaseThemeTokens(
@@ -912,6 +922,89 @@ fun Modifier.ironTonalControl(
         }
 }
 
+/**
+ * Canonical tonal/glossy surface for IronPulse buttons, pills, badges, and cards.
+ * Keeps touch-target expansion (`minimumInteractiveComponentSize`) strictly on an outer transparent
+ * wrapper while drawing shape clipping, tonal/glossy fill, border, and ripple on the exact same
+ * inner visual box—preventing fill from ever spilling outside borders in any theme.
+ */
+@Composable
+fun IronPulseTonalSurface(
+    shape: Shape,
+    baseColor: Color,
+    modifier: Modifier = Modifier,
+    visualModifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
+    isAccent: Boolean = false,
+    glossAlphaMultiplier: Float = 1f,
+    border: BorderStroke? = null,
+    contentColor: Color = Color.Unspecified,
+    pressedScale: Float = 0.96f,
+    enableTactilePress: Boolean = onClick != null,
+    minTouchTarget: Boolean = onClick != null,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val tokens = LocalIronPulseTokens.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val resolvedContentColor = when {
+        contentColor != Color.Unspecified -> contentColor
+        isAccent -> tokens.onAccentColor
+        else -> tokens.palette.onSurface
+    }
+    val interactiveOuterModifier = if (onClick != null) {
+        Modifier
+            .then(if (minTouchTarget) Modifier.minimumInteractiveComponentSize() else Modifier)
+            .then(
+                if (enableTactilePress) {
+                    Modifier.tactilePress(
+                        enabled = enabled,
+                        pressedScale = pressedScale,
+                        disabledByPerf = tokens.performance.noAnimations
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick
+            )
+    } else {
+        Modifier
+    }
+
+    Box(
+        modifier = modifier.then(interactiveOuterModifier),
+        contentAlignment = Alignment.Center,
+        propagateMinConstraints = true
+    ) {
+        Box(
+            modifier = visualModifier
+                .clip(shape)
+                .ironTonalControl(
+                    tokens = tokens,
+                    shape = shape,
+                    baseColor = baseColor,
+                    isAccent = isAccent,
+                    glossAlphaMultiplier = glossAlphaMultiplier
+                )
+                .then(if (border != null) Modifier.border(border, shape) else Modifier)
+                .then(if (onClick != null) Modifier.indication(interactionSource, ripple()) else Modifier),
+            contentAlignment = contentAlignment,
+            propagateMinConstraints = true
+        ) {
+            CompositionLocalProvider(LocalContentColor provides resolvedContentColor) {
+                content()
+            }
+        }
+    }
+}
+
 @Composable
 fun IronPulseButton(
     onClick: () -> Unit,
@@ -951,22 +1044,21 @@ fun IronPulseButton(
         )
     } else null
 
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         enabled = enabled,
         shape = shape,
-        color = Color.Transparent,
-        contentColor = effectiveContentColor,
+        baseColor = effectiveContainerColor,
+        isAccent = isVibrant,
+        glossAlphaMultiplier = if (enabled) 1f else 0.45f,
         border = effectiveBorder,
-        modifier = modifier
-            .defaultMinSize(minWidth = ButtonDefaults.MinWidth, minHeight = ButtonDefaults.MinHeight)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = shape,
-                baseColor = effectiveContainerColor,
-                isAccent = isVibrant,
-                glossAlphaMultiplier = if (enabled) 1f else 0.45f
-            )
+        contentColor = effectiveContentColor,
+        enableTactilePress = false,
+        modifier = modifier,
+        visualModifier = Modifier.defaultMinSize(
+            minWidth = ButtonDefaults.MinWidth,
+            minHeight = ButtonDefaults.MinHeight
+        )
     ) {
         Row(
             modifier = Modifier.padding(contentPadding),
@@ -1016,22 +1108,21 @@ fun IronPulseOutlinedButton(
     }
     val effectiveBorder = border ?: BorderStroke(1.dp, tokens.surfaceBorderColor)
 
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         enabled = enabled,
         shape = shape,
-        color = Color.Transparent,
-        contentColor = effectiveContentColor,
+        baseColor = baseGlassColor,
+        isAccent = false,
+        glossAlphaMultiplier = if (enabled) 1f else 0.45f,
         border = effectiveBorder,
-        modifier = modifier
-            .defaultMinSize(minWidth = ButtonDefaults.MinWidth, minHeight = ButtonDefaults.MinHeight)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = shape,
-                baseColor = baseGlassColor,
-                isAccent = false,
-                glossAlphaMultiplier = if (enabled) 1f else 0.45f
-            )
+        contentColor = effectiveContentColor,
+        enableTactilePress = false,
+        modifier = modifier,
+        visualModifier = Modifier.defaultMinSize(
+            minWidth = ButtonDefaults.MinWidth,
+            minHeight = ButtonDefaults.MinHeight
+        )
     ) {
         Row(
             modifier = Modifier.padding(contentPadding),

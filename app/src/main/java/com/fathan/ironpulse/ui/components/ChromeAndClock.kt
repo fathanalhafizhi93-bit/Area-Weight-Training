@@ -92,6 +92,7 @@ import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassBar
@@ -601,44 +602,36 @@ private fun TopBarIconButton(
         else -> tokens.palette.onSurfaceVariant
     }
 
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = shape,
-        color = if (isAero) Color.Transparent else containerColor,
+        baseColor = containerColor,
+        isAccent = active && isAero,
         border = BorderStroke(if (isXMaterial) 0.9.dp else 1.dp, borderColor),
-        modifier = modifier
-            .size(38.dp)
-            .tactilePress(disabledByPerf = tokens.performance.noAnimations)
-            .then(
-                if (isAero) {
-                    Modifier.ironTonalControl(
-                        tokens = tokens,
-                        shape = shape,
-                        baseColor = containerColor,
-                        isAccent = active
-                    )
-                } else {
-                    Modifier
-                }
-            )
+        modifier = modifier,
+        visualModifier = Modifier.size(38.dp)
     ) {
         Box(
-            modifier = when (tokens.uiTheme) {
-                UiTheme.FRUTIGER_AERO -> Modifier
-                UiTheme.UBUNTU_YARU, UiTheme.CARBON_FORGE -> Modifier.background(
-                    Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = 0.09f),
-                        0.45f to Color.Transparent
-                    )
-                )
-                UiTheme.XMATERIAL_YOU -> Modifier.background(
-                    Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = 0.03f),
-                        0.5f to Color.Transparent
-                    )
-                )
-                else -> Modifier
-            },
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    when (tokens.uiTheme) {
+                        UiTheme.FRUTIGER_AERO -> Modifier
+                        UiTheme.UBUNTU_YARU, UiTheme.CARBON_FORGE -> Modifier.background(
+                            Brush.verticalGradient(
+                                0.0f to Color.White.copy(alpha = 0.09f),
+                                0.45f to Color.Transparent
+                            )
+                        )
+                        UiTheme.XMATERIAL_YOU -> Modifier.background(
+                            Brush.verticalGradient(
+                                0.0f to Color.White.copy(alpha = 0.03f),
+                                0.5f to Color.Transparent
+                            )
+                        )
+                        else -> Modifier
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             ThemedIcon(
@@ -1158,18 +1151,11 @@ fun LiveFluidClockSlot(
             }
 
             if (periodLabel.isNotEmpty()) {
-                Surface(
+                IronPulseTonalSurface(
                     shape = periodPillShape,
-                    color = Color.Transparent,
+                    baseColor = periodPillBg,
                     border = periodPillBorder,
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = periodPillShape,
-                            baseColor = periodPillBg,
-                            isAccent = false
-                        )
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 ) {
                     Text(
                         text = periodLabel,

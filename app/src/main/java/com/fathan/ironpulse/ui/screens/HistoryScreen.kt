@@ -57,6 +57,7 @@ import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.IronPulseButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
@@ -453,18 +454,12 @@ fun HistoryScreen(
                             val totalSets = selectedLog.entries.sumOf { it.sets.size }
                             val doneSets = selectedLog.entries.sumOf { e -> e.sets.count { it.completed } }
                             val full = selectedLog.completed || (totalSets > 0 && doneSets == totalSets)
-                            Surface(
+                            IronPulseTonalSurface(
                                 shape = RoundedCornerShape(999.dp),
-                                color = Color.Transparent,
+                                baseColor = if (full) tokens.accentColor.copy(alpha = 0.16f) else tokens.infoColor.copy(alpha = 0.16f),
                                 border = BorderStroke(
                                     1.dp,
                                     if (full) tokens.accentColor.copy(alpha = 0.45f) else tokens.infoColor.copy(alpha = 0.45f)
-                                ),
-                                modifier = Modifier.ironTonalControl(
-                                    tokens = tokens,
-                                    shape = RoundedCornerShape(999.dp),
-                                    baseColor = if (full) tokens.accentColor.copy(alpha = 0.16f) else tokens.infoColor.copy(alpha = 0.16f),
-                                    isAccent = false
                                 )
                             ) {
                                 Text(

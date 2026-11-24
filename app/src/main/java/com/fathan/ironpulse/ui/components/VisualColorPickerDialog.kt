@@ -50,9 +50,9 @@ import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ColorPresetOption
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
-import com.fathan.ironpulse.ui.theme.ironTonalControl
 
 enum class VisualColorPickerMode {
     ACCENT,
@@ -435,20 +435,14 @@ fun VisualPickColorPill(
     }
 
     val pillShape = RoundedCornerShape(999.dp)
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = pillShape,
-        color = Color.Transparent,
+        baseColor = tokens.palette.surfaceContainerLow,
+        pressedScale = 0.94f,
         border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-        modifier = modifier
-            .heightIn(min = 38.dp)
-            .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = pillShape,
-                baseColor = tokens.palette.surfaceContainerLow,
-                isAccent = false
-            )
+        modifier = modifier,
+        visualModifier = Modifier.heightIn(min = 38.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),

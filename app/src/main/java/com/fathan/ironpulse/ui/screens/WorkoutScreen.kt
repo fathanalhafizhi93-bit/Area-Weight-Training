@@ -84,6 +84,7 @@ import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -188,19 +189,11 @@ fun WorkoutScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
+                        IronPulseTonalSurface(
                             onClick = onBackToToday,
                             shape = tokens.buttonShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, tokens.surfaceBorderColor),
-                            modifier = Modifier
-                                .tactilePress(disabledByPerf = noAnim)
-                                .ironTonalControl(
-                                    tokens = tokens,
-                                    shape = tokens.buttonShape,
-                                    baseColor = tokens.controlBg,
-                                    isAccent = false
-                                )
+                            baseColor = tokens.controlBg,
+                            border = BorderStroke(1.dp, tokens.surfaceBorderColor)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -227,23 +220,17 @@ fun WorkoutScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Quick HUD Focus Toggle Switch
-                            Surface(
+                            IronPulseTonalSurface(
                                 onClick = { viewModel.setWorkoutFocusHudEnabled(!hudEnabled) },
                                 shape = RoundedCornerShape(999.dp),
-                                color = Color.Transparent,
+                                baseColor = if (hudEnabled) tokens.accentColor else tokens.wellBg,
+                                isAccent = hudEnabled,
+                                pressedScale = 0.94f,
                                 border = BorderStroke(
                                     1.dp,
                                     if (hudEnabled) tokens.accentColor else tokens.surfaceBorderColor
                                 ),
-                                modifier = Modifier
-                                    .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-                                    .ironTonalControl(
-                                        tokens = tokens,
-                                        shape = RoundedCornerShape(999.dp),
-                                        baseColor = if (hudEnabled) tokens.accentColor else tokens.wellBg,
-                                        isAccent = hudEnabled
-                                    )
-                                    .testTag("workout_hud_toggle")
+                                modifier = Modifier.testTag("workout_hud_toggle")
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
@@ -629,10 +616,16 @@ private fun ExerciseSwitcherRail(
             val isSelected = entry.exerciseId == selectedExerciseId
             val allDone = entry.sets.isNotEmpty() && entry.sets.all { it.completed }
             val timerRunning = exerciseTimers[entry.exerciseId]?.running == true
-            Surface(
+            IronPulseTonalSurface(
                 onClick = { onSelectExercise(entry.exerciseId) },
                 shape = RoundedCornerShape(999.dp),
-                color = Color.Transparent,
+                baseColor = when {
+                    isSelected -> tokens.accentColor
+                    allDone -> Color(0x2616A34A)
+                    else -> tokens.controlBg
+                },
+                isAccent = isSelected,
+                pressedScale = 0.95f,
                 border = BorderStroke(
                     1.dp,
                     when {
@@ -641,19 +634,7 @@ private fun ExerciseSwitcherRail(
                         allDone -> Color(0x6616A34A)
                         else -> tokens.surfaceBorderColor
                     }
-                ),
-                modifier = Modifier
-                    .tactilePress(pressedScale = 0.95f, disabledByPerf = noAnim)
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(999.dp),
-                        baseColor = when {
-                            isSelected -> tokens.accentColor
-                            allDone -> Color(0x2616A34A)
-                            else -> tokens.controlBg
-                        },
-                        isAccent = isSelected
-                    )
+                )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
@@ -796,19 +777,11 @@ private fun WorkoutFloatingRestBar(
                 )
             }
 
-            Surface(
+            IronPulseTonalSurface(
                 onClick = { onAdjust(15) },
                 shape = RoundedCornerShape(10.dp),
-                color = Color.Transparent,
-                border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                modifier = Modifier
-                    .tactilePress(disabledByPerf = noAnim)
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(10.dp),
-                        baseColor = tokens.controlBg,
-                        isAccent = false
-                    )
+                baseColor = tokens.controlBg,
+                border = BorderStroke(1.dp, tokens.subtleBorderColor)
             ) {
                 Text(
                     text = "+15$secUnit",
@@ -820,18 +793,11 @@ private fun WorkoutFloatingRestBar(
                 )
             }
 
-            Surface(
+            IronPulseTonalSurface(
                 onClick = onTogglePause,
                 shape = RoundedCornerShape(10.dp),
-                color = Color.Transparent,
-                modifier = Modifier
-                    .tactilePress(disabledByPerf = noAnim)
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(10.dp),
-                        baseColor = tokens.accentColor,
-                        isAccent = true
-                    )
+                baseColor = tokens.accentColor,
+                isAccent = true
             ) {
                 Box(modifier = Modifier.padding(8.dp)) {
                     ThemedIcon(
@@ -1016,19 +982,11 @@ private fun ExerciseCockpitCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
+            IronPulseTonalSurface(
                 onClick = { onStartRest(spec?.restSeconds ?: 60) },
                 shape = RoundedCornerShape(999.dp),
-                color = Color.Transparent,
-                border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.38f)),
-                modifier = Modifier
-                    .tactilePress(disabledByPerf = noAnim)
-                    .ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(999.dp),
-                        baseColor = tokens.accentColor.copy(alpha = 0.14f),
-                        isAccent = false
-                    )
+                baseColor = tokens.accentColor.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.38f))
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
@@ -1038,32 +996,24 @@ private fun ExerciseCockpitCard(
                     ThemedIcon(
                         icon = IronPulseIcon.TIMER,
                         contentDescription = null,
-                        tint = tokens.accentColor,
+                        tint = tokens.accentTextColor,
                         size = 16.dp
                     )
                     Text(
                         text = "${lang.t("Istirahat", "Rest")} ${spec?.restSeconds ?: 60}$secUnit",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = tokens.accentColor
+                        color = tokens.accentTextColor
                     )
                 }
             }
 
             if (!spec?.notes.isNullOrBlank()) {
-                Surface(
+                IronPulseTonalSurface(
                     onClick = onToggleNotes,
                     shape = RoundedCornerShape(999.dp),
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                    modifier = Modifier
-                        .tactilePress(disabledByPerf = noAnim)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = RoundedCornerShape(999.dp),
-                            baseColor = tokens.controlBg,
-                            isAccent = false
-                        )
+                    baseColor = tokens.controlBg,
+                    border = BorderStroke(1.dp, tokens.subtleBorderColor)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
@@ -1558,10 +1508,17 @@ private fun SetCompletePillButton(
     }
     val isBlockedByCooldown = !completed && cooldownRemaining > 0
 
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = Color.Transparent,
+        baseColor = when {
+            completed -> Color(0xFF16A34A)
+            isBlockedByCooldown -> tokens.wellBg
+            isNextActiveSet -> tokens.accentColor
+            else -> tokens.controlBg
+        },
+        isAccent = completed || isNextActiveSet,
+        pressedScale = 0.94f,
         border = BorderStroke(
             1.dp,
             when {
@@ -1570,20 +1527,7 @@ private fun SetCompletePillButton(
                 isNextActiveSet -> tokens.accentColor
                 else -> tokens.subtleBorderColor
             }
-        ),
-        modifier = Modifier
-            .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = RoundedCornerShape(999.dp),
-                baseColor = when {
-                    completed -> Color(0xFF16A34A)
-                    isBlockedByCooldown -> tokens.wellBg
-                    isNextActiveSet -> tokens.accentColor
-                    else -> tokens.controlBg
-                },
-                isAccent = completed || isNextActiveSet
-            )
+        )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),

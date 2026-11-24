@@ -90,6 +90,7 @@ import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseThemeTokens
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -405,10 +406,11 @@ fun TodayScreen(
                     RoundedCornerShape(ctaRadius)
                 }
                 val isAero = tokens.uiTheme == UiTheme.FRUTIGER_AERO
-                Surface(
+                IronPulseTonalSurface(
                     onClick = { onOpenWorkout(null) },
                     shape = ctaShape,
-                    color = if (isAero) Color.Transparent else tokens.accentColor,
+                    baseColor = tokens.accentColor,
+                    isAccent = true,
                     contentColor = tokens.onAccentColor,
                     border = if (isAero) {
                         BorderStroke(
@@ -419,19 +421,6 @@ fun TodayScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("start_workout_cta")
-                        .tactilePress(disabledByPerf = noAnim)
-                        .then(
-                            if (isAero) {
-                                Modifier.ironTonalControl(
-                                    tokens = tokens,
-                                    shape = ctaShape,
-                                    baseColor = tokens.accentColor,
-                                    isAccent = true
-                                )
-                            } else {
-                                Modifier
-                            }
-                        )
                 ) {
                     Row(
                         modifier = Modifier
@@ -1074,26 +1063,12 @@ private fun RestTimerHeroCard(
                 Text("+15$secUnit", fontFamily = tokens.fontPack.monoFont, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = tokens.palette.onSurface)
             }
 
-            Surface(
+            IronPulseTonalSurface(
                 onClick = onResetRest,
                 shape = buttonShape,
-                color = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) Color.Transparent else tokens.controlBg,
+                baseColor = tokens.controlBg,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                modifier = Modifier
-                    .size(44.dp)
-                    .tactilePress(disabledByPerf = noAnim)
-                    .then(
-                        if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
-                            Modifier.ironTonalControl(
-                                tokens = tokens,
-                                shape = buttonShape,
-                                baseColor = tokens.controlBg,
-                                isAccent = false
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
+                visualModifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     ThemedIcon(

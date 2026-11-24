@@ -80,6 +80,7 @@ import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
+import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
@@ -214,10 +215,12 @@ fun ExercisesScreen(
                     val count = daySched?.exercises?.size ?: 0
                     val isSelected = day == selectedDay
                     val isToday = day == state.todayDayKey
-                    Surface(
+                    IronPulseTonalSurface(
                         onClick = { viewModel.setSelectedExerciseDay(day) },
                         shape = tokens.buttonShape,
-                        color = Color.Transparent,
+                        baseColor = if (isSelected) tokens.accentColor else tokens.controlBg,
+                        isAccent = isSelected,
+                        pressedScale = 0.94f,
                         border = BorderStroke(
                             1.dp,
                             when {
@@ -225,15 +228,7 @@ fun ExercisesScreen(
                                 isToday -> tokens.accentColor.copy(alpha = 0.45f)
                                 else -> tokens.surfaceBorderColor
                             }
-                        ),
-                        modifier = Modifier
-                            .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
-                            .ironTonalControl(
-                                tokens = tokens,
-                                shape = tokens.buttonShape,
-                                baseColor = if (isSelected) tokens.accentColor else tokens.controlBg,
-                                isAccent = isSelected
-                            )
+                        )
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
@@ -299,18 +294,12 @@ fun ExercisesScreen(
                         color = tokens.palette.onSurfaceVariant
                     )
                 }
-                Surface(
+                IronPulseTonalSurface(
                     shape = RoundedCornerShape(999.dp),
-                    color = Color.Transparent,
+                    baseColor = if (exercises.size >= 30) Color(0x2EF59E0B) else tokens.accentColor.copy(alpha = 0.14f),
                     border = BorderStroke(
                         1.dp,
                         if (exercises.size >= 30) Color(0x80F59E0B) else tokens.accentColor.copy(alpha = 0.35f)
-                    ),
-                    modifier = Modifier.ironTonalControl(
-                        tokens = tokens,
-                        shape = RoundedCornerShape(999.dp),
-                        baseColor = if (exercises.size >= 30) Color(0x2EF59E0B) else tokens.accentColor.copy(alpha = 0.14f),
-                        isAccent = false
                     )
                 ) {
                     Text(
@@ -880,7 +869,7 @@ private fun ExerciseLibraryModal(
                         val isAlreadyInDay = existingNames.contains(tmpl.name.lowercase(Locale.ROOT))
                         val isChecked = selectedNames.contains(tmpl.name)
 
-                        Surface(
+                        IronPulseTonalSurface(
                             onClick = {
                                 if (multiSelectMode) {
                                     if (isChecked) selectedNames.remove(tmpl.name)
@@ -890,19 +879,12 @@ private fun ExerciseLibraryModal(
                                 }
                             },
                             shape = RoundedCornerShape(12.dp),
-                            color = Color.Transparent,
+                            baseColor = if (isChecked) tokens.accentColor.copy(alpha = 0.14f) else tokens.palette.surfaceContainerLow,
                             border = BorderStroke(
                                 1.dp,
                                 if (isChecked) tokens.accentColor else tokens.surfaceBorderColor
                             ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .ironTonalControl(
-                                    tokens = tokens,
-                                    shape = RoundedCornerShape(12.dp),
-                                    baseColor = if (isChecked) tokens.accentColor.copy(alpha = 0.14f) else tokens.palette.surfaceContainerLow,
-                                    isAccent = false
-                                )
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
@@ -1026,25 +1008,19 @@ private fun FilterPill(
     onClick: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
-    Surface(
+    IronPulseTonalSurface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, if (selected) tokens.accentColor else tokens.surfaceBorderColor),
-        modifier = Modifier
-            .tactilePress(pressedScale = 0.94f, disabledByPerf = tokens.performance.noAnimations)
-            .ironTonalControl(
-                tokens = tokens,
-                shape = RoundedCornerShape(999.dp),
-                baseColor = if (selected) tokens.accentColor.copy(alpha = 0.18f) else tokens.controlBg,
-                isAccent = selected
-            )
+        baseColor = if (selected) tokens.accentColor.copy(alpha = 0.18f) else tokens.controlBg,
+        isAccent = selected,
+        pressedScale = 0.94f,
+        border = BorderStroke(1.dp, if (selected) tokens.accentColor else tokens.surfaceBorderColor)
     ) {
         Text(
             text = label,
             fontSize = 11.5.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            color = if (selected) tokens.accentColor else tokens.mutedTextColor,
+            color = if (selected) tokens.accentTextColor else tokens.mutedTextColor,
             modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
         )
     }
@@ -1126,7 +1102,7 @@ private fun ExerciseFormModal(
                     Triple(ExerciseTrackingMode.TIMER, lang.t("Timer / Durasi", "Timer / Duration"), IronPulseIcon.TIMER)
                 ).forEach { (mode, label, icon) ->
                     val active = trackingMode == mode
-                    Surface(
+                    IronPulseTonalSurface(
                         onClick = {
                             trackingMode = mode
                             if (mode == ExerciseTrackingMode.TIMER && initial == null) {
@@ -1135,16 +1111,10 @@ private fun ExerciseFormModal(
                             }
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = Color.Transparent,
+                        baseColor = if (active) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
+                        isAccent = active,
                         border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-                        modifier = Modifier
-                            .weight(1f)
-                            .ironTonalControl(
-                                tokens = tokens,
-                                shape = RoundedCornerShape(12.dp),
-                                baseColor = if (active) tokens.accentColor.copy(alpha = 0.16f) else tokens.palette.surfaceContainerLow,
-                                isAccent = active
-                            )
+                        modifier = Modifier.weight(1f)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
@@ -1154,7 +1124,7 @@ private fun ExerciseFormModal(
                             ThemedIcon(
                                 icon = icon,
                                 contentDescription = null,
-                                tint = if (active) tokens.accentColor else tokens.palette.onSurfaceVariant,
+                                tint = if (active) tokens.accentTextColor else tokens.palette.onSurfaceVariant,
                                 size = 16.dp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -1162,7 +1132,7 @@ private fun ExerciseFormModal(
                                 text = label,
                                 fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (active) tokens.accentColor else tokens.palette.onSurface
+                                color = if (active) tokens.accentTextColor else tokens.palette.onSurface
                             )
                         }
                     }
