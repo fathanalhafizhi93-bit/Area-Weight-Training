@@ -58,6 +58,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -1888,16 +1889,20 @@ private fun ThemePreviewCard(
                                 0.45f to Color.Transparent
                             )
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) {
-                                Brush.verticalGradient(
-                                    0.0f to Color(0xFF162A52),
-                                    0.55f to Color(0xFF1B3B6B),
-                                    1.0f to Color(0xFF0F3D3E)
+                                Brush.linearGradient(
+                                    0.0f to Color(0xFF0D2145),
+                                    0.50f to Color(0xFF133A64),
+                                    1.0f to Color(0xFF0B3D3C),
+                                    start = Offset.Zero,
+                                    end = Offset(size.width, size.height)
                                 )
                             } else {
-                                Brush.verticalGradient(
-                                    0.0f to Color(0xFF7ED8FF),
-                                    0.56f to Color(0xFFE0F8FF),
-                                    1.0f to Color(0xFFD0FCE4)
+                                Brush.linearGradient(
+                                    0.0f to Color(0xFF4AC7FA),
+                                    0.55f to Color(0xFFC8F7EE),
+                                    1.0f to Color(0xFF7BE8B8),
+                                    start = Offset.Zero,
+                                    end = Offset(size.width, size.height)
                                 )
                             }
                             UiTheme.XMATERIAL_YOU -> {
@@ -1913,18 +1918,17 @@ private fun ThemePreviewCard(
                                 )
                             }
                         }
-                        val aeroHillPath = if (isAeroPreview) {
-                            Path().apply {
-                                moveTo(0f, size.height * 0.78f)
-                                cubicTo(
-                                    size.width * 0.34f, size.height * 0.62f,
-                                    size.width * 0.68f, size.height * 0.90f,
-                                    size.width, size.height * 0.72f
-                                )
-                                lineTo(size.width, size.height)
-                                lineTo(0f, size.height)
-                                close()
-                            }
+                        val aeroFlareCenter = Offset(size.width * 0.78f, size.height * 0.24f)
+                        val aeroFlareBrush = if (isAeroPreview) {
+                            Brush.radialGradient(
+                                colors = if (isAeroNightPreview) {
+                                    listOf(Color(0x99BAE6FD), Color(0x3838BDF8), Color.Transparent)
+                                } else {
+                                    listOf(Color(0xE6FFFFFF), Color(0x557CE8FF), Color.Transparent)
+                                },
+                                center = aeroFlareCenter,
+                                radius = size.width * 0.34f
+                            )
                         } else null
                         val aeroGlossDome = if (isAeroPreview) {
                             Path().apply {
@@ -1948,16 +1952,27 @@ private fun ThemePreviewCard(
                             drawRect(baseBg)
                             if (shaderBrush != null) drawRect(shaderBrush)
                             drawRect(finishBrush)
-                            if (aeroHillPath != null) {
-                                drawPath(
-                                    path = aeroHillPath,
-                                    brush = Brush.verticalGradient(
-                                        if (isAeroNightPreview) {
-                                            listOf(Color(0x662DD4BF), Color(0x800D9488))
-                                        } else {
-                                            listOf(Color(0x7039D353), Color(0x880EA5A4))
-                                        }
-                                    )
+                            if (aeroFlareBrush != null) {
+                                drawCircle(
+                                    brush = aeroFlareBrush,
+                                    radius = size.width * 0.34f,
+                                    center = aeroFlareCenter
+                                )
+                                drawCircle(
+                                    color = if (isAeroNightPreview) Color(0xFF7DD3FC).copy(alpha = 0.32f) else Color.White.copy(alpha = 0.48f),
+                                    radius = size.width * 0.16f,
+                                    center = aeroFlareCenter,
+                                    style = Stroke(0.9.dp.toPx())
+                                )
+                                drawCircle(
+                                    color = if (isAeroNightPreview) Color(0xFF5EEAD4).copy(alpha = 0.24f) else Color(0xFFA7F3D0).copy(alpha = 0.42f),
+                                    radius = size.width * 0.075f,
+                                    center = Offset(size.width * 0.46f, size.height * 0.54f)
+                                )
+                                drawCircle(
+                                    color = if (isAeroNightPreview) Color(0xFF2DD4BF).copy(alpha = 0.20f) else Color.White.copy(alpha = 0.35f),
+                                    radius = size.width * 0.095f,
+                                    center = Offset(size.width * 0.22f, size.height * 0.74f)
                                 )
                             }
                             if (aeroGlossDome != null) {

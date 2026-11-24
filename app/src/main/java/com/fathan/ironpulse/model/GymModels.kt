@@ -219,7 +219,7 @@ enum class EquipmentBucket(val labelId: String, val labelEn: String) {
             KETTLEBELL -> eq.contains("kettlebell")
             CABLE -> eq.contains("kabel")
             MACHINE -> eq.contains("mesin")
-            CARDIO -> eq.contains("treadmill") || eq.contains("bike") || eq.contains("sepeda") || eq.contains("elliptical") || eq.contains("stair") || eq.contains("dayung")
+            CARDIO -> eq.contains("kardio") || eq.contains("treadmill") || eq.contains("bike") || eq.contains("sepeda") || eq.contains("elliptical") || eq.contains("stair") || eq.contains("dayung") || eq.contains("skierg") || eq.contains("sled") || eq.contains("battle rope") || eq.contains("plyo")
         }
     }
 }

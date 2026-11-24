@@ -41,7 +41,7 @@ data class PresetExerciseTemplate(
 object GymPresets {
 
     val EXERCISE_LIBRARY: List<PresetExerciseTemplate> = listOf(
-        // Dada (18)
+        // Dada (24)
         PresetExerciseTemplate(
             name = "Barbell Bench Press",
             muscleGroup = MuscleGroup.DADA,
@@ -224,8 +224,69 @@ object GymPresets {
             restSeconds = 60,
             notes = "Tarik katrol tinggi ke depan pinggul sambil sedikit mencondongkan badan."
         ),
+        PresetExerciseTemplate(
+            name = "Decline Dumbbell Press",
+            muscleGroup = MuscleGroup.DADA,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "10-12",
+            targetWeightKg = 20.0,
+            restSeconds = 90,
+            notes = "Turunkan dumbbell ke sisi luar dada bawah lalu dorong mantap ke atas."
+        ),
+        PresetExerciseTemplate(
+            name = "Dumbbell Squeeze Press (Hex Press)",
+            muscleGroup = MuscleGroup.DADA,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "10-12",
+            targetWeightKg = 18.0,
+            restSeconds = 75,
+            notes = "Tekan dua dumbbell saling menempel sepanjang gerakan untuk kontraksi dada dalam."
+        ),
+        PresetExerciseTemplate(
+            name = "Single-Arm Cable Chest Press",
+            muscleGroup = MuscleGroup.DADA,
+            equipment = "Kabel",
+            targetSets = 3,
+            targetReps = "10-12/sisi",
+            targetWeightKg = 17.5,
+            restSeconds = 60,
+            notes = "Kuda-kuda stabil dan dorong satu sisi ke garis tengah tubuh tanpa memutar bahu."
+        ),
+        PresetExerciseTemplate(
+            name = "Incline Cable Fly",
+            muscleGroup = MuscleGroup.DADA,
+            equipment = "Kabel",
+            targetSets = 3,
+            targetReps = "12-15",
+            targetWeightKg = 12.5,
+            restSeconds = 60,
+            notes = "Bangku miring 30 derajat di tengah mesin kabel, tarik melengkung ke atas dada."
+        ),
+        PresetExerciseTemplate(
+            name = "Dumbbell Pullover (Chest Focus)",
+            muscleGroup = MuscleGroup.DADA,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "10-12",
+            targetWeightKg = 20.0,
+            restSeconds = 75,
+            notes = "Pertahankan siku sedikit menekuk dan tarik dumbbell kembali di atas dada atas."
+        ),
+        PresetExerciseTemplate(
+            name = "Diamond Push-Up",
+            muscleGroup = MuscleGroup.DADA,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "10-15",
+            targetWeightKg = 0.0,
+            restSeconds = 60,
+            notes = "Rapatkan ibu jari dan telunjuk membentuk wajik di bawah dada untuk dada dalam & trisep.",
+            usesWeight = false
+        ),
 
-        // Punggung (19)
+        // Punggung (25)
         PresetExerciseTemplate(
             name = "Lat Pulldown",
             muscleGroup = MuscleGroup.PUNGGUNG,
@@ -422,8 +483,70 @@ object GymPresets {
             restSeconds = 75,
             notes = "Berbaring telungkup di bangku miring 30 derajat agar punggung bawah bebas tekanan."
         ),
+        PresetExerciseTemplate(
+            name = "Pendlay Barbell Row",
+            muscleGroup = MuscleGroup.PUNGGUNG,
+            equipment = "Barbel",
+            targetSets = 4,
+            targetReps = "6-8",
+            targetWeightKg = 60.0,
+            restSeconds = 120,
+            notes = "Mulai tiap repetisi dari lantai dengan punggung sejajar lantai dan tarikan eksplosif."
+        ),
+        PresetExerciseTemplate(
+            name = "Meadows Row (Landmine)",
+            muscleGroup = MuscleGroup.PUNGGUNG,
+            equipment = "Barbel",
+            targetSets = 3,
+            targetReps = "10-12/sisi",
+            targetWeightKg = 25.0,
+            restSeconds = 75,
+            notes = "Berdiri menyamping di ujung landmine, tarik kuat ke pinggul untuk ketebalan lat."
+        ),
+        PresetExerciseTemplate(
+            name = "Wide-Grip Pull-Up",
+            muscleGroup = MuscleGroup.PUNGGUNG,
+            equipment = "Pull-Up Bar",
+            targetSets = 3,
+            targetReps = "6-10",
+            targetWeightKg = 0.0,
+            restSeconds = 90,
+            notes = "Genggaman lebar mengarah ke dada atas untuk memperlebar siluet punggung atas.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Inverted Row (Bodyweight Row)",
+            muscleGroup = MuscleGroup.PUNGGUNG,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "10-15",
+            targetWeightKg = 0.0,
+            restSeconds = 75,
+            notes = "Posisi tubuh lurus seperti plank terbalik di bawah palang rendah, tarik dada ke palang.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Single-Arm Seated Cable Row",
+            muscleGroup = MuscleGroup.PUNGGUNG,
+            equipment = "Kabel",
+            targetSets = 3,
+            targetReps = "10-12/sisi",
+            targetWeightKg = 25.0,
+            restSeconds = 60,
+            notes = "Tarik pegangan D-handle ke arah pinggang sambil menjaga bahu tetap rata."
+        ),
+        PresetExerciseTemplate(
+            name = "Plate-Loaded Low Row Machine",
+            muscleGroup = MuscleGroup.PUNGGUNG,
+            equipment = "Mesin Row",
+            targetSets = 3,
+            targetReps = "10-12",
+            targetWeightKg = 50.0,
+            restSeconds = 90,
+            notes = "Jepit tulang belikat di puncak tarikan lalu turunkan beban secara terkontrol."
+        ),
 
-        // Bahu (16)
+        // Bahu (22)
         PresetExerciseTemplate(
             name = "Overhead Barbell Press",
             muscleGroup = MuscleGroup.BAHU,
@@ -584,8 +707,68 @@ object GymPresets {
             restSeconds = 90,
             notes = "Sandaran tegak 80 derajat untuk fokus bahu depan dengan jalur beban stabil."
         ),
+        PresetExerciseTemplate(
+            name = "Single-Arm Dumbbell Lateral Raise",
+            muscleGroup = MuscleGroup.BAHU,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "12-15/sisi",
+            targetWeightKg = 10.0,
+            restSeconds = 60,
+            notes = "Berpegangan pada tiang rack agar tubuh stabil dan isolasi bahu samping lebih tajam."
+        ),
+        PresetExerciseTemplate(
+            name = "Leaning Cable Lateral Raise",
+            muscleGroup = MuscleGroup.BAHU,
+            equipment = "Kabel",
+            targetSets = 3,
+            targetReps = "12-15/sisi",
+            targetWeightKg = 7.5,
+            restSeconds = 60,
+            notes = "Condongkan tubuh menjauh dari tiang katrol untuk rentang tegangan penuh dari bawah."
+        ),
+        PresetExerciseTemplate(
+            name = "Plate Front Raise",
+            muscleGroup = MuscleGroup.BAHU,
+            equipment = "Pelat Beban",
+            targetSets = 3,
+            targetReps = "12-15",
+            targetWeightKg = 10.0,
+            restSeconds = 60,
+            notes = "Pegang pelat beban di sisi kiri-kanan dan angkat terkontrol setinggi mata."
+        ),
+        PresetExerciseTemplate(
+            name = "Barbell Shrugs",
+            muscleGroup = MuscleGroup.BAHU,
+            equipment = "Barbel",
+            targetSets = 3,
+            targetReps = "12-15",
+            targetWeightKg = 70.0,
+            restSeconds = 75,
+            notes = "Angkat bahu lurus ke atas menuju telinga, tahan 1 detik di puncak."
+        ),
+        PresetExerciseTemplate(
+            name = "Landmine Single-Arm Shoulder Press",
+            muscleGroup = MuscleGroup.BAHU,
+            equipment = "Barbel",
+            targetSets = 3,
+            targetReps = "8-10/sisi",
+            targetWeightKg = 20.0,
+            restSeconds = 75,
+            notes = "Dorong ujung barbel miring ke depan atas sambil menjaga core tetap kencang."
+        ),
+        PresetExerciseTemplate(
+            name = "Incline Y-Raise (Rear & Lower Trap)",
+            muscleGroup = MuscleGroup.BAHU,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "12-15",
+            targetWeightKg = 6.0,
+            restSeconds = 60,
+            notes = "Telungkup di bangku miring 30 derajat, angkat lengan membentuk huruf Y."
+        ),
 
-        // Kaki (23)
+        // Kaki (29)
         PresetExerciseTemplate(
             name = "Barbell Back Squat",
             muscleGroup = MuscleGroup.KAKI,
@@ -820,8 +1003,69 @@ object GymPresets {
             restSeconds = 75,
             notes = "Naik ke kotak setinggi lutut dengan dorongan kaki depan tanpa memantul dari kaki belakang."
         ),
+        PresetExerciseTemplate(
+            name = "Sumo Barbell Deadlift",
+            muscleGroup = MuscleGroup.KAKI,
+            equipment = "Barbel",
+            targetSets = 4,
+            targetReps = "5-8",
+            targetWeightKg = 90.0,
+            restSeconds = 150,
+            notes = "Posisi kaki lebar dengan jari kaki terbuka, dorong lantai kuat memakai paha & glutes."
+        ),
+        PresetExerciseTemplate(
+            name = "Single-Leg Press",
+            muscleGroup = MuscleGroup.KAKI,
+            equipment = "Mesin Leg Press",
+            targetSets = 3,
+            targetReps = "10-12/kaki",
+            targetWeightKg = 60.0,
+            restSeconds = 75,
+            notes = "Dorong pelat dengan satu kaki agar ketidakseimbangan kekuatan kiri-kanan teratasi."
+        ),
+        PresetExerciseTemplate(
+            name = "Reverse Dumbbell Lunge",
+            muscleGroup = MuscleGroup.KAKI,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "10/kaki",
+            targetWeightKg = 14.0,
+            restSeconds = 75,
+            notes = "Langkahkan satu kaki ke belakang dengan kontrol untuk mengurangi beban pada lutut."
+        ),
+        PresetExerciseTemplate(
+            name = "Kettlebell Goblet Squat",
+            muscleGroup = MuscleGroup.KAKI,
+            equipment = "Kettlebell",
+            targetSets = 3,
+            targetReps = "12-15",
+            targetWeightKg = 20.0,
+            restSeconds = 75,
+            notes = "Pegang tanduk kettlebell di depan dada, turun dalam dengan punggung tegak."
+        ),
+        PresetExerciseTemplate(
+            name = "Nordic Hamstring Curl",
+            muscleGroup = MuscleGroup.KAKI,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "5-8",
+            targetWeightKg = 0.0,
+            restSeconds = 90,
+            notes = "Kaitkan pergelangan kaki di penyangga, turunkan tubuh perlahan menahan dengan hamstring.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Smith Machine Calf Raise",
+            muscleGroup = MuscleGroup.KAKI,
+            equipment = "Mesin Smith",
+            targetSets = 4,
+            targetReps = "15-20",
+            targetWeightKg = 60.0,
+            restSeconds = 45,
+            notes = "Berdiri di atas balok kecil agar tumit mendapat regangan penuh di titik bawah."
+        ),
 
-        // Lengan (19)
+        // Lengan (25)
         PresetExerciseTemplate(
             name = "EZ-Bar Bicep Curl",
             muscleGroup = MuscleGroup.LENGAN,
@@ -1012,8 +1256,68 @@ object GymPresets {
             restSeconds = 75,
             notes = "Jaga badan tegak dan tekan tuas lurus ke bawah untuk menargetkan tiga kepala trisep."
         ),
+        PresetExerciseTemplate(
+            name = "Barbell Bicep Curl",
+            muscleGroup = MuscleGroup.LENGAN,
+            equipment = "Barbel",
+            targetSets = 3,
+            targetReps = "8-10",
+            targetWeightKg = 30.0,
+            restSeconds = 75,
+            notes = "Pegang barbel lurus selebar bahu, angkat terkontrol tanpa mengayunkan punggung."
+        ),
+        PresetExerciseTemplate(
+            name = "Reverse-Grip EZ-Bar Curl",
+            muscleGroup = MuscleGroup.LENGAN,
+            equipment = "EZ-Bar",
+            targetSets = 3,
+            targetReps = "12-15",
+            targetWeightKg = 18.0,
+            restSeconds = 60,
+            notes = "Telapak tangan menghadap ke bawah untuk melatih brachioradialis dan lengan bawah."
+        ),
+        PresetExerciseTemplate(
+            name = "Cable Bayesian Curl",
+            muscleGroup = MuscleGroup.LENGAN,
+            equipment = "Kabel",
+            targetSets = 3,
+            targetReps = "10-12/sisi",
+            targetWeightKg = 10.0,
+            restSeconds = 60,
+            notes = "Berdiri membelakangi katrol bawah agar lengan terentang ke belakang untuk peregangan bisep maksimal."
+        ),
+        PresetExerciseTemplate(
+            name = "JM Press (Smith Machine)",
+            muscleGroup = MuscleGroup.LENGAN,
+            equipment = "Mesin Smith",
+            targetSets = 3,
+            targetReps = "8-10",
+            targetWeightKg = 45.0,
+            restSeconds = 90,
+            notes = "Gabungan close-grip press dan skull crusher untuk massa & tenaga trisep."
+        ),
+        PresetExerciseTemplate(
+            name = "Incline Dumbbell Skull Crusher",
+            muscleGroup = MuscleGroup.LENGAN,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "10-12",
+            targetWeightKg = 10.0,
+            restSeconds = 60,
+            notes = "Bangku miring 30 derajat, tekuk siku menurunkan dumbbell ke samping kepala untuk long-head trisep."
+        ),
+        PresetExerciseTemplate(
+            name = "Wrist Curl (Forearm Flexion)",
+            muscleGroup = MuscleGroup.LENGAN,
+            equipment = "Dumbbell",
+            targetSets = 3,
+            targetReps = "15-20",
+            targetWeightKg = 8.0,
+            restSeconds = 45,
+            notes = "Sandarkan lengan bawah di paha atau bangku, tekuk pergelangan tangan penuh ke atas."
+        ),
 
-        // Core (14)
+        // Core (21)
         PresetExerciseTemplate(
             name = "Hanging Leg Raise",
             muscleGroup = MuscleGroup.CORE,
@@ -1172,8 +1476,92 @@ object GymPresets {
             restSeconds = 45,
             notes = "Berdiri tegak memegang satu dumbbell dan tekuk pinggang ke samping secara terkontrol."
         ),
+        PresetExerciseTemplate(
+            name = "Dead Bug",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "12/sisi",
+            targetWeightKg = 0.0,
+            restSeconds = 45,
+            notes = "Tempelkan punggung bawah ke matras saat meluruskan lengan dan kaki berlawanan.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Hollow Body Hold",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "45 detik",
+            targetWeightKg = 0.0,
+            restSeconds = 45,
+            notes = "Angkat bahu dan kaki beberapa sentimeter dari lantai sambil menjaga pinggang rapat.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            usesWeight = false,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 45
+        ),
+        PresetExerciseTemplate(
+            name = "L-Sit Hold (Parallettes / Dip Bar)",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Dip Bar",
+            targetSets = 3,
+            targetReps = "25 detik",
+            targetWeightKg = 0.0,
+            restSeconds = 60,
+            notes = "Tekan bahu ke bawah dan tahan kedua kaki lurus sejajar lantai.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            usesWeight = false,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 25
+        ),
+        PresetExerciseTemplate(
+            name = "Dragon Flag",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "6-8",
+            targetWeightKg = 0.0,
+            restSeconds = 75,
+            notes = "Pegang ujung bangku di belakang kepala dan turunkan tubuh lurus terkontrol dari bahu.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Bicycle Crunch",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Tanpa Alat",
+            targetSets = 3,
+            targetReps = "20/sisi",
+            targetWeightKg = 0.0,
+            restSeconds = 45,
+            notes = "Putar bahu mendekatkan siku ke lutut berlawanan secara ritmis tanpa menarik leher.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Kettlebell Suitcase Carry",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Kettlebell",
+            targetSets = 3,
+            targetReps = "40 detik/sisi",
+            targetWeightKg = 20.0,
+            restSeconds = 60,
+            notes = "Jalan tegak membawa satu kettlebell berat di satu tangan untuk ketahanan anti-lateral flexion.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 40
+        ),
+        PresetExerciseTemplate(
+            name = "Decline Russian Twist",
+            muscleGroup = MuscleGroup.CORE,
+            equipment = "Pelat Beban",
+            targetSets = 3,
+            targetReps = "16-20",
+            targetWeightKg = 10.0,
+            restSeconds = 45,
+            notes = "Duduk di bangku decline dengan punggung agak condong, putar torso kiri-kanan stabil."
+        ),
 
-        // Kardio (13)
+        // Kardio (20)
         PresetExerciseTemplate(
             name = "Incline Treadmill Walk",
             muscleGroup = MuscleGroup.KARDIO,
@@ -1349,6 +1737,96 @@ object GymPresets {
             usesWeight = false,
             timerDirection = TimerDirection.COUNTDOWN,
             targetDurationSeconds = 1200
+        ),
+        PresetExerciseTemplate(
+            name = "Battle Ropes HIIT",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Battle Rope (Kardio)",
+            targetSets = 5,
+            targetReps = "30 detik",
+            targetWeightKg = 0.0,
+            restSeconds = 30,
+            notes = "Gelombang tali cepat bergantian dengan posisi setengah squat stabil.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            usesWeight = false,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 30
+        ),
+        PresetExerciseTemplate(
+            name = "Burpees Conditioning",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Tanpa Alat (Kardio)",
+            targetSets = 4,
+            targetReps = "15",
+            targetWeightKg = 0.0,
+            restSeconds = 60,
+            notes = "Turun ke plank/push-up lalu lompat eksplosif dengan ritme napas teratur.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Mountain Climbers",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Tanpa Alat (Kardio)",
+            targetSets = 4,
+            targetReps = "40 detik",
+            targetWeightKg = 0.0,
+            restSeconds = 40,
+            notes = "Posisi plank tinggi, tarik lutut bergantian cepat ke arah dada tanpa menaikkan pinggul.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            usesWeight = false,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 40
+        ),
+        PresetExerciseTemplate(
+            name = "Box Jump",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Plyo Box (Kardio)",
+            targetSets = 4,
+            targetReps = "10",
+            targetWeightKg = 0.0,
+            restSeconds = 60,
+            notes = "Lompat eksplosif ke atas box dengan pendaratan lutut lembut dan pinggul lurus di puncak.",
+            usesWeight = false
+        ),
+        PresetExerciseTemplate(
+            name = "Sled Push (Prowler)",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Sled Track (Kardio)",
+            targetSets = 4,
+            targetReps = "30 detik",
+            targetWeightKg = 60.0,
+            restSeconds = 75,
+            notes = "Condongkan badan 45 derajat dan dorong sled dengan langkah pendek bertenaga.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 30
+        ),
+        PresetExerciseTemplate(
+            name = "SkiErg Sprint Intervals",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Mesin SkiErg (Kardio)",
+            targetSets = 5,
+            targetReps = "45 detik",
+            targetWeightKg = 0.0,
+            restSeconds = 45,
+            notes = "Tarik gagang ke bawah memakai engsel pinggul dan core untuk output daya tinggi.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            usesWeight = false,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 45
+        ),
+        PresetExerciseTemplate(
+            name = "Farmers Walk Conditioning",
+            muscleGroup = MuscleGroup.KARDIO,
+            equipment = "Kettlebell (Kardio)",
+            targetSets = 4,
+            targetReps = "45 detik",
+            targetWeightKg = 24.0,
+            restSeconds = 60,
+            notes = "Jalan cepat membawa beban di kedua tangan dengan bahu ditarik ke belakang.",
+            trackingMode = ExerciseTrackingMode.TIMER,
+            timerDirection = TimerDirection.COUNTDOWN,
+            targetDurationSeconds = 45
         )
     )
 

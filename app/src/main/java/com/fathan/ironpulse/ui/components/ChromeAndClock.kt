@@ -4,7 +4,12 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,7 +62,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -122,6 +129,38 @@ private val secSdf = object : ThreadLocal<SimpleDateFormat>() {
 fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
     val tokens = LocalIronPulseTokens.current
     val suppressGlow = tokens.performance.noAmbientGlow
+    val runAeroAnim = tokens.uiTheme == UiTheme.FRUTIGER_AERO &&
+        !tokens.performance.noAnimations &&
+        !suppressGlow &&
+        LocalTabActive.current
+
+    val staticMid = remember { mutableFloatStateOf(0.5f) }
+    val aeroFlarePulseState: State<Float>
+    val aeroBubbleDriftState: State<Float>
+    if (runAeroAnim) {
+        val aeroInfinite = rememberInfiniteTransition(label = "aeroBackdropInfinite")
+        aeroFlarePulseState = aeroInfinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 4400, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "aeroFlarePulse"
+        )
+        aeroBubbleDriftState = aeroInfinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 6800, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "aeroBubbleDrift"
+        )
+    } else {
+        aeroFlarePulseState = staticMid
+        aeroBubbleDriftState = staticMid
+    }
 
     Box(
         modifier = modifier
@@ -143,19 +182,22 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         radius = size.height.coerceAtLeast(800f) * 0.85f
                     )
                     UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) {
-                        Brush.verticalGradient(
-                            0.0f to Color(0xFF162A52),
-                            0.34f to Color(0xFF1B3B6B),
-                            0.70f to Color(0xFF124559),
-                            1.0f to Color(0xFF0F3D3E)
+                        Brush.linearGradient(
+                            0.0f to Color(0xFF0D2145),
+                            0.35f to Color(0xFF133A64),
+                            0.68f to Color(0xFF0F475B),
+                            1.0f to Color(0xFF0B3D3C),
+                            start = Offset.Zero,
+                            end = Offset(size.width, size.height)
                         )
                     } else {
-                        Brush.verticalGradient(
-                            0.0f to Color(0xFF66CCFF),
-                            0.30f to Color(0xFFAEE9FF),
-                            0.66f to Color(0xFFE4FAFF),
-                            0.86f to Color(0xFFD7FDE6),
-                            1.0f to Color(0xFFB3F4C9)
+                        Brush.linearGradient(
+                            0.0f to Color(0xFF4AC7FA),
+                            0.32f to Color(0xFF8EE3FF),
+                            0.66f to Color(0xFFCFF8EE),
+                            1.0f to Color(0xFF7BE8B8),
+                            start = Offset.Zero,
+                            end = Offset(size.width, size.height)
                         )
                     }
                     UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
@@ -186,15 +228,15 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     )
                     tokens.uiTheme == UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) {
                         Brush.radialGradient(
-                            colors = listOf(Color(0x405BC6FA), Color(0x2038BDF8), Color.Transparent),
-                            center = Offset(size.width * 0.18f, size.height * 0.07f),
-                            radius = size.width.coerceAtLeast(520f) * 0.92f
+                            colors = listOf(Color(0x527DD3FC), Color(0x2638BDF8), Color.Transparent),
+                            center = Offset(size.width * 0.84f, size.height * 0.11f),
+                            radius = size.width.coerceAtLeast(520f) * 0.96f
                         )
                     } else {
                         Brush.radialGradient(
-                            colors = listOf(Color(0xB8FFFFFF), Color(0x3C7CE8FF), Color.Transparent),
-                            center = Offset(size.width * 0.18f, size.height * 0.05f),
-                            radius = size.width.coerceAtLeast(520f) * 0.90f
+                            colors = listOf(Color(0xC8FFFFFF), Color(0x4C7CE8FF), Color.Transparent),
+                            center = Offset(size.width * 0.84f, size.height * 0.11f),
+                            radius = size.width.coerceAtLeast(520f) * 0.96f
                         )
                     }
                     tokens.uiTheme == UiTheme.XMATERIAL_YOU -> Brush.radialGradient(
@@ -226,15 +268,15 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     )
                     tokens.uiTheme == UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) {
                         Brush.radialGradient(
-                            colors = listOf(Color(0x362DD4BF), Color.Transparent),
-                            center = Offset(size.width * 0.86f, size.height * 0.90f),
-                            radius = size.width.coerceAtLeast(520f) * 0.88f
+                            colors = listOf(Color(0x3810B981), Color.Transparent),
+                            center = Offset(size.width * 0.14f, size.height * 0.88f),
+                            radius = size.width.coerceAtLeast(520f) * 0.90f
                         )
                     } else {
                         Brush.radialGradient(
-                            colors = listOf(Color(0x484ADE80), Color.Transparent),
-                            center = Offset(size.width * 0.86f, size.height * 0.92f),
-                            radius = size.width.coerceAtLeast(520f) * 0.88f
+                            colors = listOf(Color(0x4634D399), Color.Transparent),
+                            center = Offset(size.width * 0.14f, size.height * 0.88f),
+                            radius = size.width.coerceAtLeast(520f) * 0.90f
                         )
                     }
                     tokens.uiTheme == UiTheme.XMATERIAL_YOU -> Brush.radialGradient(
@@ -247,78 +289,61 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     )
                     else -> null
                 }
-                val carbonBgTwill = if (tokens.uiTheme == UiTheme.CARBON_FORGE) {
-                    com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache.getCarbonTwillBrush(
-                        cellPx = (3.dp.toPx()).toInt().coerceIn(5, 10),
-                        subtle = true
-                    )
-                } else null
-
-                val aeroHillBack = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
-                    Path().apply {
-                        moveTo(0f, size.height * 0.82f)
-                        cubicTo(
-                            size.width * 0.28f, size.height * 0.74f,
-                            size.width * 0.64f, size.height * 0.87f,
-                            size.width, size.height * 0.78f
+                val aeroGlossSheen = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO && !suppressGlow) {
+                    if (tokens.isAeroNight) {
+                        Brush.linearGradient(
+                            0.0f to Color(0x1EE0F4FF),
+                            0.38f to Color(0x0A7DD3FC),
+                            0.72f to Color.Transparent,
+                            start = Offset.Zero,
+                            end = Offset(size.width * 0.82f, size.height * 0.56f)
                         )
-                        lineTo(size.width, size.height)
-                        lineTo(0f, size.height)
-                        close()
-                    }
-                } else null
-                val aeroHillFront = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
-                    Path().apply {
-                        moveTo(0f, size.height * 0.89f)
-                        cubicTo(
-                            size.width * 0.35f, size.height * 0.82f,
-                            size.width * 0.72f, size.height * 0.93f,
-                            size.width, size.height * 0.85f
-                        )
-                        lineTo(size.width, size.height)
-                        lineTo(0f, size.height)
-                        close()
-                    }
-                } else null
-                val aeroHillBackBrush = if (tokens.isAeroNight) {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0x3D14B8A6), Color(0x280F766E)),
-                        startY = size.height * 0.74f,
-                        endY = size.height
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0x3D34D399), Color(0x2210B981)),
-                        startY = size.height * 0.74f,
-                        endY = size.height
-                    )
-                }
-                val aeroHillFrontBrush = if (tokens.isAeroNight) {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0x452DD4BF), Color(0x330D9488)),
-                        startY = size.height * 0.82f,
-                        endY = size.height
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0x4A4ADE80), Color(0x3016A34A)),
-                        startY = size.height * 0.82f,
-                        endY = size.height
-                    )
-                }
-                val yaruWave = if (tokens.uiTheme == UiTheme.UBUNTU_YARU && !suppressGlow) {
-                    Path().apply {
-                        moveTo(0f, size.height * 0.38f)
-                        cubicTo(
-                            size.width * 0.32f, size.height * 0.26f,
-                            size.width * 0.68f, size.height * 0.48f,
-                            size.width, size.height * 0.32f
+                    } else {
+                        Brush.linearGradient(
+                            0.0f to Color(0x3EFFFFFF),
+                            0.36f to Color(0x18FFFFFF),
+                            0.70f to Color.Transparent,
+                            start = Offset.Zero,
+                            end = Offset(size.width * 0.82f, size.height * 0.56f)
                         )
                     }
                 } else null
-
-                val hudGridColor = tokens.accentColor.copy(alpha = 0.038f)
-                val hudStepPx = 44.dp.toPx().coerceAtLeast(48f)
+                val aeroAnamorphicStreak = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO && !suppressGlow) {
+                    val flareY = size.height * 0.11f
+                    val flareCenterX = size.width * 0.84f
+                    val halfSpan = size.width * 0.58f
+                    Brush.horizontalGradient(
+                        0.0f to Color.Transparent,
+                        0.32f to (if (tokens.isAeroNight) Color(0x1A7DD3FC) else Color(0x28FFFFFF)),
+                        0.50f to (if (tokens.isAeroNight) Color(0x4CBCEEFF) else Color(0x70FFFFFF)),
+                        0.68f to (if (tokens.isAeroNight) Color(0x1A5EEAD4) else Color(0x28D1FAE5)),
+                        1.0f to Color.Transparent,
+                        startX = flareCenterX - halfSpan,
+                        endX = flareCenterX + halfSpan
+                    ) to flareY
+                } else null
+                val flareCenter = Offset(size.width * 0.84f, size.height * 0.11f)
+                val flareCoreBrush = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO && !suppressGlow) {
+                    Brush.radialGradient(
+                        colors = if (tokens.isAeroNight) {
+                            listOf(
+                                Color(0xA6E0F7FF),
+                                Color(0x4438BDF8),
+                                Color(0x162DD4BF),
+                                Color.Transparent
+                            )
+                        } else {
+                            listOf(
+                                Color(0xE8FFFFFF),
+                                Color(0x66C7F5FF),
+                                Color(0x246EE7B7),
+                                Color.Transparent
+                            )
+                        },
+                        center = flareCenter,
+                        radius = size.width * 0.28f
+                    )
+                } else null
 
                 onDrawBehind {
                     drawRect(canvasColor)
@@ -327,38 +352,162 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     if (secondaryGlow != null) drawRect(secondaryGlow)
 
                     if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
+                        if (aeroGlossSheen != null) {
+                            drawRect(aeroGlossSheen)
+                        }
+                        val pulse = aeroFlarePulseState.value
+                        val drift = aeroBubbleDriftState.value
+                        val pulseFactor = 0.88f + pulse * 0.24f
+                        val driftPx = (drift - 0.5f) * 14.dp.toPx()
+
                         if (tokens.isAeroNight && !suppressGlow) {
                             val stars = listOf(
-                                Triple(0.18f, 0.10f, 1.4f),
-                                Triple(0.56f, 0.12f, 1.5f),
-                                Triple(0.78f, 0.08f, 1.2f),
-                                Triple(0.90f, 0.22f, 1.3f)
+                                Triple(0.14f, 0.09f, 1.3f),
+                                Triple(0.32f, 0.16f, 1.1f),
+                                Triple(0.56f, 0.10f, 1.5f),
+                                Triple(0.71f, 0.20f, 1.0f),
+                                Triple(0.92f, 0.24f, 1.3f)
                             )
-                            stars.forEach { (sx, sy, sr) ->
+                            stars.forEachIndexed { idx, (sx, sy, sr) ->
+                                val twinkle = if (idx % 2 == 0) 0.28f + pulse * 0.22f else 0.44f - pulse * 0.16f
                                 drawCircle(
-                                    color = Color(0xFFDCF4FF).copy(alpha = 0.36f),
+                                    color = Color(0xFFDCF4FF).copy(alpha = twinkle),
                                     radius = sr.dp.toPx(),
                                     center = Offset(size.width * sx, size.height * sy)
                                 )
                             }
                         }
-                        if (aeroHillBack != null) drawPath(aeroHillBack, aeroHillBackBrush)
-                        if (aeroHillFront != null) drawPath(aeroHillFront, aeroHillFrontBrush)
+
                         if (!suppressGlow) {
-                            val bubbles = if (tokens.isAeroNight) {
-                                listOf(
-                                    Triple(Offset(size.width * 0.86f, size.height * 0.14f), size.width * 0.11f, Color(0x187DD3FC)),
-                                    Triple(Offset(size.width * 0.14f, size.height * 0.72f), size.width * 0.06f, Color(0x182DD4BF))
-                                )
-                            } else {
-                                listOf(
-                                    Triple(Offset(size.width * 0.86f, size.height * 0.14f), size.width * 0.11f, Color.White.copy(alpha = 0.18f)),
-                                    Triple(Offset(size.width * 0.14f, size.height * 0.72f), size.width * 0.06f, Color(0x1E4ADE80))
+                            if (flareCoreBrush != null) {
+                                drawCircle(
+                                    brush = flareCoreBrush,
+                                    radius = size.width * 0.27f * (0.94f + pulse * 0.12f),
+                                    center = flareCenter
                                 )
                             }
-                            val rimColor = if (tokens.isAeroNight) Color(0xFFBAE6FD).copy(alpha = 0.28f) else Color.White.copy(alpha = 0.40f)
-                            val glintColor = if (tokens.isAeroNight) Color(0xFFE0F7FF).copy(alpha = 0.42f) else Color.White.copy(alpha = 0.56f)
-                            bubbles.forEach { (center, rad, fill) ->
+                            if (aeroAnamorphicStreak != null) {
+                                val (streakBrush, flareY) = aeroAnamorphicStreak
+                                drawLine(
+                                    brush = streakBrush,
+                                    start = Offset(flareCenter.x - size.width * 0.58f, flareY),
+                                    end = Offset(flareCenter.x + size.width * 0.58f, flareY),
+                                    strokeWidth = (2.2f + pulse * 0.8f).dp.toPx(),
+                                    cap = StrokeCap.Round
+                                )
+                            }
+                            val outerFlareRingColor = if (tokens.isAeroNight) {
+                                Color(0xFF7DD3FC).copy(alpha = 0.22f * pulseFactor)
+                            } else {
+                                Color.White.copy(alpha = 0.34f * pulseFactor)
+                            }
+                            drawCircle(
+                                color = outerFlareRingColor,
+                                radius = size.width * (0.14f + pulse * 0.015f),
+                                center = flareCenter,
+                                style = Stroke(strokePx * 1.3f)
+                            )
+                            drawCircle(
+                                color = if (tokens.isAeroNight) {
+                                    Color(0xFF5EEAD4).copy(alpha = 0.16f * pulseFactor)
+                                } else {
+                                    Color(0xFFA7F3D0).copy(alpha = 0.30f * pulseFactor)
+                                },
+                                radius = size.width * (0.21f + pulse * 0.02f),
+                                center = flareCenter,
+                                style = Stroke(strokePx)
+                            )
+
+                            // Diagonal optical lens-flare bokeh discs from top-right to lower-left
+                            val axisEnd = Offset(size.width * 0.16f, size.height * 0.60f)
+                            val dx = axisEnd.x - flareCenter.x
+                            val dy = axisEnd.y - flareCenter.y
+
+                            val b1 = Offset(
+                                flareCenter.x + dx * 0.28f + driftPx * 0.35f,
+                                flareCenter.y + dy * 0.28f - driftPx * 0.25f
+                            )
+                            val b2 = Offset(
+                                flareCenter.x + dx * 0.50f - driftPx * 0.25f,
+                                flareCenter.y + dy * 0.50f + driftPx * 0.30f
+                            )
+                            val b3 = Offset(
+                                flareCenter.x + dx * 0.72f + driftPx * 0.45f,
+                                flareCenter.y + dy * 0.72f + driftPx * 0.20f
+                            )
+                            val b4 = Offset(
+                                flareCenter.x + dx * 0.90f - driftPx * 0.30f,
+                                flareCenter.y + dy * 0.90f - driftPx * 0.35f
+                            )
+
+                            drawCircle(
+                                color = (if (tokens.isAeroNight) Color(0xFF7DD3FC) else Color.White)
+                                    .copy(alpha = (if (tokens.isAeroNight) 0.11f else 0.20f) * pulseFactor),
+                                radius = size.width * 0.042f,
+                                center = b1
+                            )
+                            drawCircle(
+                                color = (if (tokens.isAeroNight) Color(0xFF5EEAD4) else Color(0xFFA7F3D0))
+                                    .copy(alpha = (if (tokens.isAeroNight) 0.14f else 0.24f) * pulseFactor),
+                                radius = size.width * 0.068f,
+                                center = b2
+                            )
+                            drawCircle(
+                                color = (if (tokens.isAeroNight) Color(0xFFBAE6FD) else Color.White)
+                                    .copy(alpha = (if (tokens.isAeroNight) 0.22f else 0.36f) * pulseFactor),
+                                radius = size.width * 0.068f,
+                                center = b2,
+                                style = Stroke(strokePx)
+                            )
+                            drawCircle(
+                                color = (if (tokens.isAeroNight) Color(0xFF38BDF8) else Color(0xFF99F6E4))
+                                    .copy(alpha = (if (tokens.isAeroNight) 0.09f else 0.18f) * pulseFactor),
+                                radius = size.width * 0.030f,
+                                center = b3
+                            )
+                            drawCircle(
+                                color = (if (tokens.isAeroNight) Color(0xFF2DD4BF) else Color(0xFF6EE7B7))
+                                    .copy(alpha = (if (tokens.isAeroNight) 0.13f else 0.22f) * pulseFactor),
+                                radius = size.width * 0.088f,
+                                center = b4
+                            )
+                            drawCircle(
+                                color = (if (tokens.isAeroNight) Color(0xFF5EEAD4) else Color.White)
+                                    .copy(alpha = (if (tokens.isAeroNight) 0.20f else 0.30f) * pulseFactor),
+                                radius = size.width * 0.088f,
+                                center = b4,
+                                style = Stroke(strokePx)
+                            )
+
+                            // Minimalist glossy glass bubbles (gently floating)
+                            val rimColor = if (tokens.isAeroNight) {
+                                Color(0xFFBAE6FD).copy(alpha = 0.28f)
+                            } else {
+                                Color.White.copy(alpha = 0.44f)
+                            }
+                            val glintColor = if (tokens.isAeroNight) {
+                                Color(0xFFE0F7FF).copy(alpha = 0.44f)
+                            } else {
+                                Color.White.copy(alpha = 0.62f)
+                            }
+
+                            val bubble1Center = Offset(size.width * 0.14f + driftPx * 0.35f, size.height * 0.74f - driftPx * 0.9f)
+                            val bubble1Rad = size.width * 0.072f
+                            val bubble1Fill = if (tokens.isAeroNight) Color(0x1A2DD4BF) else Color(0x266EE7B7)
+
+                            val bubble2Center = Offset(size.width * 0.87f - driftPx * 0.45f, size.height * 0.83f + driftPx * 0.7f)
+                            val bubble2Rad = size.width * 0.052f
+                            val bubble2Fill = if (tokens.isAeroNight) Color(0x1838BDF8) else Color.White.copy(alpha = 0.20f)
+
+                            val bubble3Center = Offset(size.width * 0.22f - driftPx * 0.3f, size.height * 0.22f + driftPx * 0.8f)
+                            val bubble3Rad = size.width * 0.036f
+                            val bubble3Fill = if (tokens.isAeroNight) Color(0x167DD3FC) else Color.White.copy(alpha = 0.22f)
+
+                            listOf(
+                                Triple(bubble1Center, bubble1Rad, bubble1Fill),
+                                Triple(bubble2Center, bubble2Rad, bubble2Fill),
+                                Triple(bubble3Center, bubble3Rad, bubble3Fill)
+                            ).forEach { (center, rad, fill) ->
                                 drawCircle(fill, rad, center)
                                 drawCircle(
                                     color = rimColor,
@@ -368,7 +517,7 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                                 )
                                 drawCircle(
                                     color = glintColor,
-                                    radius = rad * 0.15f,
+                                    radius = rad * 0.16f,
                                     center = Offset(center.x - rad * 0.34f, center.y - rad * 0.34f)
                                 )
                             }
