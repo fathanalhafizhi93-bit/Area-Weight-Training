@@ -1,6 +1,8 @@
 package com.fathan.ironpulse.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1670,6 +1672,8 @@ private fun MascotPersonalitySettingsCard(
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
+    val noAnim = tokens.performance.noAnimations
+    var switchBurstTick by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = modifier
@@ -1715,20 +1719,35 @@ private fun MascotPersonalitySettingsCard(
                         urgentMood = null
                     )
                 }
-
-                IronPulseTonalSurface(
-                    onClick = { onSelect(personality) },
-                    shape = tokens.cardShape,
-                    baseColor = if (isSelected) {
+                val cardBg by animateColorAsState(
+                    targetValue = if (isSelected) {
                         tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f)
                     } else {
                         tokens.palette.surfaceContainerLow
                     },
+                    animationSpec = tween(if (noAnim) 0 else 220),
+                    label = "personaCardBg"
+                )
+                val cardBorderColor by animateColorAsState(
+                    targetValue = if (isSelected) tokens.accentColor else tokens.surfaceBorderColor,
+                    animationSpec = tween(if (noAnim) 0 else 220),
+                    label = "personaCardBorder"
+                )
+
+                IronPulseTonalSurface(
+                    onClick = {
+                        if (selected != personality) {
+                            switchBurstTick += 1
+                        }
+                        onSelect(personality)
+                    },
+                    shape = tokens.cardShape,
+                    baseColor = cardBg,
                     isAccent = isSelected,
                     pressedScale = 0.96f,
                     border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) tokens.accentColor else tokens.surfaceBorderColor
+                        color = cardBorderColor
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -1750,7 +1769,8 @@ private fun MascotPersonalitySettingsCard(
                                 mascot = previewMascot,
                                 eyeStateFlow = if (isSelected) eyeStateFlow else null,
                                 size = 54.dp,
-                                animActive = isSelected
+                                animActive = isSelected,
+                                switchPulseKey = if (isSelected) switchBurstTick else 0
                             )
                             if (isSelected) {
                                 Box(

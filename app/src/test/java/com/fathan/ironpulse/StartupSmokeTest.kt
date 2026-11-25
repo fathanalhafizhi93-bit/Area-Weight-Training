@@ -1,5 +1,7 @@
 package com.fathan.ironpulse
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +18,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -96,10 +100,13 @@ import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
+import com.fathan.ironpulse.ui.components.FloatingMascotDock
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
+import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
 import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
+import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
@@ -2956,6 +2963,144 @@ class StartupSmokeTest {
         composeRule.runOnUiThread { personalitySetter?.invoke(MascotPersonality.PARTNER) }
         composeRule.waitForIdle()
         composeRule.onNodeWithText("COACH · FOKUS").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun coachRoundEyes_personalitySwitchSpinAndCurvedReturnFlight_animateCleanly() {
+        val eyeFlow = MutableStateFlow(MascotEyeState(blinkProgress = 0f, glanceX = 1.0f, glanceY = 0.5f))
+        var shouldFloatSetter: ((Boolean) -> Unit)? = null
+        var personalitySetter: ((MascotPersonality) -> Unit)? = null
+        var poseSetter: ((TimePhasePose) -> Unit)? = null
+        var morphStateRef: androidx.compose.runtime.State<Float>? = null
+        var landingTicks = 0
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                var shouldFloat by remember { mutableStateOf(true) }
+                var activePersonality by remember { mutableStateOf(MascotPersonality.COACH) }
+                var activePose by remember { mutableStateOf(TimePhasePose.SALUTE) }
+                var switchTick by remember { mutableIntStateOf(0) }
+                var landingTick by remember { mutableIntStateOf(0) }
+                val homeBoundsHolder = remember {
+                    OrbBoundsHolder().apply {
+                        rect = androidx.compose.ui.geometry.Rect(32f, 220f, 132f, 320f)
+                    }
+                }
+                shouldFloatSetter = { shouldFloat = it }
+                personalitySetter = { next ->
+                    if (next != activePersonality) {
+                        activePersonality = next
+                        switchTick += 1
+                    }
+                }
+                poseSetter = { activePose = it }
+
+                var prevShouldFloat by remember { mutableStateOf(shouldFloat) }
+                var isReturning by remember { mutableStateOf(false) }
+                LaunchedEffect(shouldFloat) {
+                    if (prevShouldFloat && !shouldFloat) isReturning = true
+                    else if (!prevShouldFloat && shouldFloat) isReturning = false
+                    prevShouldFloat = shouldFloat
+                }
+
+                val morphProgressState = animateFloatAsState(
+                    targetValue = if (shouldFloat) 1f else 0f,
+                    animationSpec = if (isReturning) IronPulseMotion.ReturnMorphSpring else IronPulseMotion.MorphSpring,
+                    finishedListener = { finalVal ->
+                        if (!shouldFloat && isReturning && finalVal <= 0.02f) {
+                            isReturning = false
+                            landingTick += 1
+                            landingTicks = landingTick
+                        }
+                    },
+                    label = "testMorph"
+                )
+                morphStateRef = morphProgressState
+
+                IronPulseTheme(
+                    prefs = AppPreferences(
+                        uiTheme = UiTheme.CARBON_FORGE,
+                        lang = AppLanguage.ID,
+                        mascotPersonality = activePersonality,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                ) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        val mascot = MascotUiState(
+                            personality = activePersonality,
+                            activeTimePose = activePose
+                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            TodayMascot(
+                                mascot = mascot,
+                                eyeStateFlow = eyeFlow,
+                                voiceEnabled = false,
+                                orbVisibleAlpha = { if (shouldFloat || morphProgressState.value > 0.02f) 0f else 1f },
+                                homeOrbBoundsHolder = homeBoundsHolder,
+                                landingPulseTick = landingTick,
+                                onTapMascot = {},
+                                onReplayVoice = {},
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .testTag("today_mascot_card")
+                            )
+                            MascotOrbFace(
+                                mascot = mascot,
+                                eyeStateFlow = eyeFlow,
+                                size = 54.dp,
+                                animActive = true,
+                                switchPulseKey = switchTick
+                            )
+                            FloatingMascotDock(
+                                mascot = mascot,
+                                eyeStateFlow = eyeFlow,
+                                anchorSideRight = true,
+                                anchorYRatio = 0.62f,
+                                shouldFloat = shouldFloat,
+                                morphProgressState = morphProgressState,
+                                homeOrbBoundsHolder = homeBoundsHolder,
+                                animActive = true,
+                                onTapOrb = {},
+                                onSaveAnchor = { _, _ -> }
+                            )
+                        }
+                    }
+                }
+            }
+
+            composeRule.mainClock.advanceTimeBy(64)
+            composeRule.onNodeWithTag("today_mascot_card").assertIsDisplayed()
+
+            // Exercise Coach round eyes across open, blink, beast, smirk, and night poses
+            listOf(TimePhasePose.SALUTE, TimePhasePose.BEAST, TimePhasePose.SMIRK, TimePhasePose.MOONLIT).forEach { pose ->
+                composeRule.runOnUiThread { poseSetter?.invoke(pose) }
+                composeRule.mainClock.advanceTimeBy(48)
+            }
+            eyeFlow.value = MascotEyeState(blinkProgress = 1f)
+            composeRule.mainClock.advanceTimeBy(64)
+            eyeFlow.value = MascotEyeState(blinkProgress = 0f, glanceX = 1.3f)
+
+            // Switch personality Partner <-> Coach (360° spin + accent aura burst)
+            composeRule.runOnUiThread { personalitySetter?.invoke(MascotPersonality.PARTNER) }
+            composeRule.mainClock.advanceTimeBy(240)
+            composeRule.runOnUiThread { personalitySetter?.invoke(MascotPersonality.COACH) }
+            composeRule.mainClock.advanceTimeBy(600)
+
+            // Trigger return-to-origin curved banked flight and verify landing settle completes
+            composeRule.runOnUiThread { shouldFloatSetter?.invoke(false) }
+            composeRule.mainClock.advanceTimeBy(180)
+            val midMorph = morphStateRef!!.value
+            assertTrue("Expected mascot mid-return flight (0 < morph < 1), got $midMorph", midMorph > 0.02f && midMorph < 0.99f)
+
+            composeRule.mainClock.advanceTimeBy(1200)
+            val settledMorph = morphStateRef!!.value
+            assertTrue("Expected return morph to settle home, got $settledMorph", settledMorph <= 0.02f)
+            assertTrue("Expected landing cushion tick to trigger on touchdown", landingTicks >= 1)
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
     }
 }
 

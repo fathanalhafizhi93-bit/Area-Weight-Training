@@ -379,6 +379,7 @@ fun MascotOrbFace(
     eyeStateFlow: StateFlow<MascotEyeState>? = null,
     size: Dp = 64.dp,
     animActive: Boolean = true,
+    switchPulseKey: Any? = null,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -577,6 +578,46 @@ fun MascotOrbFace(
         staticZero
     }
 
+    // Personality switch 360° spin + accent aura burst
+    val switchSpinDeg = remember { Animatable(0f) }
+    val switchPopScale = remember { Animatable(1f) }
+    val switchAuraProgress = remember { Animatable(0f) }
+    var lastPersonalitySeen by remember { mutableStateOf(mascot.personality) }
+    var lastSwitchKeySeen by remember { mutableStateOf(switchPulseKey) }
+
+    LaunchedEffect(mascot.personality, switchPulseKey, animActive, tabActive, staticMode) {
+        val personalityChanged = mascot.personality != lastPersonalitySeen
+        val keyTriggered = switchPulseKey != null && switchPulseKey != 0 && switchPulseKey != lastSwitchKeySeen
+        if (personalityChanged || keyTriggered) {
+            if (staticMode || (!animActive && !keyTriggered)) {
+                lastPersonalitySeen = mascot.personality
+                lastSwitchKeySeen = switchPulseKey
+                switchSpinDeg.snapTo(0f)
+                switchPopScale.snapTo(1f)
+                switchAuraProgress.snapTo(0f)
+            } else if (tabActive || keyTriggered) {
+                lastPersonalitySeen = mascot.personality
+                lastSwitchKeySeen = switchPulseKey
+                launch {
+                    switchSpinDeg.snapTo(0f)
+                    switchSpinDeg.animateTo(360f, tween(durationMillis = 460, easing = FastOutSlowInEasing))
+                    switchSpinDeg.snapTo(0f)
+                }
+                launch {
+                    switchPopScale.snapTo(1f)
+                    switchPopScale.animateTo(0.86f, tween(65, easing = FastOutSlowInEasing))
+                    switchPopScale.animateTo(1.16f, tween(155, easing = FastOutSlowInEasing))
+                    switchPopScale.animateTo(1f, spring(dampingRatio = 0.50f, stiffness = 380f))
+                }
+                launch {
+                    switchAuraProgress.snapTo(0f)
+                    switchAuraProgress.animateTo(1f, tween(durationMillis = 540, easing = FastOutSlowInEasing))
+                    switchAuraProgress.snapTo(0f)
+                }
+            }
+        }
+    }
+
     val pathA = remember { Path() }
     val pathB = remember { Path() }
 
@@ -704,9 +745,33 @@ fun MascotOrbFace(
                     )
                 }
             }
+            val auraP = switchAuraProgress.value
+            if (auraP > 0.005f && auraP < 0.995f) {
+                val fade = (1f - auraP).coerceIn(0f, 1f)
+                val auraRadius = r * lerp(0.76f, 1.34f, auraP)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            orbPalette.expressionAccent.copy(alpha = fade * 0.44f),
+                            orbPalette.haloPrimary.copy(alpha = fade * 0.24f),
+                            Color.Transparent
+                        ),
+                        center = Offset(cx, cy),
+                        radius = auraRadius
+                    ),
+                    radius = auraRadius,
+                    center = Offset(cx, cy)
+                )
+                drawCircle(
+                    color = orbPalette.expressionAccent.copy(alpha = fade * 0.92f),
+                    radius = r * lerp(0.88f, 1.24f, auraP),
+                    center = Offset(cx, cy),
+                    style = Stroke(width = sw * lerp(1.9f, 0.55f, auraP))
+                )
+            }
         }
 
-        // Core OS-styled circular orb chassis (GPU graphicsLayer: bob + organic breath + squash/stretch + natural head tilt)
+        // Core OS-styled circular orb chassis (GPU graphicsLayer: bob + organic breath + squash/stretch + switch spin + head tilt)
         Box(
             modifier = Modifier
                 .size(size * 0.875f)
@@ -719,9 +784,10 @@ fun MascotOrbFace(
                     val sway = if (isClosedEyeExpression || !runAnim) 0f else idleSwayDegState.value
                     translationY = bobOffsetDpState.value * density.density
                     val ts = tapScaleState.value
-                    scaleX = ts * squashX.value * breathScaleX
-                    scaleY = ts * squashY.value * breathScaleY
-                    rotationZ = headTiltState.value + sway
+                    val swScale = switchPopScale.value
+                    scaleX = ts * squashX.value * breathScaleX * swScale
+                    scaleY = ts * squashY.value * breathScaleY * swScale
+                    rotationZ = headTiltState.value + sway + switchSpinDeg.value
                 }
                 .clip(CircleShape)
                 .drawBehind {
@@ -1020,6 +1086,29 @@ fun MascotOrbFace(
                         drawPath(pathA, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
                         drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
                     }
+                    isCoach && !isShadesPose && !isSleepPose && !isZenPose && !isCozyPose &&
+                        !isDreamPose && !isYawnPose && !isTeaPose && !isCalmEyes && !isRechargePose -> {
+                        // Clean plain white round eyes framed by Coach's sharp slanted brows (no pupils)
+                        val blinkT = smoothBlinkState.value
+                        if (blinkT > 0.72f) {
+                            drawLine(Color(0xFFE5E7EB), gpt(18.2f, 27.8f), gpt(25.8f, 27.8f), px(2.45f), cap = StrokeCap.Round)
+                            drawLine(Color(0xFFE5E7EB), gpt(38.2f, 27.8f), gpt(45.8f, 27.8f), px(2.45f), cap = StrokeCap.Round)
+                        } else {
+                            val rBase = px(3.15f)
+                            val openY = (1f - blinkT * 0.85f).coerceIn(0.20f, 1f)
+                            val rH = rBase * openY
+                            drawOval(
+                                color = Color(0xFFF8FAFC),
+                                topLeft = Offset(px(22f) + gx - rBase, px(27.6f) + gy - rH),
+                                size = Size(rBase * 2f, rH * 2f)
+                            )
+                            drawOval(
+                                color = Color(0xFFF8FAFC),
+                                topLeft = Offset(px(42f) + gx - rBase, px(27.6f) + gy - rH),
+                                size = Size(rBase * 2f, rH * 2f)
+                            )
+                        }
+                    }
                     isSparklePose && !isCoach -> {
                         for (cx in listOf(22f, 42f)) {
                             pathA.reset()
@@ -1094,24 +1183,12 @@ fun MascotOrbFace(
                         drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     isStargazePose || isMoonlitPose -> {
-                        if (isCoach) {
-                            // Focused half-lidded serious night-watch gaze
-                            drawRoundRect(Color(0xFFF4F5F7), gpt(18.4f, 25.6f), Size(px(7.2f), px(4.6f)), CornerRadius(px(2.0f)))
-                            drawRoundRect(Color(0xFFF4F5F7), gpt(38.4f, 25.6f), Size(px(7.2f), px(4.6f)), CornerRadius(px(2.0f)))
-                            drawCircle(Color(0xFF0F172A), px(1.55f), ppt(22.0f, 27.9f))
-                            drawCircle(Color(0xFF0F172A), px(1.55f), ppt(42.0f, 27.9f))
-                            drawCircle(phaseColor, px(0.75f), ppt(21.4f, 27.1f))
-                            drawCircle(phaseColor, px(0.75f), ppt(41.4f, 27.1f))
-                            drawLine(Color(0xFF0F172A), gpt(17.8f, 25.2f), gpt(26.4f, 26.2f), px(1.9f), cap = StrokeCap.Round)
-                            drawLine(Color(0xFF0F172A), gpt(46.2f, 25.2f), gpt(37.6f, 26.2f), px(1.9f), cap = StrokeCap.Round)
-                        } else {
-                            drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(22f, 27.2f))
-                            drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(42f, 27.2f))
-                            drawLine(phaseColor, ppt(22f, 25f), ppt(22f, 27.6f), px(1.25f), cap = StrokeCap.Round)
-                            drawLine(phaseColor, ppt(20.7f, 26.3f), ppt(23.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
-                            drawLine(phaseColor, ppt(42f, 25f), ppt(42f, 27.6f), px(1.25f), cap = StrokeCap.Round)
-                            drawLine(phaseColor, ppt(40.7f, 26.3f), ppt(43.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
-                        }
+                        drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(22f, 27.2f))
+                        drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(42f, 27.2f))
+                        drawLine(phaseColor, ppt(22f, 25f), ppt(22f, 27.6f), px(1.25f), cap = StrokeCap.Round)
+                        drawLine(phaseColor, ppt(20.7f, 26.3f), ppt(23.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
+                        drawLine(phaseColor, ppt(42f, 25f), ppt(42f, 27.6f), px(1.25f), cap = StrokeCap.Round)
+                        drawLine(phaseColor, ppt(40.7f, 26.3f), ppt(43.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
                     }
                     (isCoffeePose || isProteinPose) && !isCoach -> {
                         drawCircle(Color(0xFFF4F5F7), px(3.5f), gpt(22f, 27.2f))
@@ -1128,40 +1205,6 @@ fun MascotOrbFace(
                         pathB.cubicTo(px(40f) + gx, px(30.8f) + gy, px(44f) + gx, px(30.8f) + gy, px(46f) + gx, px(28.2f) + gy)
                         drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                         drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
-                    }
-                    isCoach -> {
-                        // Serious piercing half-lidded Coach gaze with parallax iris
-                        val blinkT = smoothBlinkState.value
-                        if (blinkT > 0.72f) {
-                            drawLine(Color(0xFFE5E7EB), gpt(17.5f, 27.6f), gpt(26.2f, 28.0f), px(2.5f), cap = StrokeCap.Round)
-                            drawLine(Color(0xFFE5E7EB), gpt(46.5f, 27.6f), gpt(37.8f, 28.0f), px(2.5f), cap = StrokeCap.Round)
-                        } else {
-                            val eyeW = px(7.4f)
-                            val openY = (1f - blinkT * 0.85f).coerceIn(0.20f, 1f)
-                            val eyeH = px(4.8f) * openY
-                            drawRoundRect(
-                                color = Color(0xFFF4F5F7),
-                                topLeft = Offset(px(22f) + gx - eyeW * 0.5f, px(27.8f) + gy - eyeH * 0.5f),
-                                size = Size(eyeW, eyeH),
-                                cornerRadius = CornerRadius(px(2.1f))
-                            )
-                            drawRoundRect(
-                                color = Color(0xFFF4F5F7),
-                                topLeft = Offset(px(42f) + gx - eyeW * 0.5f, px(27.8f) + gy - eyeH * 0.5f),
-                                size = Size(eyeW, eyeH),
-                                cornerRadius = CornerRadius(px(2.1f))
-                            )
-                            if (openY > 0.42f) {
-                                // Focused dark iris + sharp accent specular
-                                drawCircle(Color(0xFF0F172A), px(1.75f), ppt(22.2f, 28.0f))
-                                drawCircle(Color(0xFF0F172A), px(1.75f), ppt(41.8f, 28.0f))
-                                drawCircle(phaseColor, px(0.85f), ppt(21.4f, 27.0f))
-                                drawCircle(phaseColor, px(0.85f), ppt(41.0f, 27.0f))
-                                // Serious flat upper lid crease matching sharp brow slant
-                                drawLine(Color(0xFF0F172A), gpt(17.8f, 25.0f), gpt(26.2f, 26.2f), px(1.8f), cap = StrokeCap.Round)
-                                drawLine(Color(0xFF0F172A), gpt(46.2f, 25.0f), gpt(37.8f, 26.2f), px(1.8f), cap = StrokeCap.Round)
-                            }
-                        }
                     }
                     else -> {
                         val blinkT = smoothBlinkState.value
@@ -1455,6 +1498,7 @@ fun TodayMascot(
     orbAnimActive: Boolean = true,
     hideForTutorial: Boolean = false,
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
+    landingPulseTick: Int = 0,
     onTapMascot: () -> Unit,
     onPetMascot: () -> Unit = {},
     onReplayVoice: () -> Unit,
@@ -1471,12 +1515,50 @@ fun TodayMascot(
         )
     }
     val phaseColor = orbPalette.cardAccent
+    val noAnim = tokens.performance.noAnimations
+
+    val landScaleX = remember { Animatable(1f) }
+    val landScaleY = remember { Animatable(1f) }
+    val landOffsetY = remember { Animatable(0f) }
+    val landRingProgress = remember { Animatable(0f) }
+    LaunchedEffect(landingPulseTick, noAnim) {
+        if (landingPulseTick <= 0 || noAnim) {
+            landScaleX.snapTo(1f)
+            landScaleY.snapTo(1f)
+            landOffsetY.snapTo(0f)
+            landRingProgress.snapTo(0f)
+            return@LaunchedEffect
+        }
+        launch {
+            landScaleX.snapTo(1f)
+            landScaleX.animateTo(1.14f, tween(65, easing = FastOutSlowInEasing))
+            landScaleX.animateTo(0.95f, tween(105, easing = FastOutSlowInEasing))
+            landScaleX.animateTo(1f, spring(dampingRatio = 0.48f, stiffness = 400f))
+        }
+        launch {
+            landScaleY.snapTo(1f)
+            landScaleY.animateTo(0.87f, tween(65, easing = FastOutSlowInEasing))
+            landScaleY.animateTo(1.05f, tween(105, easing = FastOutSlowInEasing))
+            landScaleY.animateTo(1f, spring(dampingRatio = 0.48f, stiffness = 400f))
+        }
+        launch {
+            landOffsetY.snapTo(0f)
+            landOffsetY.animateTo(3f, tween(65, easing = FastOutSlowInEasing))
+            landOffsetY.animateTo(-1.2f, tween(105, easing = FastOutSlowInEasing))
+            landOffsetY.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 380f))
+        }
+        launch {
+            landRingProgress.snapTo(0f)
+            landRingProgress.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+            landRingProgress.snapTo(0f)
+        }
+    }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = if (hideForTutorial) 0f else 1f }
-            .tactilePress(pressedScale = 0.985f, disabledByPerf = tokens.performance.noAnimations || hideForTutorial)
+            .tactilePress(pressedScale = 0.985f, disabledByPerf = noAnim || hideForTutorial)
             .ironGlassSurface(
                 tokens = tokens,
                 subtle = true,
@@ -1503,8 +1585,26 @@ fun TodayMascot(
                         }
                     }
                 }
-                .graphicsLayer { alpha = orbVisibleAlpha() }
+                .graphicsLayer {
+                    alpha = orbVisibleAlpha()
+                    scaleX = landScaleX.value
+                    scaleY = landScaleY.value
+                    translationY = landOffsetY.value * density
+                }
         ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val p = landRingProgress.value
+                if (p > 0.01f && p < 0.99f) {
+                    val fade = (1f - p).coerceIn(0f, 1f)
+                    val radius = (this.size.minDimension * 0.5f) * lerp(0.84f, 1.32f, p)
+                    drawCircle(
+                        color = phaseColor.copy(alpha = fade * 0.72f),
+                        radius = radius,
+                        center = Offset(this.size.width * 0.5f, this.size.height * 0.5f),
+                        style = Stroke(width = 2.2.dp.toPx() * fade)
+                    )
+                }
+            }
             MascotOrbFace(
                 mascot = mascot,
                 eyeStateFlow = eyeStateFlow,
@@ -1629,7 +1729,8 @@ fun FloatingMascotDock(
         val marginPx = with(density) { 14.dp.toPx() }
         val topSafePx = with(density) { 80.dp.toPx() }
         val bottomSafePx = with(density) { 110.dp.toPx() }
-        val arcLiftPx = with(density) { 14.dp.toPx() }
+        val isReturning = !shouldFloat
+        val arcLoftPx = with(density) { (if (isReturning) 56.dp else 28.dp).toPx() }
 
         val targetX = if (anchorSideRight) (widthPx - orbSizePx - marginPx) else marginPx
         val targetY = (heightPx * anchorYRatio).coerceIn(topSafePx, (heightPx - orbSizePx - bottomSafePx).coerceAtLeast(topSafePx))
@@ -1666,24 +1767,60 @@ fun FloatingMascotDock(
             TransformOrigin(pivotFractionX = if (anchorSideRight) 1f else 0f, pivotFractionY = 0.5f)
         }
 
+        fun computeBezierControlX(p0x: Float, p1x: Float): Float {
+            val midX = (p0x + p1x) * 0.5f
+            val centerX = (widthPx - orbSizePx) * 0.48f
+            return lerp(midX, centerX, if (isReturning) 0.40f else 0.18f)
+                .coerceIn(marginPx, (widthPx - orbSizePx - marginPx).coerceAtLeast(marginPx))
+        }
+
+        fun computeBezierControlY(p0y: Float, p1y: Float): Float {
+            return (minOf(p0y, p1y) - arcLoftPx).coerceAtLeast(topSafePx * 0.35f)
+        }
+
         fun computeOrbX(): Float {
             val edgeX = edgeDisplayXState.value
             if (dragging) return edgeX
             val bounds = homeOrbBoundsHolder.rect
             val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
-            val homeX = if (hasBounds) (bounds!!.left - dockOriginHolder.origin.x) else edgeX
-            return lerp(homeX, edgeX, morphProgressState.value.coerceIn(0f, 1f))
+            if (!hasBounds) return edgeX
+            val t = morphProgressState.value.coerceIn(0f, 1f)
+            val p0x = bounds!!.left - dockOriginHolder.origin.x
+            if (noAnim) return lerp(p0x, edgeX, t)
+            val ctrlX = computeBezierControlX(p0x, edgeX)
+            val invT = 1f - t
+            return invT * invT * p0x + 2f * invT * t * ctrlX + t * t * edgeX
         }
 
         fun computeOrbY(): Float {
             val edgeY = edgeDisplayYState.value
             if (dragging) return edgeY
-            val t = morphProgressState.value.coerceIn(0f, 1f)
             val bounds = homeOrbBoundsHolder.rect
             val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
-            val homeY = if (hasBounds) (bounds!!.top - dockOriginHolder.origin.y) else edgeY
-            val arcOffset = if (!hasBounds || noAnim) 0f else arcLiftPx * sin(t * PI).toFloat()
-            return lerp(homeY, edgeY, t) - arcOffset
+            if (!hasBounds) return edgeY
+            val t = morphProgressState.value.coerceIn(0f, 1f)
+            val p0y = bounds!!.top - dockOriginHolder.origin.y
+            if (noAnim) return lerp(p0y, edgeY, t)
+            val ctrlY = computeBezierControlY(p0y, edgeY)
+            val invT = 1f - t
+            return invT * invT * p0y + 2f * invT * t * ctrlY + t * t * edgeY
+        }
+
+        fun computeBankDeg(): Float {
+            if (noAnim || dragging) return 0f
+            val bounds = homeOrbBoundsHolder.rect
+            val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
+            if (!hasBounds) return 0f
+            val t = morphProgressState.value.coerceIn(0f, 1f)
+            val p0x = bounds!!.left - dockOriginHolder.origin.x
+            val p1x = edgeDisplayXState.value
+            val ctrlX = computeBezierControlX(p0x, p1x)
+            val invT = 1f - t
+            val tangentX = 2f * invT * (ctrlX - p0x) + 2f * t * (p1x - ctrlX)
+            val travelDx = if (isReturning) -tangentX else tangentX
+            val envelope = sin(t * PI).toFloat().coerceIn(0f, 1f)
+            val bankNorm = (travelDx / (widthPx * 0.52f).coerceAtLeast(1f)).coerceIn(-1f, 1f)
+            return bankNorm * 16f * envelope
         }
 
         // Anchored, organic spring speech bubble next to floating orb
@@ -1778,7 +1915,7 @@ fun FloatingMascotDock(
             }
         }
 
-        // Draggable Floating Orb (GPU translationX/Y + scale — 120 FPS morph & velocity snap)
+        // Draggable Floating Orb (GPU Bezier arc + centered banking tilt + velocity snap)
         Box(
             modifier = Modifier
                 .graphicsLayer {
@@ -1786,7 +1923,9 @@ fun FloatingMascotDock(
                     val bounds = homeOrbBoundsHolder.rect
                     val hasBounds = bounds != null && !bounds.isEmpty && bounds.width > 10f
                     val homeScale = if (hasBounds) (bounds!!.width / orbSizePx).coerceIn(0.85f, 1.35f) else 0.72f
-                    val scale = lerp(homeScale, dragScaleState.value, t)
+                    val envelope = sin(t * PI).toFloat().coerceIn(0f, 1f)
+                    val arcLiftScale = if (noAnim || dragging || !hasBounds) 1f else (1f + 0.10f * envelope)
+                    val scale = lerp(homeScale, dragScaleState.value, t) * arcLiftScale
                     translationX = computeOrbX()
                     translationY = computeOrbY()
                     scaleX = scale
@@ -1842,12 +1981,38 @@ fun FloatingMascotDock(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            MascotOrbFace(
-                mascot = mascot,
-                eyeStateFlow = eyeStateFlow,
-                size = 54.dp,
-                animActive = animActive
-            )
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    rotationZ = computeBankDeg()
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.size(56.dp)) {
+                    val t = morphProgressState.value.coerceIn(0f, 1f)
+                    val envelope = sin(t * PI).toFloat().coerceIn(0f, 1f)
+                    if (!noAnim && !dragging && envelope > 0.04f) {
+                        val r = this.size.minDimension * 0.5f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    phaseColor.copy(alpha = 0.28f * envelope),
+                                    Color.Transparent
+                                ),
+                                center = Offset(this.size.width * 0.5f, this.size.height * 0.54f),
+                                radius = r * (1.06f + 0.18f * envelope)
+                            ),
+                            radius = r * (1.06f + 0.18f * envelope),
+                            center = Offset(this.size.width * 0.5f, this.size.height * 0.54f)
+                        )
+                    }
+                }
+                MascotOrbFace(
+                    mascot = mascot,
+                    eyeStateFlow = eyeStateFlow,
+                    size = 54.dp,
+                    animActive = animActive
+                )
+            }
         }
     }
 }

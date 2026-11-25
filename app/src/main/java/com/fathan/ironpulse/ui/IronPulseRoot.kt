@@ -230,9 +230,33 @@ fun IronPulseRoot(
                         }
                     }
 
+                    var prevShowFloating by remember { mutableStateOf(showFloatingMascot) }
+                    var isReturningHome by remember { mutableStateOf(false) }
+                    var homeLandingTick by remember { mutableIntStateOf(0) }
+                    LaunchedEffect(showFloatingMascot) {
+                        if (prevShowFloating && !showFloatingMascot) {
+                            isReturningHome = true
+                        } else if (!prevShowFloating && showFloatingMascot) {
+                            isReturningHome = false
+                        }
+                        prevShowFloating = showFloatingMascot
+                    }
+
                     val morphProgressState = animateFloatAsState(
                         targetValue = if (showFloatingMascot) 1f else 0f,
-                        animationSpec = if (noAnim) tween(0) else IronPulseMotion.MorphSpring,
+                        animationSpec = when {
+                            noAnim -> tween(0)
+                            isReturningHome -> IronPulseMotion.ReturnMorphSpring
+                            else -> IronPulseMotion.MorphSpring
+                        },
+                        finishedListener = { finalVal ->
+                            if (!showFloatingMascot && isReturningHome && finalVal <= 0.02f) {
+                                isReturningHome = false
+                                if (!noAnim) {
+                                    homeLandingTick += 1
+                                }
+                            }
+                        },
                         label = "mascotMorphProgress"
                     )
 
@@ -273,6 +297,7 @@ fun IronPulseRoot(
                                                 !showFloatingMascot &&
                                                 !modalBlocking,
                                             homeOrbBoundsHolder = homeOrbBoundsHolder,
+                                            homeLandingTick = homeLandingTick,
                                             onTapMascot = { viewModel.tapMascot() },
                                             onPetMascot = { viewModel.petMascot(true) },
                                             onReplayMascotVoice = { viewModel.replayMascotVoice() },

@@ -54,6 +54,11 @@ object IronPulseMotion {
         stiffness = 440f
     )
 
+    val ReturnMorphSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.80f,
+        stiffness = 240f
+    )
+
     val OrbSnapSpring: SpringSpec<Float> = spring(
         dampingRatio = 0.72f,
         stiffness = 380f
