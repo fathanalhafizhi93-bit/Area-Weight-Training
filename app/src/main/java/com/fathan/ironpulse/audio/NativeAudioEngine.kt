@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
 import com.fathan.ironpulse.model.CustomRingtone
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.RingtoneStorageMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -211,9 +212,13 @@ class NativeAudioEngine(context: Context) {
         }
     }
 
-    fun playMascotChirp(variant: String = "ready", volume: Float = 0.85f) {
+    fun playMascotChirp(
+        variant: String = "ready",
+        volume: Float = 0.85f,
+        personality: MascotPersonality = MascotPersonality.PARTNER
+    ) {
         scope.launch {
-            val pcm = synthesizeChirp(variant, volume.coerceIn(0f, 1f))
+            val pcm = synthesizeChirp(variant, volume.coerceIn(0f, 1f), personality)
             if (pcm.isEmpty()) return@launch
             synchronized(this@NativeAudioEngine) {
                 runCatching {
@@ -312,8 +317,12 @@ class NativeAudioEngine(context: Context) {
         }
     }
 
-    private fun synthesizeChirp(variant: String, volume: Float): ShortArray {
-        val totalSeconds = 0.28
+    private fun synthesizeChirp(
+        variant: String,
+        volume: Float,
+        personality: MascotPersonality = MascotPersonality.PARTNER
+    ): ShortArray {
+        val totalSeconds = 0.30
         val buffer = DoubleArray((SAMPLE_RATE * totalSeconds).toInt())
         val master = (volume * 0.22f).coerceIn(0.03f, 0.28f).toDouble()
 
@@ -333,34 +342,76 @@ class NativeAudioEngine(context: Context) {
                 val sample = when (wave) {
                     Wave.SINE -> sin(2.0 * PI * phaseAcc)
                     Wave.TRIANGLE -> 2.0 * abs(2.0 * phaseAcc - 1.0) - 1.0
-                    else -> sin(2.0 * PI * phaseAcc)
+                    Wave.SAWTOOTH -> (2.0 * phaseAcc - 1.0) * 0.65
+                    Wave.SQUARE -> if (phaseAcc < 0.5) 0.55 else -0.55
                 }
                 buffer[i] += sample * master * gainScale * env
             }
         }
 
-        when (variant) {
-            "celebrate", "milestone" -> {
-                addSweep(587.33, 659.25, 0.0, 0.055, Wave.TRIANGLE, 1.0)
-                addSweep(783.99, 880.0, 0.065, 0.06, Wave.TRIANGLE, 1.05)
-                addSweep(1046.5, 1174.66, 0.135, 0.085, Wave.SINE, 1.1)
+        if (personality == MascotPersonality.COACH) {
+            when (variant) {
+                "celebrate", "milestone" -> {
+                    // Sharp athletic command cadence: crisp two-step whistle snap + firm fifth hold
+                    addSweep(523.25, 659.25, 0.0, 0.05, Wave.TRIANGLE, 1.0)
+                    addSweep(783.99, 783.99, 0.06, 0.055, Wave.TRIANGLE, 1.05)
+                    addSweep(987.77, 1046.5, 0.13, 0.095, Wave.TRIANGLE, 1.1)
+                }
+                "clap" -> {
+                    // Disciplined double-pip confirmation
+                    addSweep(587.33, 622.25, 0.0, 0.042, Wave.TRIANGLE, 0.95)
+                    addSweep(783.99, 783.99, 0.055, 0.065, Wave.TRIANGLE, 1.02)
+                }
+                "rest", "timerActive" -> {
+                    // Chronometer double-tick
+                    addSweep(493.88, 493.88, 0.0, 0.045, Wave.SINE, 0.85)
+                    addSweep(659.25, 659.25, 0.065, 0.065, Wave.TRIANGLE, 0.90)
+                }
+                "pet" -> {
+                    // Composed, warm low acknowledgment nod
+                    addSweep(329.63, 369.99, 0.0, 0.075, Wave.TRIANGLE, 0.78)
+                    addSweep(392.00, 440.00, 0.09, 0.09, Wave.SINE, 0.76)
+                }
+                "restday", "night" -> {
+                    // Soft low evening discipline chime
+                    addSweep(329.63, 349.23, 0.0, 0.07, Wave.SINE, 0.68)
+                    addSweep(392.00, 415.30, 0.085, 0.08, Wave.SINE, 0.65)
+                }
+                else -> {
+                    // Signature Coach crisp command whistle chirp
+                    addSweep(554.37, 698.46, 0.0, 0.048, Wave.TRIANGLE, 0.92)
+                    addSweep(659.25, 783.99, 0.062, 0.078, Wave.TRIANGLE, 0.98)
+                }
             }
-            "clap" -> {
-                addSweep(659.25, 783.99, 0.0, 0.05, Wave.TRIANGLE, 0.95)
-                addSweep(880.0, 987.77, 0.06, 0.07, Wave.SINE, 1.0)
-            }
-            "rest", "timerActive" -> {
-                addSweep(523.25, 587.33, 0.0, 0.055, Wave.SINE, 0.85)
-                addSweep(659.25, 698.46, 0.07, 0.065, Wave.SINE, 0.85)
-            }
-            "restday", "night" -> {
-                addSweep(440.0, 493.88, 0.0, 0.065, Wave.SINE, 0.72)
-                addSweep(523.25, 554.37, 0.08, 0.075, Wave.SINE, 0.68)
-            }
-            else -> {
-                addSweep(540.0, 680.0, 0.0, 0.048, Wave.TRIANGLE, 0.9)
-                addSweep(720.0, 820.0, 0.058, 0.045, Wave.TRIANGLE, 0.95)
-                addSweep(640.0, 760.0, 0.115, 0.065, Wave.SINE, 0.85)
+        } else {
+            when (variant) {
+                "celebrate", "milestone" -> {
+                    addSweep(587.33, 659.25, 0.0, 0.055, Wave.TRIANGLE, 1.0)
+                    addSweep(783.99, 880.0, 0.065, 0.06, Wave.TRIANGLE, 1.05)
+                    addSweep(1046.5, 1174.66, 0.135, 0.085, Wave.SINE, 1.1)
+                }
+                "clap" -> {
+                    addSweep(659.25, 783.99, 0.0, 0.05, Wave.TRIANGLE, 0.95)
+                    addSweep(880.0, 987.77, 0.06, 0.07, Wave.SINE, 1.0)
+                }
+                "rest", "timerActive" -> {
+                    addSweep(523.25, 587.33, 0.0, 0.055, Wave.SINE, 0.85)
+                    addSweep(659.25, 698.46, 0.07, 0.065, Wave.SINE, 0.85)
+                }
+                "pet" -> {
+                    // Cozy affectionate rising purr-chirp
+                    addSweep(493.88, 587.33, 0.0, 0.07, Wave.SINE, 0.82)
+                    addSweep(659.25, 783.99, 0.085, 0.095, Wave.SINE, 0.85)
+                }
+                "restday", "night" -> {
+                    addSweep(440.0, 493.88, 0.0, 0.065, Wave.SINE, 0.72)
+                    addSweep(523.25, 554.37, 0.08, 0.075, Wave.SINE, 0.68)
+                }
+                else -> {
+                    addSweep(540.0, 680.0, 0.0, 0.048, Wave.TRIANGLE, 0.9)
+                    addSweep(720.0, 820.0, 0.058, 0.045, Wave.TRIANGLE, 0.95)
+                    addSweep(640.0, 760.0, 0.115, 0.065, Wave.SINE, 0.85)
+                }
             }
         }
 

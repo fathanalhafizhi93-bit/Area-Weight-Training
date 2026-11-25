@@ -377,6 +377,32 @@ enum class MascotMood(val wireValue: String) {
     RESTDAY("restday")
 }
 
+enum class MascotPersonality(val wireValue: String) {
+    PARTNER("partner"),
+    COACH("coach");
+
+    fun label(lang: AppLanguage): String = when (this) {
+        PARTNER -> lang.t("Partner Ramah", "Friendly Partner")
+        COACH -> lang.t("Coach Tegas", "Strict Coach")
+    }
+
+    fun tagline(lang: AppLanguage): String = when (this) {
+        PARTNER -> lang.t(
+            "Hangat, ekspresif, ceria — menemani tiap set dengan santai.",
+            "Warm, expressive, upbeat — cheers you through every set."
+        )
+        COACH -> lang.t(
+            "Disiplin fokus, alis tajam & tatapan serius — jaga teknik tanpa alasan.",
+            "Disciplined focus, sharp brows & serious gaze — clean form, zero excuses."
+        )
+    }
+
+    companion object {
+        fun fromWire(value: String?): MascotPersonality =
+            entries.firstOrNull { it.wireValue == value } ?: PARTNER
+    }
+}
+
 enum class TimePhasePose {
     // Morning (9)
     TEA, COFFEE, STRETCH, PERK, WINK, SUNRISE, PROTEIN, SALUTE, SPARKLE,

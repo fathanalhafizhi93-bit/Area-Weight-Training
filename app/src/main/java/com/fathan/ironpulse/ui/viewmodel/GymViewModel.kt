@@ -39,6 +39,7 @@ import com.fathan.ironpulse.model.ExerciseItem
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MascotMood
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.MascotSpeechLine
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.MedalUnlockEvent
@@ -159,6 +160,7 @@ data class MascotUiState(
     val timePhase: DayTimePhase = DayTimePhase.MORNING,
     val urgentMood: MascotMood? = null,
     val activeTimePose: TimePhasePose = TimePhasePose.PERK,
+    val personality: MascotPersonality = MascotPersonality.PARTNER,
     val phaseColorHex: String = "#FBBF24",
     val activeLine: MascotSpeechLine = MascotSpeechLine("init", "Siap Latihan!", "Ayo bangun momentum hari ini."),
     val speechEventId: Int = 0,
@@ -285,7 +287,9 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private val _hasNotifPerm = MutableStateFlow(true)
     private val _canExactAlarm = MutableStateFlow(true)
 
-    private val _mascotState = MutableStateFlow(MascotUiState())
+    private val _mascotState = MutableStateFlow(
+        MascotUiState(personality = prefsStore.state.value.mascotPersonality)
+    )
     private val _mascotEyeState = MutableStateFlow(MascotEyeState())
     private val _scheduleLibrary = MutableStateFlow(ScheduleLibraryState())
     private val _applyingScheduleProfile = MutableStateFlow(false)
@@ -1284,6 +1288,19 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         haptics.toggle()
         prefsStore.setMascotVoiceEnabled(enabled)
         if (!enabled) ttsSpeaker.stop()
+    }
+
+    fun setMascotPersonality(personality: MascotPersonality) {
+        if (prefsStore.state.value.mascotPersonality == personality) return
+        haptics.toggle()
+        prefsStore.setMascotPersonality(personality)
+        val vol = ((_profile.value?.volume ?: 0.85) * 0.88).toFloat().coerceIn(0.25f, 0.92f)
+        audioEngine.playMascotChirp("ready", vol, personality)
+        updateMascotSpeech(
+            playChirp = false,
+            speakTts = false,
+            bypassLock = true
+        )
     }
 
     fun setFloatingOrbAnchor(sideRight: Boolean, yRatio: Float) {
@@ -2630,28 +2647,42 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startMascotLifeLoops() {
-        // 1. Organic Eye Blinking + occasional Double Blink (~2.5s..4.3s) — never blinks when eyes are closed
+        // 1. Organic Eye Blinking + occasional Double Blink — tailored by personality & time phase
         viewModelScope.launch {
             while (true) {
-                delay((2500L..4300L).random())
+                val prefs = prefsStore.state.value
+                val current = _mascotState.value
+                val isCoach = prefs.mascotPersonality == MascotPersonality.COACH
+                val isNight = current.timePhase == DayTimePhase.NIGHT
+                val waitRange = when {
+                    isNight -> 3200L..5200L
+                    isCoach -> 3000L..4800L
+                    else -> 2300L..4000L
+                }
+                delay(waitRange.random())
                 val staticMode = prefsStore.state.value.performance.staticMascot ||
                     prefsStore.state.value.performance.noAnimations
-                val current = _mascotState.value
+                val refreshed = _mascotState.value
                 val eye = _mascotEyeState.value
-                val closedEye = isMascotClosedEyeState(current, eye)
+                val closedEye = isMascotClosedEyeState(refreshed, eye)
                 if (!staticMode && !closedEye) {
+                    val holdMs = when {
+                        isNight -> 105L
+                        isCoach -> 62L
+                        else -> 76L
+                    }
                     suspend fun performSingleBlink() {
                         _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 0.48f)
-                        delay(36L)
+                        delay(34L)
                         _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 1f)
-                        delay(78L)
+                        delay(holdMs)
                         _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 0.42f)
-                        delay(36L)
+                        delay(34L)
                         _mascotEyeState.value = _mascotEyeState.value.copy(blinkProgress = 0f)
                     }
                     performSingleBlink()
-                    // ~26% chance of a natural quick double-blink
-                    if ((0..99).random() < 26) {
+                    val doubleChance = if (isCoach) 14 else if (isNight) 18 else 28
+                    if ((0..99).random() < doubleChance) {
                         delay(115L)
                         performSingleBlink()
                     }
@@ -2662,7 +2693,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         // 2. Coupled Glance + Natural Head Tilt + Automatic Daytime Hype/Tips + Rare Night Sleep Checks
         viewModelScope.launch {
             while (true) {
-                delay((2300L..3400L).random())
+                val isCoachLoop = prefsStore.state.value.mascotPersonality == MascotPersonality.COACH
+                delay((if (isCoachLoop) 2500L..3900L else 1900L..3200L).random())
                 val now = System.currentTimeMillis()
                 val staticMode = prefsStore.state.value.performance.staticMascot ||
                     prefsStore.state.value.performance.noAnimations
@@ -2676,10 +2708,14 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                         _mascotEyeState.value = eye.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
                     }
                 } else {
-                    val (gx, gy) = GLANCE_TARGETS.random()
-                    val tilt = (gx * 2.15f + (-1.2f..1.2f).let { r ->
+                    val returnCenter = (0..99).random() < 36
+                    val targets = if (isCoachLoop) GLANCE_TARGETS_COACH else GLANCE_TARGETS
+                    val (gx, gy) = if (returnCenter) (0f to 0f) else targets.random()
+                    val maxTilt = if (isCoachLoop) 3.2f else 6.2f
+                    val tiltScale = if (isCoachLoop) 1.25f else 2.15f
+                    val tilt = (gx * tiltScale + (-0.9f..0.9f).let { r ->
                         r.start + Math.random().toFloat() * (r.endInclusive - r.start)
-                    }).coerceIn(-6.2f, 6.2f)
+                    }).coerceIn(-maxTilt, maxTilt)
                     if (eye.glanceX != gx || eye.glanceY != gy || eye.headTiltDeg != tilt) {
                         _mascotEyeState.value = eye.copy(
                             glanceX = gx,
@@ -2789,26 +2825,28 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         dialogueLockedUntilMs = now + 14_000L
         lastAutoChatAtMs = now
 
+        val personality = prefs.mascotPersonality
         triggerMascotReactionPulse(
             kind = MascotReaction.TIP,
             durationMs = 1000L,
-            tiltDeg = 5.0f
+            tiltDeg = if (personality == MascotPersonality.COACH) 2.8f else 5.0f
         )
-        val pool = MascotDialogues.buildQuickTipPool(prefs.lang, n)
+        val pool = MascotDialogues.buildQuickTipPool(prefs.lang, n, personality)
         mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
         val picked = pool[mascotQuoteRoll]
         _mascotState.value = _mascotState.value.copy(
             mood = MascotMood.READY,
             timePhase = phase,
             activeTimePose = TimePhasePose.CURIOUS,
+            personality = personality,
             phaseColorHex = resolvePhaseThemeTokens(phase).accentBrightHex,
             activeLine = picked,
             speechEventId = _mascotState.value.speechEventId + 1,
             isDialogueLocked = true
         )
-        audioEngine.playMascotChirp("ready", vol)
+        audioEngine.playMascotChirp("ready", vol, personality)
         if (speakTts && prefs.mascotVoiceEnabled) {
-            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
+            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true, personality)
         }
     }
 
@@ -2817,6 +2855,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
         val cal = Calendar.getInstance()
         val prefs = prefsStore.state.value
+        val personality = prefs.mascotPersonality
         val phase = GymModelHelpers.resolveDayTimePhase(prefs.todayThemeMode, cal)
         val pool = posesForPhase(phase)
 
@@ -2830,7 +2869,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 }.randomOrNull() ?: TimePhasePose.YAWN
                 mascotPhasePoseIdx = NIGHT_POSES.indexOf(chosenPose).takeIf { it >= 0 } ?: 1
                 pushRecentPose(mascotPhasePoseIdx)
-                val sleepyTilt = if (chosenPose in CLOSED_EYE_POSES) 0f else 2.2f
+                val sleepyTilt = if (chosenPose in CLOSED_EYE_POSES) 0f else if (personality == MascotPersonality.COACH) 1.4f else 2.2f
                 triggerMascotReactionPulse(
                     kind = MascotReaction.TAP_BOUNCE,
                     durationMs = 540L,
@@ -2868,24 +2907,30 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
         if (mascotComboCount >= 3) {
             val excitedPose = if (phase == DayTimePhase.MORNING) TimePhasePose.FLEX else TimePhasePose.BEAST
+            val comboTilt = if (personality == MascotPersonality.COACH) {
+                if (mascotComboCount % 2 == 0) 3.4f else -3.4f
+            } else {
+                if (mascotComboCount % 2 == 0) 6.5f else -6.5f
+            }
             triggerMascotReactionPulse(
                 kind = MascotReaction.COMBO_EXCITED,
                 durationMs = 1150L,
                 combo = mascotComboCount,
-                tiltDeg = if (mascotComboCount % 2 == 0) 6.5f else -6.5f
+                tiltDeg = comboTilt
             )
             val cleanName = (_profile.value?.displayName ?: "").trim()
             val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
-            val comboPool = MascotDialogues.buildComboPokePool(prefs.lang, n, mascotComboCount)
+            val comboPool = MascotDialogues.buildComboPokePool(prefs.lang, n, mascotComboCount, personality)
             val picked = comboPool[(mascotComboCount - 3) % comboPool.size]
             _mascotState.value = _mascotState.value.copy(
                 activeTimePose = excitedPose,
+                personality = personality,
                 phaseColorHex = prefs.accentColorHex,
                 activeLine = picked,
                 speechEventId = _mascotState.value.speechEventId + 1
             )
             val vol = (_profile.value?.volume ?: 0.85).toFloat()
-            audioEngine.playMascotChirp("celebrate", vol)
+            audioEngine.playMascotChirp(if (personality == MascotPersonality.COACH) "clap" else "celebrate", vol, personality)
             return
         }
 
@@ -2903,11 +2948,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val nextPose = pool[mascotPhasePoseIdx % pool.size]
         val isNextClosed = _mascotState.value.urgentMood in CLOSED_EYE_MOODS ||
             (_mascotState.value.urgentMood == null && nextPose in CLOSED_EYE_POSES)
+        val tiltStep = if (isNextClosed) 0f else if (personality == MascotPersonality.COACH) listOf(-2.8f, 2.8f).random() else listOf(-5.2f, 5.2f).random()
         triggerMascotReactionPulse(
             kind = MascotReaction.TAP_BOUNCE,
             durationMs = 740L,
             combo = mascotComboCount,
-            tiltDeg = if (isNextClosed) 0f else listOf(-5.2f, 5.2f).random()
+            tiltDeg = tiltStep
         )
         if (isNextClosed) {
             _mascotEyeState.value = _mascotEyeState.value.copy(glanceX = 0f, glanceY = 0f, headTiltDeg = 0f)
@@ -2934,9 +2980,10 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         haptics.buttonTap()
         mascotReactionClearJob?.cancel()
         val prefs = prefsStore.state.value
+        val personality = prefs.mascotPersonality
         val cleanName = (_profile.value?.displayName ?: "").trim()
         val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
-        val petPool = MascotDialogues.buildPettingPool(prefs.lang, n)
+        val petPool = MascotDialogues.buildPettingPool(prefs.lang, n, personality)
         mascotQuoteRoll = (mascotQuoteRoll + 1) % petPool.size.coerceAtLeast(1)
         val picked = petPool[mascotQuoteRoll % petPool.size]
         val nextTick = _mascotEyeState.value.reactionTick + 1
@@ -2950,12 +2997,13 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             glanceY = 0f
         )
         _mascotState.value = _mascotState.value.copy(
-            activeTimePose = TimePhasePose.COZY,
+            activeTimePose = if (personality == MascotPersonality.COACH) TimePhasePose.ZEN else TimePhasePose.COZY,
+            personality = personality,
             activeLine = picked,
             speechEventId = _mascotState.value.speechEventId + 1
         )
         val vol = ((_profile.value?.volume ?: 0.85) * 0.65).toFloat().coerceIn(0.2f, 0.72f)
-        audioEngine.playMascotChirp("rest", vol)
+        audioEngine.playMascotChirp("pet", vol, personality)
         mascotReactionClearJob = viewModelScope.launch {
             delay(2200L)
             if (_mascotEyeState.value.isPetting) {
@@ -2973,7 +3021,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val prefs = prefsStore.state.value
         val line = _mascotState.value.activeLine
         val text = "${line.headline}. ${line.subline}"
-        ttsSpeaker.speak(text, prefs.lang, enabled = true)
+        ttsSpeaker.speak(text, prefs.lang, enabled = true, personality = prefs.mascotPersonality)
     }
 
     private fun rotateTimePoseOnly() {
@@ -3006,6 +3054,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             mood = contextInfo.mood,
             timePhase = phase,
             activeTimePose = activePose,
+            personality = prefs.mascotPersonality,
             phaseColorHex = colorHex,
             activeLine = chosen
         )
@@ -3057,6 +3106,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             timePhase = phase,
             urgentMood = urgent,
             activeTimePose = activePose,
+            personality = prefs.mascotPersonality,
             phaseColorHex = colorHex,
             activeLine = picked,
             speechEventId = _mascotState.value.speechEventId + 1,
@@ -3079,10 +3129,10 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 baseVol
             }
             val variant = if (phase == DayTimePhase.NIGHT && urgent == null) "night" else ctx.mood.wireValue
-            audioEngine.playMascotChirp(variant, vol)
+            audioEngine.playMascotChirp(variant, vol, prefs.mascotPersonality)
         }
         if (speakTts && prefs.mascotVoiceEnabled) {
-            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true)
+            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true, prefs.mascotPersonality)
         }
     }
 
@@ -3128,6 +3178,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             totalSets = totalSets,
             progressPct = pct,
             dayLabel = today.label(prefs.lang),
+            personality = prefs.mascotPersonality,
             activeTimerExerciseName = runningExName,
             restRemainingFormatted = if (rest.isActive) GymModelHelpers.formatRestDuration(rest.remainingSeconds) else null,
             allCompleted = allDone,
@@ -3273,6 +3324,14 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             0f to -1.3f,
             2.0f to -1.0f,
             -2.0f to -1.0f
+        )
+        private val GLANCE_TARGETS_COACH = listOf(
+            0f to 0f,
+            -1.5f to -0.2f,
+            1.5f to -0.2f,
+            1.1f to 0.45f,
+            -1.1f to 0.45f,
+            0f to -0.45f
         )
 
         internal fun isMascotClosedEyeState(mascot: MascotUiState, eye: MascotEyeState): Boolean {

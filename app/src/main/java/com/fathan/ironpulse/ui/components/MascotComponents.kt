@@ -88,6 +88,7 @@ import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.MascotMood
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
@@ -441,6 +442,7 @@ fun MascotOrbFace(
 
     val isClosedCalmPose = isSleepPose || isZenPose || isCozyPose || isDreamPose
     val isClosedEyeExpression = isClosedEyeExpression(mascot, eyeState.isPetting)
+    val isCoach = mascot.personality == MascotPersonality.COACH
     val density = LocalDensity.current
 
     val staticOne = remember { mutableFloatStateOf(1f) }
@@ -448,29 +450,56 @@ fun MascotOrbFace(
 
     val ringScaleState: State<Float>
     val bobOffsetDpState: State<Float>
+    val breathProgressState: State<Float>
+    val idleSwayDegState: State<Float>
     if (runAnim) {
         val infinite = rememberInfiniteTransition(label = "orbInfinite")
+        val breathDurationMs = when {
+            isClosedCalmPose || isCalmEyes -> 3400
+            isCoach -> 2450
+            else -> 2800
+        }
         ringScaleState = infinite.animateFloat(
             initialValue = 0.96f,
-            targetValue = if (isCelebration || eyeState.tapBounce) 1.24f else 1.14f,
+            targetValue = if (isCelebration || eyeState.tapBounce) 1.24f else if (isCoach) 1.11f else 1.14f,
             animationSpec = infiniteRepeatable(
-                animation = tween(if (isCelebration) 1100 else 2200, easing = FastOutSlowInEasing),
+                animation = tween(if (isCelebration) 1100 else 2250, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "ringScale"
         )
         bobOffsetDpState = infinite.animateFloat(
-            initialValue = -2f,
-            targetValue = 2f,
+            initialValue = if (isCoach) -1.5f else -2f,
+            targetValue = if (isCoach) 1.5f else 2f,
             animationSpec = infiniteRepeatable(
-                animation = tween(if (isMusicPose || isWhistlePose || isProteinPose) 1400 else 2300, easing = FastOutSlowInEasing),
+                animation = tween(if (isMusicPose || isWhistlePose || isProteinPose) 1400 else 2180, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "bobOffset"
         )
+        breathProgressState = infinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(breathDurationMs, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breathCycle"
+        )
+        idleSwayDegState = infinite.animateFloat(
+            initialValue = if (isCoach) -0.45f else -0.85f,
+            targetValue = if (isCoach) 0.45f else 0.85f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(3900, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "idleSway"
+        )
     } else {
         ringScaleState = staticOne
         bobOffsetDpState = staticZero
+        breathProgressState = staticZero
+        idleSwayDegState = staticZero
     }
 
     val tapScaleState = if (runAnim) {
@@ -677,16 +706,22 @@ fun MascotOrbFace(
             }
         }
 
-        // Core OS-styled circular orb chassis (GPU graphicsLayer: bob + squash/stretch + natural head tilt)
+        // Core OS-styled circular orb chassis (GPU graphicsLayer: bob + organic breath + squash/stretch + natural head tilt)
         Box(
             modifier = Modifier
                 .size(size * 0.875f)
                 .graphicsLayer {
+                    val breath = breathProgressState.value
+                    val breathAmpX = if (isClosedCalmPose) 0.022f else if (isCoach) 0.015f else 0.018f
+                    val breathAmpY = if (isClosedCalmPose) 0.030f else if (isCoach) 0.022f else 0.026f
+                    val breathScaleX = 1f + (breath - 0.35f) * breathAmpX
+                    val breathScaleY = 1f + (breath - 0.35f) * breathAmpY
+                    val sway = if (isClosedEyeExpression || !runAnim) 0f else idleSwayDegState.value
                     translationY = bobOffsetDpState.value * density.density
                     val ts = tapScaleState.value
-                    scaleX = ts * squashX.value
-                    scaleY = ts * squashY.value
-                    rotationZ = headTiltState.value
+                    scaleX = ts * squashX.value * breathScaleX
+                    scaleY = ts * squashY.value * breathScaleY
+                    rotationZ = headTiltState.value + sway
                 }
                 .clip(CircleShape)
                 .drawBehind {
@@ -877,8 +912,30 @@ fun MascotOrbFace(
                     drawPath(pathA, phaseColor.copy(alpha = 0.85f), style = Stroke(px(4.5f), cap = StrokeCap.Round))
                 }
 
-                // Eyebrows
+                // Eyebrows — Coach features signature sharp, angled stern brows
                 when {
+                    isCoach && eyeState.isPetting -> {
+                        // Stoic Coach accepts a pat with composed, slightly softened brows
+                        drawLine(Color(0xFFE5E7EB), pt(17f, 22.0f), pt(25.8f, 23.2f), px(2.4f), cap = StrokeCap.Round)
+                        drawLine(Color(0xFFE5E7EB), pt(47f, 22.0f), pt(38.2f, 23.2f), px(2.4f), cap = StrokeCap.Round)
+                    }
+                    isCoach && (isSleepPose || isDreamPose) -> {
+                        drawLine(Color(0xFF9CA3AF), pt(18f, 22.4f), pt(25.8f, 23.0f), px(2.1f), cap = StrokeCap.Round)
+                        drawLine(Color(0xFF9CA3AF), pt(46f, 22.4f), pt(38.2f, 23.0f), px(2.1f), cap = StrokeCap.Round)
+                    }
+                    isCoach && (isBeastPose || isFocusedEyes || isFlexPose || isSalutePose) -> {
+                        drawLine(phaseColor, pt(14.8f, 18.8f), pt(26.5f, 24.4f), px(2.85f), cap = StrokeCap.Round)
+                        drawLine(phaseColor, pt(49.2f, 18.8f), pt(37.5f, 24.4f), px(2.85f), cap = StrokeCap.Round)
+                    }
+                    isCoach && (isCuriousPose || isSmirkPose) -> {
+                        drawLine(Color(0xFFE5E7EB), pt(16f, 20.6f), pt(26f, 24.0f), px(2.55f), cap = StrokeCap.Round)
+                        drawLine(Color(0xFFE5E7EB), pt(38f, 22.6f), pt(47.8f, 19.2f), px(2.55f), cap = StrokeCap.Round)
+                    }
+                    isCoach -> {
+                        // Signature Coach sharp downward-angled brows
+                        drawLine(Color(0xFFE5E7EB), pt(15.6f, 19.8f), pt(26.2f, 23.8f), px(2.6f), cap = StrokeCap.Round)
+                        drawLine(Color(0xFFE5E7EB), pt(48.4f, 19.8f), pt(37.8f, 23.8f), px(2.6f), cap = StrokeCap.Round)
+                    }
                     isBeastPose -> {
                         drawLine(phaseColor, pt(16.5f, 20f), pt(26.2f, 24.4f), px(2.7f), cap = StrokeCap.Round)
                         drawLine(phaseColor, pt(47.5f, 20f), pt(37.8f, 24.4f), px(2.7f), cap = StrokeCap.Round)
@@ -929,9 +986,30 @@ fun MascotOrbFace(
                 // Eyes (with glance offset strictly locked to zero when eyes are closed)
                 val gx = if (isClosedEyeExpression) 0f else px(glanceXState.value)
                 val gy = if (isClosedEyeExpression) 0f else px(glanceYState.value)
+                val pgx = gx * 1.18f
+                val pgy = gy * 1.18f
                 fun gpt(x: Float, y: Float) = Offset(px(x) + gx, px(y) + gy)
+                fun ppt(x: Float, y: Float) = Offset(px(x) + pgx, px(y) + pgy)
 
                 when {
+                    isCoach && eyeState.isPetting -> {
+                        // Dignified calm nod eyes
+                        drawLine(Color(0xFFE5E7EB), pt(17.5f, 28.0f), pt(26.2f, 28.6f), px(2.55f), cap = StrokeCap.Round)
+                        drawLine(Color(0xFFE5E7EB), pt(46.5f, 28.0f), pt(37.8f, 28.6f), px(2.55f), cap = StrokeCap.Round)
+                    }
+                    isCoach && isCelebration -> {
+                        // Sharp confident athletic celebratory squint
+                        pathA.reset()
+                        pathA.moveTo(px(17.5f), px(28.5f))
+                        pathA.lineTo(px(22f), px(25.0f))
+                        pathA.lineTo(px(26.2f), px(28.0f))
+                        pathB.reset()
+                        pathB.moveTo(px(46.5f), px(28.5f))
+                        pathB.lineTo(px(42f), px(25.0f))
+                        pathB.lineTo(px(37.8f), px(28.0f))
+                        drawPath(pathA, Color(0xFFF4F5F7), style = Stroke(px(2.7f), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                        drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.7f), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    }
                     isCelebration || isMusicPose || isSunrisePose || isSweatPose -> {
                         pathA.reset()
                         pathA.moveTo(px(18f) + gx, px(28f) + gy)
@@ -942,7 +1020,7 @@ fun MascotOrbFace(
                         drawPath(pathA, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
                         drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.8f), cap = StrokeCap.Round))
                     }
-                    isSparklePose -> {
+                    isSparklePose && !isCoach -> {
                         for (cx in listOf(22f, 42f)) {
                             pathA.reset()
                             pathA.moveTo(px(cx), px(23.2f))
@@ -959,20 +1037,20 @@ fun MascotOrbFace(
                         }
                     }
                     isBeastPose -> {
-                        drawLine(Color(0xFFF4F5F7), gpt(18f, 26.5f), gpt(25.5f, 29f), px(2.4f), cap = StrokeCap.Round)
-                        drawCircle(phaseColor, px(2.5f), gpt(22.5f, 28.2f))
-                        drawLine(Color(0xFFF4F5F7), gpt(46f, 26.5f), gpt(38.5f, 29f), px(2.4f), cap = StrokeCap.Round)
-                        drawCircle(phaseColor, px(2.5f), gpt(41.5f, 28.2f))
+                        drawLine(Color(0xFFF4F5F7), gpt(17.5f, 26.2f), gpt(25.8f, 29.0f), px(2.5f), cap = StrokeCap.Round)
+                        drawCircle(phaseColor, px(2.5f), ppt(22.3f, 28.2f))
+                        drawLine(Color(0xFFF4F5F7), gpt(46.5f, 26.2f), gpt(38.2f, 29.0f), px(2.5f), cap = StrokeCap.Round)
+                        drawCircle(phaseColor, px(2.5f), ppt(41.7f, 28.2f))
                     }
                     isSmirkPose -> {
                         drawLine(Color(0xFFF4F5F7), gpt(17.5f, 27.5f), gpt(26f, 27.5f), px(2.5f), cap = StrokeCap.Round)
-                        drawCircle(Color(0xFFF4F5F7), px(1.9f), gpt(22f, 28.6f))
+                        drawCircle(Color(0xFFF4F5F7), px(1.9f), ppt(22f, 28.6f))
                         drawCircle(Color(0xFFF4F5F7), px(3.1f), gpt(42f, 27.2f))
-                        drawCircle(phaseColor, px(1.0f), gpt(41f, 26.2f))
+                        drawCircle(phaseColor, px(1.15f), ppt(41.2f, 26.5f))
                     }
-                    isWinkPose || isWhistlePose -> {
+                    (isWinkPose || isWhistlePose) && !isCoach -> {
                         drawCircle(Color(0xFFF4F5F7), px(3.2f), gpt(22f, 27.5f))
-                        drawCircle(phaseColor, px(1.05f), gpt(21f, 26.3f))
+                        drawCircle(phaseColor, px(1.15f), ppt(21.2f, 26.5f))
                         pathA.reset()
                         pathA.moveTo(px(38f) + gx, px(27.6f) + gy)
                         pathA.cubicTo(px(40f) + gx, px(24.8f) + gy, px(44f) + gx, px(24.8f) + gy, px(46f) + gx, px(27.6f) + gy)
@@ -1016,18 +1094,30 @@ fun MascotOrbFace(
                         drawPath(pathB, Color(0xFFF4F5F7), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                     }
                     isStargazePose || isMoonlitPose -> {
-                        drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(22f, 27.2f))
-                        drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(42f, 27.2f))
-                        drawLine(phaseColor, gpt(22f, 25f), gpt(22f, 27.6f), px(1.25f), cap = StrokeCap.Round)
-                        drawLine(phaseColor, gpt(20.7f, 26.3f), gpt(23.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
-                        drawLine(phaseColor, gpt(42f, 25f), gpt(42f, 27.6f), px(1.25f), cap = StrokeCap.Round)
-                        drawLine(phaseColor, gpt(40.7f, 26.3f), gpt(43.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
+                        if (isCoach) {
+                            // Focused half-lidded serious night-watch gaze
+                            drawRoundRect(Color(0xFFF4F5F7), gpt(18.4f, 25.6f), Size(px(7.2f), px(4.6f)), CornerRadius(px(2.0f)))
+                            drawRoundRect(Color(0xFFF4F5F7), gpt(38.4f, 25.6f), Size(px(7.2f), px(4.6f)), CornerRadius(px(2.0f)))
+                            drawCircle(Color(0xFF0F172A), px(1.55f), ppt(22.0f, 27.9f))
+                            drawCircle(Color(0xFF0F172A), px(1.55f), ppt(42.0f, 27.9f))
+                            drawCircle(phaseColor, px(0.75f), ppt(21.4f, 27.1f))
+                            drawCircle(phaseColor, px(0.75f), ppt(41.4f, 27.1f))
+                            drawLine(Color(0xFF0F172A), gpt(17.8f, 25.2f), gpt(26.4f, 26.2f), px(1.9f), cap = StrokeCap.Round)
+                            drawLine(Color(0xFF0F172A), gpt(46.2f, 25.2f), gpt(37.6f, 26.2f), px(1.9f), cap = StrokeCap.Round)
+                        } else {
+                            drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(22f, 27.2f))
+                            drawCircle(Color(0xFFF4F5F7), px(3.4f), gpt(42f, 27.2f))
+                            drawLine(phaseColor, ppt(22f, 25f), ppt(22f, 27.6f), px(1.25f), cap = StrokeCap.Round)
+                            drawLine(phaseColor, ppt(20.7f, 26.3f), ppt(23.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
+                            drawLine(phaseColor, ppt(42f, 25f), ppt(42f, 27.6f), px(1.25f), cap = StrokeCap.Round)
+                            drawLine(phaseColor, ppt(40.7f, 26.3f), ppt(43.3f, 26.3f), px(1.25f), cap = StrokeCap.Round)
+                        }
                     }
-                    isCoffeePose || isProteinPose -> {
+                    (isCoffeePose || isProteinPose) && !isCoach -> {
                         drawCircle(Color(0xFFF4F5F7), px(3.5f), gpt(22f, 27.2f))
                         drawCircle(Color(0xFFF4F5F7), px(3.5f), gpt(42f, 27.2f))
-                        drawCircle(phaseColor, px(1.15f), gpt(21f, 25.9f))
-                        drawCircle(phaseColor, px(1.15f), gpt(41f, 25.9f))
+                        drawCircle(phaseColor, px(1.25f), ppt(21.2f, 26.1f))
+                        drawCircle(phaseColor, px(1.25f), ppt(41.2f, 26.1f))
                     }
                     isCalmEyes || isRechargePose || eyeState.isPetting -> {
                         pathA.reset()
@@ -1038,6 +1128,40 @@ fun MascotOrbFace(
                         pathB.cubicTo(px(40f) + gx, px(30.8f) + gy, px(44f) + gx, px(30.8f) + gy, px(46f) + gx, px(28.2f) + gy)
                         drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
                         drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                    }
+                    isCoach -> {
+                        // Serious piercing half-lidded Coach gaze with parallax iris
+                        val blinkT = smoothBlinkState.value
+                        if (blinkT > 0.72f) {
+                            drawLine(Color(0xFFE5E7EB), gpt(17.5f, 27.6f), gpt(26.2f, 28.0f), px(2.5f), cap = StrokeCap.Round)
+                            drawLine(Color(0xFFE5E7EB), gpt(46.5f, 27.6f), gpt(37.8f, 28.0f), px(2.5f), cap = StrokeCap.Round)
+                        } else {
+                            val eyeW = px(7.4f)
+                            val openY = (1f - blinkT * 0.85f).coerceIn(0.20f, 1f)
+                            val eyeH = px(4.8f) * openY
+                            drawRoundRect(
+                                color = Color(0xFFF4F5F7),
+                                topLeft = Offset(px(22f) + gx - eyeW * 0.5f, px(27.8f) + gy - eyeH * 0.5f),
+                                size = Size(eyeW, eyeH),
+                                cornerRadius = CornerRadius(px(2.1f))
+                            )
+                            drawRoundRect(
+                                color = Color(0xFFF4F5F7),
+                                topLeft = Offset(px(42f) + gx - eyeW * 0.5f, px(27.8f) + gy - eyeH * 0.5f),
+                                size = Size(eyeW, eyeH),
+                                cornerRadius = CornerRadius(px(2.1f))
+                            )
+                            if (openY > 0.42f) {
+                                // Focused dark iris + sharp accent specular
+                                drawCircle(Color(0xFF0F172A), px(1.75f), ppt(22.2f, 28.0f))
+                                drawCircle(Color(0xFF0F172A), px(1.75f), ppt(41.8f, 28.0f))
+                                drawCircle(phaseColor, px(0.85f), ppt(21.4f, 27.0f))
+                                drawCircle(phaseColor, px(0.85f), ppt(41.0f, 27.0f))
+                                // Serious flat upper lid crease matching sharp brow slant
+                                drawLine(Color(0xFF0F172A), gpt(17.8f, 25.0f), gpt(26.2f, 26.2f), px(1.8f), cap = StrokeCap.Round)
+                                drawLine(Color(0xFF0F172A), gpt(46.2f, 25.0f), gpt(37.8f, 26.2f), px(1.8f), cap = StrokeCap.Round)
+                            }
+                        }
                     }
                     else -> {
                         val blinkT = smoothBlinkState.value
@@ -1065,15 +1189,23 @@ fun MascotOrbFace(
                                 size = Size(rBase * 2f, rH * 2f)
                             )
                             if (openY > 0.45f) {
-                                drawCircle(phaseColor, px(0.95f), gpt(21f, 26.3f))
-                                drawCircle(phaseColor, px(0.95f), gpt(41f, 26.3f))
+                                // Living parallax iris + bright dual catchlight
+                                drawCircle(phaseColor.copy(alpha = 0.38f), px(1.75f), ppt(22f, 27.6f))
+                                drawCircle(phaseColor.copy(alpha = 0.38f), px(1.75f), ppt(42f, 27.6f))
+                                drawCircle(phaseColor, px(1.0f), ppt(21.1f, 26.4f))
+                                drawCircle(phaseColor, px(1.0f), ppt(41.1f, 26.4f))
                             }
                         }
                     }
                 }
 
-                // Cheek warmth + Cozy Petting Blush
-                if (isCelebration || isTeaPose || isCoffeePose || isWinkPose || isStretchPose ||
+                // Cheek warmth + Cozy Petting Blush (Coach keeps dignified subtle tint vs Partner rosy blush)
+                if (isCoach) {
+                    if (eyeState.isPetting || isCelebration) {
+                        drawCircle(phaseColor.copy(alpha = 0.16f), px(2.2f), pt(16.2f, 34f))
+                        drawCircle(phaseColor.copy(alpha = 0.16f), px(2.2f), pt(47.8f, 34f))
+                    }
+                } else if (isCelebration || isTeaPose || isCoffeePose || isWinkPose || isStretchPose ||
                     isZenPose || isMusicPose || isSunrisePose || isSparklePose || isCozyPose ||
                     isDreamPose || isSweatPose || isPerkPose || eyeState.isPetting ||
                     eyeState.reactionKind == MascotReaction.COMBO_EXCITED
@@ -1087,6 +1219,24 @@ fun MascotOrbFace(
 
                 // Dynamic Mouth
                 when {
+                    isCoach && eyeState.isPetting -> {
+                        // Subtle stoic half-smile nod
+                        pathA.reset()
+                        pathA.moveTo(px(26f), px(38.4f))
+                        pathA.cubicTo(px(29.5f), px(39.6f), px(34.5f), px(39.2f), px(38.2f), px(37.4f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.4f), cap = StrokeCap.Round))
+                    }
+                    isCoach && (isCelebration || isFlexPose || isBeastPose) -> {
+                        // Determined athletic grin
+                        pathA.reset()
+                        pathA.moveTo(px(24.5f), px(38.2f))
+                        pathA.cubicTo(px(29f), px(40.8f), px(36.2f), px(39.8f), px(40.2f), px(36.0f))
+                        drawPath(pathA, phaseColor, style = Stroke(px(2.6f), cap = StrokeCap.Round))
+                    }
+                    isCoach && !isWhistlePose && !isYawnPose && !isSleepPose -> {
+                        // Serious firm straight-set Coach line
+                        drawLine(phaseColor, pt(25.2f, 38.4f), pt(38.8f, 38.0f), px(2.5f), cap = StrokeCap.Round)
+                    }
                     isCelebration || isFlexPose || isBeastPose || isSparklePose -> {
                         pathA.reset()
                         pathA.moveTo(px(22.5f), px(36.5f))
@@ -1150,6 +1300,18 @@ fun MascotOrbFace(
                     drawLine(phaseColor, pt(11f, 18f), pt(15.5f, 20.5f), px(2.4f), cap = StrokeCap.Round)
                     drawLine(phaseColor, pt(53f, 18f), pt(48.5f, 20.5f), px(2.4f), cap = StrokeCap.Round)
                     drawLine(phaseColor, pt(32f, 9f), pt(32f, 14f), px(2.4f), cap = StrokeCap.Round)
+                }
+                if (isCoach && (isSalutePose || isFocusedEyes || isFlexPose)) {
+                    // Subtle Coach tactical visor corner chevrons
+                    drawLine(phaseColor, pt(10.5f, 22f), pt(13.5f, 25f), px(1.9f), cap = StrokeCap.Round)
+                    drawLine(phaseColor, pt(10.5f, 28f), pt(13.5f, 25f), px(1.9f), cap = StrokeCap.Round)
+                    drawLine(phaseColor, pt(53.5f, 22f), pt(50.5f, 25f), px(1.9f), cap = StrokeCap.Round)
+                    drawLine(phaseColor, pt(53.5f, 28f), pt(50.5f, 25f), px(1.9f), cap = StrokeCap.Round)
+                }
+                if (isCoach && isWhistlePose) {
+                    // Coach whistle emblem
+                    drawCircle(phaseColor, px(3.1f), pt(46.5f, 38.5f), style = Stroke(px(1.8f)))
+                    drawLine(phaseColor, pt(39f, 38.5f), pt(44f, 38.5f), px(2.0f), cap = StrokeCap.Round)
                 }
                 if (isTeaPose) {
                     drawRoundRect(Color(0xFF1F2937), pt(41f, 38.5f), Size(px(11f), px(9f)), CornerRadius(px(2.5f)))
@@ -1246,7 +1408,7 @@ fun MascotOrbFace(
                     drawLine(phaseColor, pt(50f, 17f), pt(44f, 23f), px(1.9f), cap = StrokeCap.Round)
                     drawLine(phaseColor, pt(44f, 23f), pt(50f, 23f), px(1.9f), cap = StrokeCap.Round)
                 }
-                if (isZenPose) {
+                if (isZenPose && !isCoach) {
                     drawCircle(phaseColor, px(3.2f), pt(32f, 14f), style = Stroke(px(1.7f)))
                 }
                 // Extra reaction micro-overlays for Combo Poke, Petting, and Quick Tips
@@ -1257,15 +1419,21 @@ fun MascotOrbFace(
                     drawLine(Color(0xFFFDE68A), pt(48.8f, 15.8f), pt(54.2f, 15.8f), px(2f), cap = StrokeCap.Round)
                 }
                 if (eyeState.isPetting || eyeState.reactionKind == MascotReaction.PET_COZY) {
-                    val warmHeart = Color(0xFFFB7185)
-                    drawCircle(warmHeart, px(2.1f), pt(47.5f, 15.5f))
-                    drawCircle(warmHeart, px(2.1f), pt(51f, 15.5f))
-                    pathA.reset()
-                    pathA.moveTo(px(45.5f), px(16.5f))
-                    pathA.lineTo(px(49.25f), px(20.6f))
-                    pathA.lineTo(px(53f), px(16.5f))
-                    pathA.close()
-                    drawPath(pathA, warmHeart)
+                    if (isCoach) {
+                        // Coach shows a composed gold/accent respect star instead of pink cute hearts
+                        drawLine(phaseColor, pt(49f, 12.5f), pt(49f, 18.5f), px(2.0f), cap = StrokeCap.Round)
+                        drawLine(phaseColor, pt(46f, 15.5f), pt(52f, 15.5f), px(2.0f), cap = StrokeCap.Round)
+                    } else {
+                        val warmHeart = Color(0xFFFB7185)
+                        drawCircle(warmHeart, px(2.1f), pt(47.5f, 15.5f))
+                        drawCircle(warmHeart, px(2.1f), pt(51f, 15.5f))
+                        pathA.reset()
+                        pathA.moveTo(px(45.5f), px(16.5f))
+                        pathA.lineTo(px(49.25f), px(20.6f))
+                        pathA.lineTo(px(53f), px(16.5f))
+                        pathA.close()
+                        drawPath(pathA, warmHeart)
+                    }
                 }
                 if (eyeState.reactionKind == MascotReaction.TIP) {
                     drawCircle(Color(0xFFFBBF24), px(2.6f), pt(49.5f, 15.5f))
@@ -1358,6 +1526,16 @@ fun TodayMascot(
                 label = "mascotLine"
             ) { line ->
                 Column {
+                    if (mascot.personality == MascotPersonality.COACH) {
+                        Text(
+                            text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.8.sp,
+                            color = phaseColor
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
                     Text(
                         text = line.headline,
                         fontSize = 14.sp,

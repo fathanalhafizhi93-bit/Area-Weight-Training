@@ -3,6 +3,7 @@ package com.fathan.ironpulse.audio
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import com.fathan.ironpulse.model.AppLanguage
+import com.fathan.ironpulse.model.MascotPersonality
 import java.util.Locale
 
 class MascotTtsSpeaker(context: Context) {
@@ -19,7 +20,12 @@ class MascotTtsSpeaker(context: Context) {
         }
     }
 
-    fun speak(text: String, lang: AppLanguage, enabled: Boolean) {
+    fun speak(
+        text: String,
+        lang: AppLanguage,
+        enabled: Boolean,
+        personality: MascotPersonality = MascotPersonality.PARTNER
+    ) {
         if (!enabled || !ready) return
         val engine = tts ?: return
         val cleaned = text.trim()
@@ -31,8 +37,16 @@ class MascotTtsSpeaker(context: Context) {
             if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
                 engine.language = Locale.US
             }
-            engine.setPitch(1.08f)
-            engine.setSpeechRate(1.02f)
+            when (personality) {
+                MascotPersonality.COACH -> {
+                    engine.setPitch(0.86f)
+                    engine.setSpeechRate(1.07f)
+                }
+                MascotPersonality.PARTNER -> {
+                    engine.setPitch(1.08f)
+                    engine.setSpeechRate(1.02f)
+                }
+            }
             engine.speak(cleaned, TextToSpeech.QUEUE_FLUSH, null, "ironpulse_mascot_line")
         }
     }

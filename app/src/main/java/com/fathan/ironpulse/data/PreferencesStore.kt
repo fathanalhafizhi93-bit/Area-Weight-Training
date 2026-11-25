@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.DayTimeMode
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
@@ -24,6 +25,7 @@ data class AppPreferences(
     val materialTintColorHex: String? = null,
     val hapticsEnabled: Boolean = true,
     val mascotVoiceEnabled: Boolean = true,
+    val mascotPersonality: MascotPersonality = MascotPersonality.PARTNER,
     val performance: PerformancePreferences = PerformancePreferences(),
     val floatingOrbSideRight: Boolean = true,
     val floatingOrbYRatio: Float = 0.72f,
@@ -52,6 +54,9 @@ class PreferencesStore(context: Context) {
             },
             hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, true),
             mascotVoiceEnabled = prefs.getBoolean(KEY_MASCOT_VOICE, true),
+            mascotPersonality = MascotPersonality.fromWire(
+                prefs.getString(KEY_MASCOT_PERSONALITY, MascotPersonality.PARTNER.wireValue)
+            ),
             performance = PerformancePreferences(
                 noAnimations = prefs.getBoolean(KEY_PERF_NO_ANIM, false),
                 noAmbientGlow = prefs.getBoolean(KEY_PERF_NO_GLOW, false),
@@ -131,6 +136,11 @@ class PreferencesStore(context: Context) {
     fun setMascotVoiceEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_MASCOT_VOICE, enabled).apply()
         _state.value = _state.value.copy(mascotVoiceEnabled = enabled)
+    }
+
+    fun setMascotPersonality(personality: MascotPersonality) {
+        prefs.edit().putString(KEY_MASCOT_PERSONALITY, personality.wireValue).apply()
+        _state.value = _state.value.copy(mascotPersonality = personality)
     }
 
     fun setPerformance(
@@ -258,6 +268,7 @@ class PreferencesStore(context: Context) {
         private const val KEY_MATERIAL_TINT = "material_tint"
         private const val KEY_HAPTICS = "haptics_enabled"
         private const val KEY_MASCOT_VOICE = "mascot_voice_enabled"
+        private const val KEY_MASCOT_PERSONALITY = "mascot_personality"
         private const val KEY_PERF_NO_ANIM = "perf_no_anim"
         private const val KEY_PERF_NO_GLOW = "perf_no_glow"
         private const val KEY_PERF_STATIC_MASCOT = "perf_static_mascot"

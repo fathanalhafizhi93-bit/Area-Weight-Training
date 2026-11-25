@@ -76,13 +76,16 @@ import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayTimeMode
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
+import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.AboutContentCards
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.ThemeBrandEmblem
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
@@ -105,6 +108,8 @@ import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.theme.resolveThemeFontPack
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
+import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
+import com.fathan.ironpulse.ui.viewmodel.MascotUiState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -253,6 +258,14 @@ fun SettingsScreen(
                 }
 
                 SettingsCategory.CONFIGURATION -> {
+                    item(key = "mascot_personality_card", contentType = "mascot_personality_card") {
+                        MascotPersonalitySettingsCard(
+                            selected = state.appPrefs.mascotPersonality,
+                            eyeStateFlow = viewModel.mascotEyeFlow,
+                            onSelect = { viewModel.setMascotPersonality(it) },
+                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                        )
+                    }
                     item(key = "performance_card", contentType = "performance_card") {
                         PerformanceSettingsCard(
                             perf = state.appPrefs.performance,
@@ -537,14 +550,16 @@ private fun SettingsCategoryRow(
             SettingsCategory.THEME -> lang.t(state.appPrefs.uiTheme.titleId, state.appPrefs.uiTheme.titleEn)
             SettingsCategory.CONFIGURATION -> {
                 val perf = state.appPrefs.performance
-                when (perf) {
-                    PerformancePreferences() -> lang.t("Performa: Seimbang", "Performance: Balanced")
+                val perfLabel = when (perf) {
+                    PerformancePreferences() -> lang.t("Seimbang", "Balanced")
                     PerformancePreferences(noAnimations = false, noAmbientGlow = true, staticMascot = false) ->
-                        lang.t("Performa: Hemat Daya", "Performance: Battery Saver")
+                        lang.t("Hemat Daya", "Battery Saver")
                     PerformancePreferences(noAnimations = true, noAmbientGlow = true, staticMascot = true) ->
-                        lang.t("Performa: Ultra Ringan", "Performance: Ultra Light")
-                    else -> lang.t("Performa: Kustom", "Performance: Custom")
+                        lang.t("Ultra Ringan", "Ultra Light")
+                    else -> lang.t("Kustom", "Custom")
                 }
+                val personaLabel = state.appPrefs.mascotPersonality.label(lang)
+                "$personaLabel · $perfLabel"
             }
             SettingsCategory.ALARM -> {
                 val vol = ((state.profile?.volume ?: 0.85) * 100).toInt()
@@ -1638,6 +1653,141 @@ private fun TodayPhaseMoodCard(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (active) dot else tokens.palette.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MascotPersonalitySettingsCard(
+    selected: MascotPersonality,
+    eyeStateFlow: StateFlow<MascotEyeState>?,
+    onSelect: (MascotPersonality) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("mascot_personality_card")
+            .ironGlassSurface(tokens)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = lang.t("Kepribadian Maskot Pulse", "Pulse Mascot Personality"),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.palette.onSurface
+            )
+            Text(
+                text = lang.t(
+                    "Pilih karakter suara, ekspresi mata, dan gaya dialog pendamping latihanmu.",
+                    "Choose the voice, expressions, and dialogue style of your workout companion."
+                ),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                color = tokens.mutedTextColor
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            MascotPersonality.entries.forEach { personality ->
+                val isSelected = selected == personality
+                val previewPose = if (personality == MascotPersonality.COACH) {
+                    TimePhasePose.SALUTE
+                } else {
+                    TimePhasePose.PERK
+                }
+                val previewMascot = remember(personality, previewPose) {
+                    MascotUiState(
+                        personality = personality,
+                        activeTimePose = previewPose,
+                        urgentMood = null
+                    )
+                }
+
+                IronPulseTonalSurface(
+                    onClick = { onSelect(personality) },
+                    shape = tokens.cardShape,
+                    baseColor = if (isSelected) {
+                        tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f)
+                    } else {
+                        tokens.palette.surfaceContainerLow
+                    },
+                    isAccent = isSelected,
+                    pressedScale = 0.96f,
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) tokens.accentColor else tokens.surfaceBorderColor
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 48.dp)
+                        .testTag("personality_card_${personality.wireValue}")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            MascotOrbFace(
+                                mascot = previewMascot,
+                                eyeStateFlow = if (isSelected) eyeStateFlow else null,
+                                size = 54.dp,
+                                animActive = isSelected
+                            )
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(22.dp)
+                                        .clip(CircleShape)
+                                        .background(tokens.accentColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    ThemedIcon(
+                                        icon = IronPulseIcon.CHECK,
+                                        contentDescription = lang.t("Aktif", "Active"),
+                                        tint = tokens.onAccentColor,
+                                        size = 13.dp
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = personality.label(lang),
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isSelected) tokens.accentTextColor else tokens.palette.onSurface,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = personality.tagline(lang),
+                            fontSize = 11.sp,
+                            lineHeight = 14.5.sp,
+                            color = tokens.mutedTextColor,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

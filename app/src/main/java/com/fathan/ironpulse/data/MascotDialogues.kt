@@ -3,6 +3,7 @@ package com.fathan.ironpulse.data
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.MascotMood
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.MascotSpeechLine
 import com.fathan.ironpulse.model.TimePhasePose
 
@@ -16,6 +17,7 @@ data class MascotDialogueContext(
     val totalSets: Int,
     val progressPct: Int,
     val dayLabel: String,
+    val personality: MascotPersonality = MascotPersonality.PARTNER,
     val activeTimerExerciseName: String? = null,
     val restRemainingFormatted: String? = null,
     val allCompleted: Boolean = false,
@@ -25,6 +27,9 @@ data class MascotDialogueContext(
 object MascotDialogues {
 
     fun buildMascotSpeechPool(ctx: MascotDialogueContext): List<MascotSpeechLine> {
+        if (ctx.personality == MascotPersonality.COACH) {
+            return CoachMascotDialogues.buildSpeechPool(ctx)
+        }
         fun t(id: String, en: String) = ctx.lang.t(id, en)
         val n = ctx.n
         val totalSets = ctx.totalSets
@@ -290,8 +295,49 @@ object MascotDialogues {
             )
         )
 
+        val morningPartnerBanter = listOf(
+            MascotSpeechLine("pm-b1", t("Selamat pagi dunia baru$n!", "Brand new morning$n!"), t("Udara pagi masih segar — cocok buat nyalain metabolisme dengan beberapa set pemanasan.", "Morning air feels crisp — great time to wake up your body with light sets.")),
+            MascotSpeechLine("pm-b2", t("Minum segelas air dulu yuk$n", "Morning water glass first$n"), t("Setelah tidur 7 jam, tubuh butuh cairan sebelum otot diajak kerja keras.", "After 7 hours of sleep, fluids kick-start energy before heavy work.")),
+            MascotSpeechLine("pm-b3", t("Langkah pagi bikin seharian lega$n", "Early session frees your day$n"), t("Kalau latihan kelar pagi, sore sampai malam tinggal nikmati hidup tanpa kepikiran utang set!", "Knock sets out early and enjoy the rest of your day worry-free!")),
+            MascotSpeechLine("pm-b4", t("Pelan-pelan bangunkan sendi dulu$n", "Wake the joints up gently$n"), t("Putar bahu, tekuk lutut ringan, tarik napas panjang — badan langsung terasa hangat.", "Circle your shoulders, easy knee bends, deep breaths — instant warmth.")),
+            MascotSpeechLine("pm-b5", t("Jadwal pagi $dayLabel menanti$n~", "$dayLabel morning awaits$n~"), t("Nggak harus langsung beban puncak — mulai nyaman aja dulu, nanti ritmenya ngikut!", "No need to start at max weight — ease in and let rhythm catch up!")),
+            MascotSpeechLine("pm-b6", t("Sarapan ringan + semangat besar$n", "Light fuel, bright energy$n"), t("Pisang, roti, atau shake favorit cukup buat bikin set pagimu bertenaga.", "A banana, toast, or quick shake powers clean morning lifts.")),
+            MascotSpeechLine("pm-b7", t("Cahaya pagi naikin mood alami$n", "Morning sun lifts your mood$n"), t("Sempatkan lihat langit pagi sebentar — hormon fokus langsung naik alami!", "Catch a minute of morning daylight — natural focus booster right away!")),
+            MascotSpeechLine("pm-b8", t("Pagi yang tenang, hasil yang besar$n", "Quiet mornings, strong results$n"), t("Latihan di pagi hari sering minim antrean dan minim gangguan — fokusmu jadi utuh!", "Mornings mean fewer distractions and smoother flow through every exercise.")),
+            MascotSpeechLine("pm-b9", t("Yuk mulai satu gerakan dulu$n!", "Start with just one movement$n!"), t("Kadang rasa malas hilang cuma karena kamu berani menyelesaikan set pertama.", "Most morning inertia vanishes the moment you finish set number one.")),
+            MascotSpeechLine("pm-b10", t("Pagi ini hari baru untuk menang$n", "Fresh morning to win$n"), t("Catat satu per satu dengan santai — konsistensi pagimu bakal terasa manis sebulan lagi.", "Log calmly set by set — you’ll thank yourself a month from now."))
+        )
+
+        val afternoonPartnerBanter = listOf(
+            MascotSpeechLine("pa-b1", t("Siang-sore: jam emas kekuatan!$n", "Afternoon: golden strength hours!$n"), t("Tubuh sudah bergerak seharian dan suhu otot lagi pas banget buat performa tinggi.", "Your body’s warmed up from the day — prime window for strong lifts.")),
+            MascotSpeechLine("pa-b2", t("Lawan rasa ngantuk siang yuk$n!", "Beat the midday slump$n!"), t("Gerak 20 menit jauh lebih ampuh bikin melek daripada scroll ponsel terus!", "Twenty minutes of moving wakes you up way better than endless scrolling!")),
+            MascotSpeechLine("pa-b3", t("Sudah cek target $dayLabel siang ini$n?", "Checked $dayLabel’s targets$n?"), t("Lihat catatan beban minggu lalu biar tahu seberapa jauh kamu sudah berkembang.", "Peek at last week’s numbers to see how smoothly you’ve climbed.")),
+            MascotSpeechLine("pa-b4", t("Jangan lupa hidrasi di jam panas$n", "Stay ahead of afternoon heat$n"), t("Simpan botol air di sampingmu supaya tiap jeda istirahat terasa segar lagi.", "Keep a bottle right beside you so every rest window refreshes focus.")),
+            MascotSpeechLine("pa-b5", t("Sesi sore pelepas penat kerja$n", "Afternoon gym stress-melt$n"), t("Lepaskan kepenatan kerja atau kuliah lewat dorongan beban yang terkontrol.", "Channel daily stress into crisp, controlled reps and walk out lighter.")),
+            MascotSpeechLine("pa-b6", t("Tempo santai tapi tetap kena otot$n", "Steady pace, deep muscle feel$n"), t("Nggak usah ikut-ikutan cepat — fokus rasakan kontraksi di setiap repetisi.", "No need to rush — feel the target muscle contract on every single rep.")),
+            MascotSpeechLine("pa-b7", t("Sinar sore + playlist andalan$n", "Golden hour + great playlist$n"), t("Sore hari paling seru buat latihan berirama tanpa beban pikiran!", "Afternoon light and good beats make training feel effortless!")),
+            MascotSpeechLine("pa-b8", t("Istirahat antar set bikin kuat$n", "Rest windows build power$n"), t("Tunggu timer istirahat dengan santai — ototmu lagi isi ulang tenaga untuk set berikut.", "Use the rest timer wisely — your muscles are reloading strength for the next push.")),
+            MascotSpeechLine("pa-b9", t("Satu set lagi, pasti bisa$n!", "One more clean set$n!"), t("Kalau sudah sampai tengah sesi, rasanya sayang banget kalau nggak sekalian dituntaskan!", "Once you’re past halfway, riding that momentum to 100% feels awesome!")),
+            MascotSpeechLine("pa-b10", t("Siang yang aktif = tidur pulas malamnya$n", "Active afternoon = deeper sleep$n"), t("Energi yang kamu bakar sore ini bakal dibayar lunas dengan tidur nyenyak nanti malam.", "Effort spent this afternoon pays you back with deep rest tonight."))
+        )
+
+        val nightPartnerBanter = listOf(
+            MascotSpeechLine("pn-b1", t("Malam hening waktunya pemulihan$n", "Quiet night for deep recovery$n"), t("Semua beban hari ini sudah lewat — biarkan ototmu tumbuh pelan saat kamu terlelap.", "Today’s load is behind you — let your muscles rebuild quietly overnight.")),
+            MascotSpeechLine("pn-b2", t("Latihan malam? Boleh, asal tenang$n", "Night workout? Keep it smooth$n"), t("Pastikan pendinginan dan peregangan cukup supaya detak jantung turun sebelum tidur.", "Take extra time to cool down and stretch so your heart rate settles before bed.")),
+            MascotSpeechLine("pn-b3", t("Cek perlengkapan buat besok yuk$n", "Prep tomorrow’s gear tonight$n"), t("Siapkan botol, handuk, dan jadwal besok supaya bangun pagi makin ringan.", "Set out your bottle, towel, and plan so tomorrow morning runs smoothly.")),
+            MascotSpeechLine("pn-b4", t("Redupkan layar sebelum tidur$n", "Dim screens before sleep$n"), t("Cahaya biru bikin mata susah terlelap — kasih jeda 20 menit sebelum merem ya.", "Harsh screen glare delays deep sleep — wind down quietly before lights out.")),
+            MascotSpeechLine("pn-b5", t("Protein malam bantu otot pulih$n", "Evening protein feeds repair$n"), t("Asupan ringan tinggi protein sebelum malam bikin otot nggak kelaparan semalaman.", "A light protein-rich dinner fuels overnight muscle repair nicely.")),
+            MascotSpeechLine("pn-b6", t("Tarik napas pelan malam ini$n~", "Slow deep evening breaths$n~"), t("Embuskan stres hari ini pelan-pelan — kamu sudah berusaha sangat baik di $dayLabel!", "Let go of today’s tension — you put in solid effort on $dayLabel!")),
+            MascotSpeechLine("pn-b7", t("Jangan begadang kalau bisa tidur cepat$n", "Guard your sleep tonight$n"), t("Tidur 7–8 jam itu rahasia terbesar buat naik beban tanpa gampang cedera.", "Seven to eight hours of sleep is the ultimate strength-and-safety cheat code.")),
+            MascotSpeechLine("pn-b8", t("Peregangan pinggul & punggung malam$n", "Gentle night hip & back stretch$n"), t("Dua menit peregangan ringan di kasur bikin badan bangun besok nggak kaku.", "Two minutes of gentle stretching keeps tomorrow morning soreness-free.")),
+            MascotSpeechLine("pn-b9", t("Bangga sama prosesmu hari ini$n", "Proud of your effort today$n"), t("Entah sesi penuh atau hari istirahat, menjaga kebiasaan tetap hidup itu luar biasa.", "Full workout or rest day, keeping your habit alive is something to celebrate.")),
+            MascotSpeechLine("pn-b10", t("Suara malam selalu menenangkan$n", "Quiet night hours feel calm$n"), t("Minum air secukupnya lalu selimuti diri — besok kita lanjut cetak progres baru!", "Take a small sip of water and get cozy — tomorrow we climb again!")),
+            MascotSpeechLine("pn-b11", t("Otak mengunci gerakan saat tidur$n", "Brain locks skill while you sleep$n"), t("Setiap repetisi rapi yang kamu lakukan hari ini makin melekat saat kamu terlelap.", "Every clean rep from today gets wired into muscle memory overnight.")),
+            MascotSpeechLine("pn-b12", t("Selamat beristirahat malam ini$n", "Wishing you peaceful rest$n"), t("Pulse tetap jaga di sini — tidur nyenyak dan bangun lebih kuat besok pagi!", "Pulse’s keeping watch — sleep deep and wake up stronger tomorrow!"))
+        )
+
         if (ctx.timePhase == DayTimePhase.MORNING) {
-            return when (ctx.activeTimePose) {
+            val poseLines = when (ctx.activeTimePose) {
                 TimePhasePose.TEA -> listOf(
                     MascotSpeechLine(
                         "m-tea-1",
@@ -385,10 +431,11 @@ object MascotDialogues {
                     sharedBanter[11]
                 )
             }
+            return poseLines + morningPartnerBanter
         }
 
         if (ctx.timePhase == DayTimePhase.AFTERNOON) {
-            return when (ctx.activeTimePose) {
+            val poseLines = when (ctx.activeTimePose) {
                 TimePhasePose.HYDRATE -> listOf(
                     MascotSpeechLine("a-hyd-1", t("Minum air dulu siang ini$n!", "Midday hydration check$n!"), if (ctx.allCompleted) t("Sesi siang sudah tuntas! Jangan lupa ganti cairan tubuh biar tetap segar.", "Afternoon workout cleared! Replenish fluids so you stay refreshed.") else t("Siang hari bikin cepat haus — teguk air dingin biar tenaga tetap penuh!", "Midday heat drains focus fast — take a cool sip to stay energized!")),
                     MascotSpeechLine("a-hyd-2", t("Jaga hidrasi siang$n", "Stay hydrated this afternoon$n"), t("Air putih cukup bikin otot dan fokus tetap tajam sepanjang siang.", "Steady water intake keeps your muscles and focus sharp all afternoon.")),
@@ -453,10 +500,11 @@ object MascotDialogues {
                     sharedBanter[7]
                 )
             }
+            return poseLines + afternoonPartnerBanter
         }
 
         // NIGHT POSES
-        return when (ctx.activeTimePose) {
+        val nightPoseLines = when (ctx.activeTimePose) {
             TimePhasePose.SLEEP -> listOf(
                 MascotSpeechLine("n-slp-1", t("Zzz... waktunya tidur malam$n", "Zzz... sleepy night mode$n"), if (ctx.allCompleted) t("Sesi hari ini sudah tamat! Malam adalah waktu terbaik ototmu pulih dan tumbuh.", "Today’s session is wrapped! Night sleep is when your muscles rebuild best.") else t("Malam makin larut... kalau selesai gerak, jangan begadang biar besok segar!", "Getting late tonight... wrap up well and get deep sleep for tomorrow!")),
                 MascotSpeechLine("n-slp-2", t("Mode ngantuk malam · Zzz$n", "Cozy night snooze · Zzz$n"), t("Hening malam hari cocok buat menurunkan detak jantung dan istirahat.", "Quiet night hours are perfect for winding down and resting deeply.")),
@@ -529,9 +577,18 @@ object MascotDialogues {
                 sharedBanter[11]
             )
         }
+        return nightPoseLines + nightPartnerBanter
     }
 
-    fun buildComboPokePool(lang: AppLanguage, n: String, comboCount: Int): List<MascotSpeechLine> {
+    fun buildComboPokePool(
+        lang: AppLanguage,
+        n: String,
+        comboCount: Int,
+        personality: MascotPersonality = MascotPersonality.PARTNER
+    ): List<MascotSpeechLine> {
+        if (personality == MascotPersonality.COACH) {
+            return CoachMascotDialogues.buildComboPokePool(lang, n, comboCount)
+        }
         fun t(id: String, en: String) = lang.t(id, en)
         return listOf(
             MascotSpeechLine(
@@ -552,7 +609,14 @@ object MascotDialogues {
         )
     }
 
-    fun buildPettingPool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
+    fun buildPettingPool(
+        lang: AppLanguage,
+        n: String,
+        personality: MascotPersonality = MascotPersonality.PARTNER
+    ): List<MascotSpeechLine> {
+        if (personality == MascotPersonality.COACH) {
+            return CoachMascotDialogues.buildPettingPool(lang, n)
+        }
         fun t(id: String, en: String) = lang.t(id, en)
         return listOf(
             MascotSpeechLine(
@@ -573,7 +637,14 @@ object MascotDialogues {
         )
     }
 
-    fun buildQuickTipPool(lang: AppLanguage, n: String): List<MascotSpeechLine> {
+    fun buildQuickTipPool(
+        lang: AppLanguage,
+        n: String,
+        personality: MascotPersonality = MascotPersonality.PARTNER
+    ): List<MascotSpeechLine> {
+        if (personality == MascotPersonality.COACH) {
+            return CoachMascotDialogues.buildQuickTipPool(lang, n)
+        }
         fun t(id: String, en: String) = lang.t(id, en)
         return listOf(
             MascotSpeechLine(

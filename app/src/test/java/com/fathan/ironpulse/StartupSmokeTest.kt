@@ -49,6 +49,7 @@ import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
 import com.fathan.ironpulse.data.FirestoreGymRepository
@@ -86,8 +87,11 @@ import com.fathan.ironpulse.model.WorkoutIntegrityEvaluator
 import com.fathan.ironpulse.model.WorkoutLog
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.model.WorkoutSetLog
+import com.fathan.ironpulse.data.MascotDialogueContext
+import com.fathan.ironpulse.data.MascotDialogues
 import com.fathan.ironpulse.timer.RestTimerService
 import com.fathan.ironpulse.model.MascotMood
+import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
@@ -2773,6 +2777,185 @@ class StartupSmokeTest {
         composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
         composeRule.onNodeWithTag("history_monthly_medal_card").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("history_medal_emblem_slot").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun preferencesStore_persistsMascotPersonalityAndDefaultsToPartner() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val store = PreferencesStore(context)
+        store.setMascotPersonality(MascotPersonality.PARTNER)
+        assertEquals(MascotPersonality.PARTNER, store.state.value.mascotPersonality)
+
+        store.setMascotPersonality(MascotPersonality.COACH)
+        assertEquals(MascotPersonality.COACH, store.state.value.mascotPersonality)
+        assertEquals(MascotPersonality.COACH, PreferencesStore(context).state.value.mascotPersonality)
+
+        // Restore default for test isolation
+        store.setMascotPersonality(MascotPersonality.PARTNER)
+        assertEquals(MascotPersonality.PARTNER, PreferencesStore(context).state.value.mascotPersonality)
+    }
+
+    @Test
+    fun pulseMascot_twoPersonalitiesHaveDistinctExpandedMorningAfternoonNightDialogues() {
+        DayTimePhase.entries.forEach { phase ->
+            val partnerLines = MascotDialogues.buildMascotSpeechPool(
+                MascotDialogueContext(
+                    lang = AppLanguage.ID,
+                    mood = MascotMood.READY,
+                    timePhase = phase,
+                    activeTimePose = TimePhasePose.FLEX,
+                    n = ", Fathan",
+                    completedSets = 2,
+                    totalSets = 6,
+                    progressPct = 33,
+                    dayLabel = "Senin",
+                    personality = MascotPersonality.PARTNER
+                )
+            )
+            val coachLines = MascotDialogues.buildMascotSpeechPool(
+                MascotDialogueContext(
+                    lang = AppLanguage.ID,
+                    mood = MascotMood.READY,
+                    timePhase = phase,
+                    activeTimePose = TimePhasePose.SALUTE,
+                    n = ", Fathan",
+                    completedSets = 2,
+                    totalSets = 6,
+                    progressPct = 33,
+                    dayLabel = "Senin",
+                    personality = MascotPersonality.COACH
+                )
+            )
+
+            assertTrue("Expected >= 12 Partner dialogues in $phase, got ${partnerLines.size}", partnerLines.size >= 12)
+            assertTrue("Expected >= 12 Coach dialogues in $phase, got ${coachLines.size}", coachLines.size >= 12)
+            assertEquals(partnerLines.size, partnerLines.map { it.id }.distinct().size)
+            assertEquals(coachLines.size, coachLines.map { it.id }.distinct().size)
+
+            val partnerTitles = partnerLines.map { it.headline }.toSet()
+            val coachTitles = coachLines.map { it.headline }.toSet()
+            assertTrue("Partner and Coach headlines in $phase must stay distinct", partnerTitles.intersect(coachTitles).isEmpty())
+        }
+
+        val partnerPet = MascotDialogues.buildPettingPool(AppLanguage.EN, ", Alex", MascotPersonality.PARTNER)
+        val coachPet = MascotDialogues.buildPettingPool(AppLanguage.EN, ", Alex", MascotPersonality.COACH)
+        assertTrue(partnerPet.isNotEmpty() && coachPet.isNotEmpty())
+        assertTrue(partnerPet.map { it.headline }.toSet().intersect(coachPet.map { it.headline }.toSet()).isEmpty())
+
+        val partnerCombo = MascotDialogues.buildComboPokePool(AppLanguage.ID, ", Raka", 4, MascotPersonality.PARTNER)
+        val coachCombo = MascotDialogues.buildComboPokePool(AppLanguage.ID, ", Raka", 4, MascotPersonality.COACH)
+        assertTrue(partnerCombo.map { it.headline }.toSet().intersect(coachCombo.map { it.headline }.toSet()).isEmpty())
+
+        val partnerTip = MascotDialogues.buildQuickTipPool(AppLanguage.ID, ", Raka", MascotPersonality.PARTNER)
+        val coachTip = MascotDialogues.buildQuickTipPool(AppLanguage.ID, ", Raka", MascotPersonality.COACH)
+        assertTrue(partnerTip.map { it.headline }.toSet().intersect(coachTip.map { it.headline }.toSet()).isEmpty())
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun settingsConfigurationSubpage_selectsMascotPersonalityAndPersistsChoice() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(context)
+        }
+        PreferencesStore(context).setMascotPersonality(MascotPersonality.PARTNER)
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(context)
+            )[GymViewModel::class.java]
+
+            composeRule.setContent {
+                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
+                IronPulseTheme(
+                    prefs = vmState.appPrefs.copy(
+                        performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                    )
+                ) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        SettingsScreen(
+                            state = vmState,
+                            viewModel = viewModel,
+                            contentPadding = PaddingValues(0.dp),
+                            onBack = {},
+                            onRequestNotificationPermission = {},
+                            onOpenExactAlarmSettings = {},
+                            onPickCustomRingtone = {}
+                        )
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag(SettingsCategory.CONFIGURATION.testTag).performClick()
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag("mascot_personality_card").assertIsDisplayed()
+            composeRule.onNodeWithTag("personality_card_partner").assertIsDisplayed()
+            composeRule.onNodeWithTag("personality_card_coach").assertIsDisplayed()
+
+            composeRule.onNodeWithTag("personality_card_coach").performClick()
+            composeRule.waitForIdle()
+            assertEquals(MascotPersonality.COACH, viewModel.uiState.value.appPrefs.mascotPersonality)
+
+            composeRule.onNodeWithTag("personality_card_partner").performClick()
+            composeRule.waitForIdle()
+            assertEquals(MascotPersonality.PARTNER, viewModel.uiState.value.appPrefs.mascotPersonality)
+        } finally {
+            PreferencesStore(context).setMascotPersonality(MascotPersonality.PARTNER)
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    fun todayMascot_rendersCoachAndPartnerAcrossAllThemesWithoutQuickButtons() {
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var personalitySetter: ((MascotPersonality) -> Unit)? = null
+        val eyeFlow = MutableStateFlow(MascotEyeState(glanceX = 1.2f, headTiltDeg = 2.0f))
+
+        composeRule.setContent {
+            var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+            var activePersonality by remember { mutableStateOf(MascotPersonality.COACH) }
+            themeSetter = { activeTheme = it }
+            personalitySetter = { activePersonality = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    mascotPersonality = activePersonality,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                TodayMascot(
+                    mascot = MascotUiState(
+                        personality = activePersonality,
+                        activeTimePose = TimePhasePose.SALUTE
+                    ),
+                    eyeStateFlow = eyeFlow,
+                    voiceEnabled = false,
+                    onTapMascot = {},
+                    onPetMascot = {},
+                    onReplayVoice = {},
+                    modifier = Modifier.testTag("today_mascot_card")
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        UiTheme.entries.forEach { theme ->
+            composeRule.runOnUiThread { themeSetter?.invoke(theme) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("mascot_orb_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithText("COACH · FOKUS").assertIsDisplayed()
+            composeRule.onNodeWithTag("mascot_quick_hype").assertDoesNotExist()
+            composeRule.onNodeWithTag("personality_card_coach").assertDoesNotExist()
+        }
+
+        composeRule.runOnUiThread { personalitySetter?.invoke(MascotPersonality.PARTNER) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("COACH · FOKUS").assertDoesNotExist()
     }
 }
 
