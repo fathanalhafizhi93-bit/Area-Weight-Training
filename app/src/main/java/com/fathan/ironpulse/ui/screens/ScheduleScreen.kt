@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -81,11 +81,13 @@ import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.ThemedIronDialog
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
@@ -103,6 +105,7 @@ fun ScheduleScreen(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val tabActive = LocalTabActive.current
     val activeGymDaysCount = remember(state.schedules) {
         DayKey.entries.count { state.schedules[it]?.isGymDay == true }
     }
@@ -147,7 +150,9 @@ fun ScheduleScreen(
                     onSelectOfficial = { template ->
                         previewTarget = SchedulePreviewTarget.Official(template)
                     },
-                    modifier = Modifier.tutorialSpotlightTarget(TutorialSpotlightTarget.SCHEDULE_PROGRAM_STRIP)
+                    modifier = Modifier
+                        .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                        .tutorialSpotlightTarget(TutorialSpotlightTarget.SCHEDULE_PROGRAM_STRIP)
                 )
             }
 
@@ -156,6 +161,7 @@ fun ScheduleScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                         .ironGlassSurface(tokens)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -205,8 +211,8 @@ fun ScheduleScreen(
                 }
             }
 
-            items(DayKey.entries, key = { it.key }, contentType = { "day_card" }) { day ->
-                val sched = state.schedules[day] ?: return@items
+            itemsIndexed(DayKey.entries, key = { _, d -> d.key }, contentType = { _, _ -> "day_card" }) { idx, day ->
+                val sched = state.schedules[day] ?: return@itemsIndexed
                 DayScheduleCard(
                     day = day,
                     sched = sched,
@@ -237,7 +243,9 @@ fun ScheduleScreen(
                     onSelectRingtone = { nextId ->
                         viewModel.updateScheduleFields(dayKey = day, ringtoneId = nextId)
                     },
-                    modifier = if (noAnim) Modifier else Modifier.animateItem()
+                    modifier = Modifier
+                        .staggeredCardEntrance(idx + 2, active = tabActive, disabledByPerf = noAnim)
+                        .then(if (noAnim) Modifier else Modifier.animateItem())
                 )
             }
         }
@@ -280,7 +288,6 @@ fun ScheduleScreen(
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 48.dp)
-                            .tactilePress(disabledByPerf = noAnim)
                     ) {
                         Text(lang.t("Batal", "Cancel"), color = tokens.palette.onSurface)
                     }
@@ -298,7 +305,6 @@ fun ScheduleScreen(
                         modifier = Modifier
                             .weight(1.3f)
                             .heightIn(min = 48.dp)
-                            .tactilePress(disabledByPerf = noAnim)
                     ) {
                         Text(lang.t("Simpan", "Save"), fontWeight = FontWeight.Bold)
                     }

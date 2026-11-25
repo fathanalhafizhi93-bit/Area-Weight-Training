@@ -60,11 +60,13 @@ import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.MonthlyMedalShowcaseCard
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
@@ -91,6 +93,7 @@ fun HistoryScreen(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val tabActive = LocalTabActive.current
     val todayCal = remember(state.todayDateKey) { parseDateKeyToCalendar(state.todayDateKey) }
     val currentYear = todayCal.get(Calendar.YEAR)
     val currentMonth = todayCal.get(Calendar.MONTH)
@@ -223,7 +226,8 @@ fun HistoryScreen(
                         viewMonth = m
                     }
                 },
-                onMedalSlotPositioned = onMedalSlotPositioned
+                onMedalSlotPositioned = onMedalSlotPositioned,
+                modifier = Modifier.staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
             )
         }
 
@@ -232,6 +236,7 @@ fun HistoryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                     .ironGlassSurface(tokens)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -259,6 +264,7 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                         .ironGlassSurface(tokens)
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -282,7 +288,9 @@ fun HistoryScreen(
             // 3 KPI Summary Cards
             item(key = "history_kpis", contentType = "kpis") {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     HistoryKpiCard(
@@ -314,6 +322,7 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
                         .tutorialSpotlightTarget(TutorialSpotlightTarget.HISTORY_CALENDAR)
                         .ironGlassSurface(tokens)
                         .padding(16.dp),
@@ -494,6 +503,7 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(4, active = tabActive, disabledByPerf = noAnim)
                         .ironGlassSurface(tokens)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)

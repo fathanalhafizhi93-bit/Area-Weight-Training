@@ -36,6 +36,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.down
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -48,6 +49,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.dp
@@ -119,9 +121,12 @@ import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
 import com.fathan.ironpulse.ui.components.VisualColorPickerMode
 import com.fathan.ironpulse.ui.components.isClosedEyeExpression
 import com.fathan.ironpulse.ui.components.resolveMascotOrbPalette
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.ClockCornerOrbPalette
+import com.fathan.ironpulse.ui.screens.ExerciseLibraryFullScreen
+import com.fathan.ironpulse.ui.screens.ExercisesScreen
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
 import com.fathan.ironpulse.ui.screens.HistoryScreen
 import com.fathan.ironpulse.ui.screens.SettingsCategory
@@ -2999,15 +3004,19 @@ class StartupSmokeTest {
 
                 var prevShouldFloat by remember { mutableStateOf(shouldFloat) }
                 var isReturning by remember { mutableStateOf(false) }
+                val resolvedReturning = if (prevShouldFloat != shouldFloat) {
+                    prevShouldFloat && !shouldFloat
+                } else {
+                    isReturning
+                }
                 LaunchedEffect(shouldFloat) {
-                    if (prevShouldFloat && !shouldFloat) isReturning = true
-                    else if (!prevShouldFloat && shouldFloat) isReturning = false
+                    isReturning = resolvedReturning
                     prevShouldFloat = shouldFloat
                 }
 
                 val morphProgressState = animateFloatAsState(
                     targetValue = if (shouldFloat) 1f else 0f,
-                    animationSpec = if (isReturning) IronPulseMotion.ReturnMorphSpring else IronPulseMotion.MorphSpring,
+                    animationSpec = if (resolvedReturning) IronPulseMotion.ReturnMorphSpring else IronPulseMotion.MorphSpring,
                     finishedListener = { finalVal ->
                         if (!shouldFloat && isReturning && finalVal <= 0.02f) {
                             isReturning = false
@@ -3101,6 +3110,174 @@ class StartupSmokeTest {
         } finally {
             composeRule.mainClock.autoAdvance = true
         }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun exerciseLibraryFullScreen_filtersBatchSelectsAndCustomModalRemainsDialog() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vmStore = ViewModelStore()
+        try {
+            val vm = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            var addedBatchNames by mutableStateOf<List<String>>(emptyList())
+
+            composeRule.setContent {
+                var showLibrary by remember { mutableStateOf(false) }
+                val uiState = IronPulseUiState(
+                    authReady = true,
+                    userUid = "u_ex_lib",
+                    selectedExerciseDayKey = DayKey.MON,
+                    schedules = GymPresets.createDefaultSchedules("u_ex_lib")
+                )
+                IronPulseTheme(
+                    prefs = AppPreferences(
+                        uiTheme = UiTheme.CARBON_FORGE,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                ) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            ExercisesScreen(
+                                state = uiState,
+                                viewModel = vm,
+                                contentPadding = PaddingValues(0.dp),
+                                onOpenLibrary = { showLibrary = true }
+                            )
+                            if (showLibrary) {
+                                ExerciseLibraryFullScreen(
+                                    lang = AppLanguage.ID,
+                                    selectedDayLabel = "Senin",
+                                    existingNames = emptySet(),
+                                    remainingSlots = 20,
+                                    onAddSingle = {},
+                                    onAddBatch = { batch ->
+                                        addedBatchNames = batch.map { it.name }
+                                        showLibrary = false
+                                    },
+                                    onDismiss = { showLibrary = false }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            // Open full-screen exercise library
+            composeRule.onNodeWithTag("open_exercise_library_button").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("exercise_library_fullscreen").assertIsDisplayed()
+            composeRule.onNodeWithTag("exercise_library_back_button").assertIsDisplayed()
+
+            // Search, select movement in multi-select mode, and confirm batch add
+            composeRule.onNodeWithTag("exercise_library_search").performTextInput("Barbell Bench")
+            composeRule.waitForIdle()
+            composeRule.onNode(
+                hasAnyAncestor(hasTestTag("exercise_library_fullscreen")) and
+                    hasText("Barbell Bench Press") and
+                    hasClickAction()
+            ).performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("exercise_library_confirm_button").assertIsDisplayed().performClick()
+            composeRule.waitForIdle()
+
+            assertTrue("Expected Barbell Bench Press added via batch confirm, got $addedBatchNames", addedBatchNames.any { it.contains("Barbell Bench Press") })
+            composeRule.onNodeWithTag("exercise_library_fullscreen").assertDoesNotExist()
+
+            // Verify custom movement creation still opens modal dialog (not full-screen library)
+            composeRule.onNodeWithTag("open_custom_exercise_button").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("Buat Gerakan Kustom").assertIsDisplayed()
+            composeRule.onNodeWithTag("exercise_library_fullscreen").assertDoesNotExist()
+        } finally {
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun appWideAnimations_staggeredRevealAndTactileButtons_workWithAndWithoutPerfDisable() {
+        var tabActiveSetter: ((Boolean) -> Unit)? = null
+        var themeSetter: ((UiTheme) -> Unit)? = null
+        var noAnimSetter: ((Boolean) -> Unit)? = null
+        var primaryClicks = 0
+        var secondaryClicks = 0
+
+        composeRule.setContent {
+            var tabActive by remember { mutableStateOf(false) }
+            var theme by remember { mutableStateOf(UiTheme.CARBON_FORGE) }
+            var noAnim by remember { mutableStateOf(false) }
+            tabActiveSetter = { tabActive = it }
+            themeSetter = { theme = it }
+            noAnimSetter = { noAnim = it }
+
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = theme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = noAnim, staticMascot = noAnim)
+                )
+            ) {
+                CompositionLocalProvider(LocalTabActive provides tabActive) {
+                    val active = LocalTabActive.current
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .staggeredCardEntrance(0, active = active, disabledByPerf = noAnim)
+                                .testTag("stagger_card_0")
+                        ) {
+                            Text("Card Zero")
+                        }
+                        IronPulseButton(
+                            onClick = { primaryClicks += 1 },
+                            modifier = Modifier
+                                .staggeredCardEntrance(1, active = active, disabledByPerf = noAnim)
+                                .testTag("tactile_primary_btn")
+                        ) {
+                            Text("Primary Action")
+                        }
+                        IronPulseOutlinedButton(
+                            onClick = { secondaryClicks += 1 },
+                            modifier = Modifier
+                                .staggeredCardEntrance(2, active = active, disabledByPerf = noAnim)
+                                .testTag("tactile_secondary_btn")
+                        ) {
+                            Text("Secondary Action")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Activate pre-warmed tab and trigger staggered reveals
+        composeRule.runOnUiThread { tabActiveSetter?.invoke(true) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("stagger_card_0").assertIsDisplayed()
+        composeRule.onNodeWithTag("tactile_primary_btn").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag("tactile_secondary_btn").assertIsDisplayed().performClick()
+        assertEquals(1, primaryClicks)
+        assertEquals(1, secondaryClicks)
+
+        // Verify Frutiger Aero + noAnimations performance bypass
+        composeRule.runOnUiThread {
+            themeSetter?.invoke(UiTheme.FRUTIGER_AERO)
+            noAnimSetter?.invoke(true)
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("tactile_primary_btn").performClick()
+        composeRule.onNodeWithTag("tactile_secondary_btn").performClick()
+        assertEquals(2, primaryClicks)
+        assertEquals(2, secondaryClicks)
     }
 }
 

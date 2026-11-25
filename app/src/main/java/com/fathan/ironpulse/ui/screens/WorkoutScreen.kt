@@ -83,6 +83,7 @@ import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.TactileStepperControl
 import com.fathan.ironpulse.ui.components.ThemedIcon
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
@@ -183,7 +184,9 @@ fun WorkoutScreen(
             // 1. TOP WORKOUT COCKPIT BAR
             item(key = "workout_header", contentType = "header") {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
@@ -369,7 +372,9 @@ fun WorkoutScreen(
                         totalTimedSeconds = totalTimedSeconds,
                         onOpenHistory = onOpenHistory,
                         onBackToToday = onBackToToday,
-                        modifier = if (noAnim) Modifier else Modifier.animateItem()
+                        modifier = Modifier
+                            .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                            .then(if (noAnim) Modifier else Modifier.animateItem())
                     )
                 }
             }
@@ -379,6 +384,7 @@ fun WorkoutScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                             .ironGlassSurface(tokens)
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -406,29 +412,29 @@ fun WorkoutScreen(
                                 else onOpenExercisesForDay(state.todayDayKey)
                             },
                             shape = tokens.buttonShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = tokens.accentColor,
-                                contentColor = tokens.onAccentColor
-                            ),
-                            modifier = Modifier.tactilePress(disabledByPerf = noAnim)
-                        ) {
-                            Text(
-                                text = if (activeSchedule?.isGymDay == false) {
-                                    lang.t("Buka Tab Jadwal", "Open Schedule Tab")
-                                } else {
-                                    lang.t("Tambah Gerakan", "Add Exercises")
-                                },
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = tokens.accentColor,
+                            contentColor = tokens.onAccentColor
+                        )
+                    ) {
+                        Text(
+                            text = if (activeSchedule?.isGymDay == false) {
+                                lang.t("Buka Tab Jadwal", "Open Schedule Tab")
+                            } else {
+                                lang.t("Tambah Gerakan", "Add Exercises")
+                            },
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
+            }
             } else if (hudEnabled) {
                 val activeIdx = todayEntries.indexOfFirst { it.exerciseId == selectedExerciseId }.coerceAtLeast(0)
                 val activeEntry = todayEntries[activeIdx]
                 item(key = "gym_focus_hud_stage", contentType = "hud_stage") {
                     AnimatedContent(
                         targetState = activeIdx to activeEntry.exerciseId,
+                        modifier = Modifier.staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim),
                         transitionSpec = {
                             if (noAnim) {
                                 EnterTransition.None togetherWith ExitTransition.None
@@ -518,7 +524,8 @@ fun WorkoutScreen(
                             entries = todayEntries,
                             selectedExerciseId = selectedExerciseId,
                             exerciseTimersFlow = viewModel.exerciseTimersFlow,
-                            onSelectExercise = { selectedExerciseId = it }
+                            onSelectExercise = { selectedExerciseId = it },
+                            modifier = Modifier.staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                         )
                     }
                 }
@@ -534,7 +541,7 @@ fun WorkoutScreen(
                     items = entriesToRender,
                     key = { _, pair -> pair.second.exerciseId },
                     contentType = { _, _ -> "exercise_cockpit" }
-                ) { _, (index, entry) ->
+                ) { listIdx, (index, entry) ->
                     val spec = specById[entry.exerciseId]
                     ExerciseCockpitCard(
                         index = index,
@@ -578,7 +585,9 @@ fun WorkoutScreen(
                         onAddSet = { viewModel.addSetToExercise(entry.exerciseId) },
                         onRemoveSet = { viewModel.removeSetFromExercise(entry.exerciseId) },
                         secUnit = secUnit,
-                        modifier = if (noAnim) Modifier else Modifier.animateItem()
+                        modifier = Modifier
+                            .staggeredCardEntrance(listIdx + 2, active = tabActive, disabledByPerf = noAnim)
+                            .then(if (noAnim) Modifier else Modifier.animateItem())
                     )
                 }
             }
@@ -611,7 +620,8 @@ private fun ExerciseSwitcherRail(
     entries: List<WorkoutLogEntry>,
     selectedExerciseId: String,
     exerciseTimersFlow: StateFlow<Map<String, ExerciseTimerUiState>>,
-    onSelectExercise: (String) -> Unit
+    onSelectExercise: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     val noAnim = tokens.performance.noAnimations
@@ -619,7 +629,7 @@ private fun ExerciseSwitcherRail(
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         itemsIndexed(entries, key = { _, e -> e.exerciseId }) { idx, entry ->
             val isSelected = entry.exerciseId == selectedExerciseId
@@ -1239,9 +1249,7 @@ private fun ExerciseCockpitCard(
                                 tokens.onAccentColor
                             }
                         ),
-                        modifier = Modifier
-                            .height(46.dp)
-                            .tactilePress(disabledByPerf = noAnim)
+                        modifier = Modifier.height(46.dp)
                     ) {
                         ThemedIcon(
                             icon = if (timerRunning) IronPulseIcon.PAUSE else IronPulseIcon.PLAY,
@@ -1264,9 +1272,7 @@ private fun ExerciseCockpitCard(
                         onClick = onResetExerciseTimer,
                         shape = RoundedCornerShape(999.dp),
                         border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                        modifier = Modifier
-                            .height(46.dp)
-                            .tactilePress(disabledByPerf = noAnim)
+                        modifier = Modifier.height(46.dp)
                     ) {
                         ThemedIcon(IronPulseIcon.REFRESH, contentDescription = null, tint = tokens.palette.onSurfaceVariant, size = 16.dp)
                         Spacer(modifier = Modifier.width(6.dp))
@@ -1281,9 +1287,7 @@ private fun ExerciseCockpitCard(
                                 containerColor = Color(0xFF16A34A),
                                 contentColor = Color.White
                             ),
-                            modifier = Modifier
-                                .height(46.dp)
-                                .tactilePress(disabledByPerf = noAnim)
+                            modifier = Modifier.height(46.dp)
                         ) {
                             ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = Color.White, size = 16.dp)
                             Spacer(modifier = Modifier.width(6.dp))
@@ -1474,7 +1478,6 @@ private fun ExerciseCockpitCard(
                 modifier = Modifier
                     .weight(1f)
                     .height(42.dp)
-                    .tactilePress(enabled = entry.sets.size < 12, disabledByPerf = noAnim)
             ) {
                 ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentColor, size = 16.dp)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -1489,7 +1492,6 @@ private fun ExerciseCockpitCard(
                 modifier = Modifier
                     .weight(1f)
                     .height(42.dp)
-                    .tactilePress(enabled = entry.sets.size > 1, disabledByPerf = noAnim)
             ) {
                 ThemedIcon(IronPulseIcon.REMOVE, contentDescription = null, tint = tokens.mutedTextColor, size = 16.dp)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -1684,7 +1686,6 @@ internal fun WorkoutSessionSummaryCard(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 48.dp)
-                    .tactilePress(disabledByPerf = noAnim)
                     .testTag("summary_back_today_button")
             ) {
                 ThemedIcon(
@@ -1711,7 +1712,6 @@ internal fun WorkoutSessionSummaryCard(
                 modifier = Modifier
                     .weight(1.25f)
                     .heightIn(min = 48.dp)
-                    .tactilePress(disabledByPerf = noAnim)
                     .testTag("summary_open_history_button")
             ) {
                 ThemedIcon(

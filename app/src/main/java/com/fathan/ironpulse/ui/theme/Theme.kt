@@ -1020,7 +1020,11 @@ fun IronPulseButton(
     if (tokens.uiTheme != UiTheme.FRUTIGER_AERO) {
         Button(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.tactilePress(
+                enabled = enabled,
+                pressedScale = 0.962f,
+                disabledByPerf = tokens.performance.noAnimations
+            ),
             enabled = enabled,
             shape = shape,
             colors = colors,
@@ -1053,7 +1057,8 @@ fun IronPulseButton(
         glossAlphaMultiplier = if (enabled) 1f else 0.45f,
         border = effectiveBorder,
         contentColor = effectiveContentColor,
-        enableTactilePress = false,
+        pressedScale = 0.962f,
+        enableTactilePress = true,
         modifier = modifier,
         visualModifier = Modifier.defaultMinSize(
             minWidth = ButtonDefaults.MinWidth,
@@ -1084,7 +1089,11 @@ fun IronPulseOutlinedButton(
     if (tokens.uiTheme != UiTheme.FRUTIGER_AERO) {
         OutlinedButton(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.tactilePress(
+                enabled = enabled,
+                pressedScale = 0.962f,
+                disabledByPerf = tokens.performance.noAnimations
+            ),
             enabled = enabled,
             shape = shape,
             colors = colors,
@@ -1117,7 +1126,8 @@ fun IronPulseOutlinedButton(
         glossAlphaMultiplier = if (enabled) 1f else 0.45f,
         border = effectiveBorder,
         contentColor = effectiveContentColor,
-        enableTactilePress = false,
+        pressedScale = 0.962f,
+        enableTactilePress = true,
         modifier = modifier,
         visualModifier = Modifier.defaultMinSize(
             minWidth = ButtonDefaults.MinWidth,

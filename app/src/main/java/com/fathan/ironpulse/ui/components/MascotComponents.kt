@@ -7,6 +7,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -449,63 +450,42 @@ fun MascotOrbFace(
     val staticOne = remember { mutableFloatStateOf(1f) }
     val staticZero = remember { mutableFloatStateOf(0f) }
 
-    val ringScaleState: State<Float>
-    val bobOffsetDpState: State<Float>
-    val breathProgressState: State<Float>
-    val idleSwayDegState: State<Float>
+    val breathPhaseState: State<Float>
+    val idleSwayPhaseState: State<Float>
     if (runAnim) {
         val infinite = rememberInfiniteTransition(label = "orbInfinite")
         val breathDurationMs = when {
-            isClosedCalmPose || isCalmEyes -> 3400
-            isCoach -> 2450
-            else -> 2800
+            isClosedCalmPose || isCalmEyes -> 4200
+            isCoach -> 3100
+            else -> 3500
         }
-        ringScaleState = infinite.animateFloat(
-            initialValue = 0.96f,
-            targetValue = if (isCelebration || eyeState.tapBounce) 1.24f else if (isCoach) 1.11f else 1.14f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(if (isCelebration) 1100 else 2250, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "ringScale"
-        )
-        bobOffsetDpState = infinite.animateFloat(
-            initialValue = if (isCoach) -1.5f else -2f,
-            targetValue = if (isCoach) 1.5f else 2f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(if (isMusicPose || isWhistlePose || isProteinPose) 1400 else 2180, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "bobOffset"
-        )
-        breathProgressState = infinite.animateFloat(
+        val swayDurationMs = if (isMusicPose || isWhistlePose || isProteinPose) 4200 else 6400
+        breathPhaseState = infinite.animateFloat(
             initialValue = 0f,
-            targetValue = 1f,
+            targetValue = (2.0 * PI).toFloat(),
             animationSpec = infiniteRepeatable(
-                animation = tween(breathDurationMs, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
+                animation = tween(breathDurationMs, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
             ),
-            label = "breathCycle"
+            label = "breathPhase"
         )
-        idleSwayDegState = infinite.animateFloat(
-            initialValue = if (isCoach) -0.45f else -0.85f,
-            targetValue = if (isCoach) 0.45f else 0.85f,
+        idleSwayPhaseState = infinite.animateFloat(
+            initialValue = 0f,
+            targetValue = (2.0 * PI).toFloat(),
             animationSpec = infiniteRepeatable(
-                animation = tween(3900, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
+                animation = tween(swayDurationMs, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
             ),
-            label = "idleSway"
+            label = "idleSwayPhase"
         )
     } else {
-        ringScaleState = staticOne
-        bobOffsetDpState = staticZero
-        breathProgressState = staticZero
-        idleSwayDegState = staticZero
+        breathPhaseState = staticZero
+        idleSwayPhaseState = staticZero
     }
 
     val tapScaleState = if (runAnim) {
         animateFloatAsState(
-            targetValue = if (eyeState.tapBounce) 1.11f else 1f,
+            targetValue = if (eyeState.tapBounce) 1.12f else 1f,
             animationSpec = IronPulseMotion.OrbSnapSpring,
             label = "tapScale"
         )
@@ -513,7 +493,7 @@ fun MascotOrbFace(
         staticOne
     }
 
-    // Natural squash-and-stretch impulse on tap / combo / pet
+    // Natural bouncy squash-and-stretch impulse on tap / combo / pet
     val squashX = remember { Animatable(1f) }
     val squashY = remember { Animatable(1f) }
     LaunchedEffect(eyeState.reactionTick, runAnim) {
@@ -523,26 +503,22 @@ fun MascotOrbFace(
             return@LaunchedEffect
         }
         val intense = eyeState.reactionKind == MascotReaction.COMBO_EXCITED
-        val wide = if (intense) 1.15f else 1.09f
-        val flat = if (intense) 0.87f else 0.92f
-        val tall = if (intense) 1.09f else 1.05f
-        val slim = if (intense) 0.93f else 0.96f
+        val wide = if (intense) 1.17f else 1.11f
+        val flat = if (intense) 0.85f else 0.90f
         launch {
             squashX.snapTo(wide)
-            squashX.animateTo(slim, tween(110, easing = FastOutSlowInEasing))
-            squashX.animateTo(1f, spring(dampingRatio = 0.46f, stiffness = 420f))
+            squashX.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 320f))
         }
         launch {
             squashY.snapTo(flat)
-            squashY.animateTo(tall, tween(110, easing = FastOutSlowInEasing))
-            squashY.animateTo(1f, spring(dampingRatio = 0.46f, stiffness = 420f))
+            squashY.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 320f))
         }
     }
 
     val headTiltState = if (runAnim) {
         animateFloatAsState(
             targetValue = if (isClosedEyeExpression) 0f else eyeState.headTiltDeg,
-            animationSpec = spring(dampingRatio = 0.60f, stiffness = 240f),
+            animationSpec = IronPulseMotion.MascotHeadTiltSpring,
             label = "headTilt"
         )
     } else {
@@ -552,7 +528,7 @@ fun MascotOrbFace(
     val smoothBlinkState = if (runAnim) {
         animateFloatAsState(
             targetValue = if (isClosedEyeExpression) 0f else eyeState.blinkProgress.coerceIn(0f, 1f),
-            animationSpec = tween(durationMillis = 48),
+            animationSpec = IronPulseMotion.MascotBlinkSpring,
             label = "smoothBlink"
         )
     } else {
@@ -562,7 +538,7 @@ fun MascotOrbFace(
     val glanceXState = if (runAnim) {
         animateFloatAsState(
             targetValue = if (isClosedEyeExpression || isSparklePose) 0f else eyeState.glanceX,
-            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            animationSpec = IronPulseMotion.MascotGazeSpring,
             label = "glanceX"
         )
     } else {
@@ -571,7 +547,7 @@ fun MascotOrbFace(
     val glanceYState = if (runAnim) {
         animateFloatAsState(
             targetValue = if (isClosedEyeExpression || isSparklePose) 0f else eyeState.glanceY,
-            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            animationSpec = IronPulseMotion.MascotGazeSpring,
             label = "glanceY"
         )
     } else {
@@ -631,12 +607,18 @@ fun MascotOrbFace(
             .graphicsLayer { },
         contentAlignment = Alignment.Center
     ) {
-        // OS-distinct outer breathing halo / bezel ring
+        // OS-distinct outer breathing halo / bezel ring (follows breath wave with organic phase lag)
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val s = ringScaleState.value
+                    val s = if (!runAnim) {
+                        1f
+                    } else {
+                        val ringWave = sin(breathPhaseState.value - 0.55f) * 0.5f + 0.5f
+                        val ringPeak = if (isCelebration || eyeState.tapBounce) 1.24f else if (isCoach) 1.11f else 1.15f
+                        lerp(0.96f, ringPeak, ringWave)
+                    }
                     scaleX = s
                     scaleY = s
                 }
@@ -776,13 +758,19 @@ fun MascotOrbFace(
             modifier = Modifier
                 .size(size * 0.875f)
                 .graphicsLayer {
-                    val breath = breathProgressState.value
-                    val breathAmpX = if (isClosedCalmPose) 0.022f else if (isCoach) 0.015f else 0.018f
-                    val breathAmpY = if (isClosedCalmPose) 0.030f else if (isCoach) 0.022f else 0.026f
-                    val breathScaleX = 1f + (breath - 0.35f) * breathAmpX
-                    val breathScaleY = 1f + (breath - 0.35f) * breathAmpY
-                    val sway = if (isClosedEyeExpression || !runAnim) 0f else idleSwayDegState.value
-                    translationY = bobOffsetDpState.value * density.density
+                    val phase = breathPhaseState.value
+                    val inhaleWave = if (runAnim) sin(phase) else 0f
+                    val crossWave = if (runAnim) sin(phase - 0.42f) else 0f
+                    val breathAmpX = if (isClosedCalmPose) 0.022f else if (isCoach) 0.014f else 0.019f
+                    val breathAmpY = if (isClosedCalmPose) 0.030f else if (isCoach) 0.020f else 0.027f
+                    val blinkSquash = if (runAnim && !isClosedEyeExpression) smoothBlinkState.value.coerceIn(0f, 1f) else 0f
+                    val breathScaleX = (1f + crossWave * breathAmpX) * (1f + blinkSquash * 0.024f)
+                    val breathScaleY = (1f + inhaleWave * breathAmpY) * (1f - blinkSquash * 0.028f)
+                    val bobAmpDp = if (isCoach) 1.8f else 2.4f
+                    val bobDp = if (runAnim) sin(phase - 0.28f) * bobAmpDp else 0f
+                    val swayAmp = if (isCoach) 0.55f else 1.1f
+                    val sway = if (isClosedEyeExpression || !runAnim) 0f else sin(idleSwayPhaseState.value) * swayAmp
+                    translationY = bobDp * density.density
                     val ts = tapScaleState.value
                     val swScale = switchPopScale.value
                     scaleX = ts * squashX.value * breathScaleX * swScale
@@ -1530,26 +1518,20 @@ fun TodayMascot(
             return@LaunchedEffect
         }
         launch {
-            landScaleX.snapTo(1f)
-            landScaleX.animateTo(1.14f, tween(65, easing = FastOutSlowInEasing))
-            landScaleX.animateTo(0.95f, tween(105, easing = FastOutSlowInEasing))
-            landScaleX.animateTo(1f, spring(dampingRatio = 0.48f, stiffness = 400f))
+            landScaleX.snapTo(1.16f)
+            landScaleX.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 300f))
         }
         launch {
-            landScaleY.snapTo(1f)
-            landScaleY.animateTo(0.87f, tween(65, easing = FastOutSlowInEasing))
-            landScaleY.animateTo(1.05f, tween(105, easing = FastOutSlowInEasing))
-            landScaleY.animateTo(1f, spring(dampingRatio = 0.48f, stiffness = 400f))
+            landScaleY.snapTo(0.85f)
+            landScaleY.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 300f))
         }
         launch {
-            landOffsetY.snapTo(0f)
-            landOffsetY.animateTo(3f, tween(65, easing = FastOutSlowInEasing))
-            landOffsetY.animateTo(-1.2f, tween(105, easing = FastOutSlowInEasing))
-            landOffsetY.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 380f))
+            landOffsetY.snapTo(3.5f)
+            landOffsetY.animateTo(0f, spring(dampingRatio = 0.48f, stiffness = 300f))
         }
         launch {
             landRingProgress.snapTo(0f)
-            landRingProgress.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+            landRingProgress.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
             landRingProgress.snapTo(0f)
         }
     }
@@ -1926,11 +1908,13 @@ fun FloatingMascotDock(
                     val envelope = sin(t * PI).toFloat().coerceIn(0f, 1f)
                     val arcLiftScale = if (noAnim || dragging || !hasBounds) 1f else (1f + 0.10f * envelope)
                     val scale = lerp(homeScale, dragScaleState.value, t) * arcLiftScale
+                    val flightStretchX = if (noAnim || dragging || !hasBounds) 1f else (1f - 0.045f * envelope)
+                    val flightStretchY = if (noAnim || dragging || !hasBounds) 1f else (1f + 0.075f * envelope)
                     translationX = computeOrbX()
                     translationY = computeOrbY()
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = if (hasBounds) 1f else t
+                    scaleX = scale * flightStretchX
+                    scaleY = scale * flightStretchY
+                    alpha = if (hasBounds) 1f else t.coerceIn(0f, 1f)
                     transformOrigin = TransformOrigin(0f, 0f)
                 }
                 .size(56.dp)

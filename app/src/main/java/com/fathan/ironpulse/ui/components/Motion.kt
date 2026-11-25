@@ -5,8 +5,8 @@ import android.content.res.Resources
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -30,13 +30,14 @@ import androidx.compose.ui.node.PointerInputModifierNode
 import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -45,61 +46,182 @@ import kotlin.math.abs
 @Immutable
 object IronPulseMotion {
     val PressSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.68f,
-        stiffness = 520f
+        dampingRatio = 0.58f,
+        stiffness = 420f
     )
 
     val MorphSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.78f,
-        stiffness = 440f
+        dampingRatio = 0.62f,
+        stiffness = 300f
     )
 
     val ReturnMorphSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.80f,
-        stiffness = 240f
+        dampingRatio = 0.68f,
+        stiffness = 135f
     )
 
     val OrbSnapSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.60f,
+        stiffness = 290f
+    )
+
+    val BubbleSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.64f,
+        stiffness = 360f
+    )
+
+    val BubbleSizeSpring: SpringSpec<IntSize> = spring(
         dampingRatio = 0.72f,
         stiffness = 380f
     )
 
-    val BubbleSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.76f,
-        stiffness = 480f
-    )
-
-    val BubbleSizeSpring: SpringSpec<IntSize> = spring(
-        dampingRatio = 0.80f,
-        stiffness = 460f
-    )
-
     val FluidCardSpring: SpringSpec<IntSize> = spring(
-        dampingRatio = 0.82f,
-        stiffness = 440f
+        dampingRatio = 0.72f,
+        stiffness = 360f
     )
 
     val TabSlideSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.86f,
-        stiffness = 520f
+        dampingRatio = 0.78f,
+        stiffness = 430f
     )
 
     val ModalEntranceSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.78f,
-        stiffness = 480f
+        dampingRatio = 0.68f,
+        stiffness = 400f
+    )
+
+    val StaggerCardSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.72f,
+        stiffness = 360f
+    )
+
+    val MascotBlinkSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.60f,
+        stiffness = 520f
+    )
+
+    val MascotGazeSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.58f,
+        stiffness = 185f
+    )
+
+    val MascotHeadTiltSpring: SpringSpec<Float> = spring(
+        dampingRatio = 0.56f,
+        stiffness = 190f
     )
 
     val IndicatorDpSpring: SpringSpec<Dp> = spring(
-        dampingRatio = 0.75f,
-        stiffness = 420f
+        dampingRatio = 0.68f,
+        stiffness = 380f
     )
 
     val IndicatorFloatSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.76f,
-        stiffness = 440f
+        dampingRatio = 0.66f,
+        stiffness = 360f
     )
 
-    val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 180)
+    val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 190, easing = FastOutSlowInEasing)
+}
+
+/**
+ * Zero-recomposition GPU-only staggered spring entrance for screen cards & list rows.
+ * Waits while [active] is false (e.g. pre-warmed inactive tabs) and cascades in when [active] becomes true.
+ */
+fun Modifier.staggeredCardEntrance(
+    index: Int,
+    active: Boolean = true,
+    disabledByPerf: Boolean = false
+): Modifier = if (disabledByPerf) {
+    this
+} else {
+    this then StaggeredCardEntranceElement(index = index, active = active)
+}
+
+private data class StaggeredCardEntranceElement(
+    val index: Int,
+    val active: Boolean
+) : ModifierNodeElement<StaggeredCardEntranceNode>() {
+    override fun create(): StaggeredCardEntranceNode = StaggeredCardEntranceNode(index, active)
+    override fun update(node: StaggeredCardEntranceNode) {
+        node.updateState(index, active)
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "staggeredCardEntrance"
+        properties["index"] = index
+        properties["active"] = active
+    }
+}
+
+private class StaggeredCardEntranceNode(
+    private var index: Int,
+    private var active: Boolean
+) : Modifier.Node(), LayoutModifierNode, CompositionLocalConsumerModifierNode {
+
+    private val alphaAnim = Animatable(if (active) 0f else 0f)
+    private val offsetFractionAnim = Animatable(1f)
+    private val scaleAnim = Animatable(0.965f)
+    private var animJob: Job? = null
+    private var revealedForActiveSession = false
+
+    private fun triggerReveal() {
+        if (!isAttached) return
+        animJob?.cancel()
+        revealedForActiveSession = true
+        val delayMs = if (index in 0..6) index * 34L else 0L
+        animJob = coroutineScope.launch {
+            alphaAnim.snapTo(0f)
+            offsetFractionAnim.snapTo(1f)
+            scaleAnim.snapTo(0.965f)
+            if (delayMs > 0L) {
+                delay(delayMs)
+            }
+            launch { alphaAnim.animateTo(1f, tween(210, easing = FastOutSlowInEasing)) }
+            launch { offsetFractionAnim.animateTo(0f, IronPulseMotion.StaggerCardSpring) }
+            launch { scaleAnim.animateTo(1f, IronPulseMotion.StaggerCardSpring) }
+        }
+    }
+
+    fun updateState(nextIndex: Int, nextActive: Boolean) {
+        val becameActive = !active && nextActive
+        index = nextIndex
+        active = nextActive
+        if (becameActive || (nextActive && !revealedForActiveSession)) {
+            triggerReveal()
+        } else if (!nextActive) {
+            revealedForActiveSession = false
+        }
+    }
+
+    override fun onAttach() {
+        if (active && !revealedForActiveSession) {
+            triggerReveal()
+        }
+    }
+
+    override fun onDetach() {
+        animJob?.cancel()
+        animJob = null
+    }
+
+    override fun MeasureScope.measure(
+        measurable: Measurable,
+        constraints: Constraints
+    ): MeasureResult {
+        val placeable = measurable.measure(constraints)
+        val density = currentValueOf(LocalDensity).density
+        val slidePx = 20f * density
+        return layout(placeable.width, placeable.height) {
+            placeable.placeWithLayer(0, 0) {
+                alpha = alphaAnim.value.coerceIn(0f, 1f)
+                translationY = offsetFractionAnim.value * slidePx
+                val s = scaleAnim.value
+                scaleX = s
+                scaleY = s
+                transformOrigin = TransformOrigin(0.5f, 0.35f)
+            }
+        }
+    }
 }
 
 /**

@@ -1,5 +1,14 @@
 package com.fathan.ironpulse.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,8 +25,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,9 +84,12 @@ import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.TimerDirection
+import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.ThemedIcon
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
@@ -82,6 +97,8 @@ import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.ironGlassBar
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
@@ -94,16 +111,21 @@ fun ExercisesScreen(
     state: IronPulseUiState,
     viewModel: GymViewModel,
     contentPadding: PaddingValues,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    onOpenLibrary: (() -> Unit)? = null
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val tabActive = LocalTabActive.current
     val selectedDay = state.selectedExerciseDayKey
     val schedule = state.schedules[selectedDay]
     val exercises = schedule?.exercises ?: emptyList()
 
-    var showLibraryModal by remember { mutableStateOf(false) }
+    var localShowLibrary by remember { mutableStateOf(false) }
+    val openLibrary: () -> Unit = {
+        if (onOpenLibrary != null) onOpenLibrary() else localShowLibrary = true
+    }
     var editingExercise by remember { mutableStateOf<ExerciseItem?>(null) }
     var showCreateCustomModal by remember { mutableStateOf(false) }
     var pendingDeleteExercise by remember { mutableStateOf<ExerciseItem?>(null) }
@@ -130,6 +152,7 @@ fun ExercisesScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
                         .tutorialSpotlightTarget(TutorialSpotlightTarget.EXERCISES_HEADER)
                         .ironGlassSurface(tokens)
                         .padding(16.dp),
@@ -160,7 +183,7 @@ fun ExercisesScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         IronPulseButton(
-                            onClick = { showLibraryModal = true },
+                            onClick = openLibrary,
                             shape = tokens.buttonShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = tokens.accentColor,
@@ -169,7 +192,7 @@ fun ExercisesScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)
-                                .tactilePress(disabledByPerf = noAnim),
+                                .testTag("open_exercise_library_button"),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
                             ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 18.dp)
@@ -188,7 +211,7 @@ fun ExercisesScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)
-                                .tactilePress(disabledByPerf = noAnim),
+                                .testTag("open_custom_exercise_button"),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
                             ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
@@ -208,7 +231,8 @@ fun ExercisesScreen(
         // 7-Day Selector Rail
         item(key = "day_rail", contentType = "day_rail") {
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
             ) {
                 items(DayKey.entries, key = { it.key }) { day ->
                     val daySched = state.schedules[day]
@@ -269,6 +293,7 @@ fun ExercisesScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                     .ironGlassSurface(tokens, subtle = true)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -320,6 +345,7 @@ fun ExercisesScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
                         .ironGlassSurface(tokens)
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -359,7 +385,7 @@ fun ExercisesScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     IronPulseButton(
-                        onClick = { showLibraryModal = true },
+                        onClick = openLibrary,
                         shape = tokens.buttonShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
@@ -387,27 +413,36 @@ fun ExercisesScreen(
                     onMoveDown = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = false) },
                     onEdit = { editingExercise = ex },
                     onDelete = { pendingDeleteExercise = ex },
-                    modifier = if (noAnim) Modifier else Modifier.animateItem()
+                    modifier = Modifier
+                        .staggeredCardEntrance(idx + 3, active = tabActive, disabledByPerf = noAnim)
+                        .then(if (noAnim) Modifier else Modifier.animateItem())
                 )
             }
         }
         }
     }
 
-    if (showLibraryModal) {
-        ExerciseLibraryModal(
-            lang = lang,
-            existingNames = exercises.map { it.name.lowercase(Locale.ROOT) }.toSet(),
-            remainingSlots = (30 - exercises.size).coerceAtLeast(0),
-            onAddSingle = { tmpl ->
-                viewModel.addTemplatesToDay(selectedDay, listOf(tmpl))
-            },
-            onAddBatch = { tmpls ->
-                viewModel.addTemplatesToDay(selectedDay, tmpls)
-                showLibraryModal = false
-            },
-            onDismiss = { showLibraryModal = false }
-        )
+    if (onOpenLibrary == null) {
+        AnimatedVisibility(
+            visible = localShowLibrary,
+            enter = if (noAnim) EnterTransition.None else slideInVertically(tween(260)) { it / 8 } + fadeIn(tween(220)),
+            exit = if (noAnim) ExitTransition.None else slideOutVertically(tween(200)) { it / 10 } + fadeOut(tween(180))
+        ) {
+            ExerciseLibraryFullScreen(
+                lang = lang,
+                selectedDayLabel = selectedDay.label(lang),
+                existingNames = exercises.map { it.name.lowercase(Locale.ROOT) }.toSet(),
+                remainingSlots = (30 - exercises.size).coerceAtLeast(0),
+                onAddSingle = { tmpl ->
+                    viewModel.addTemplatesToDay(selectedDay, listOf(tmpl))
+                },
+                onAddBatch = { tmpls ->
+                    viewModel.addTemplatesToDay(selectedDay, tmpls)
+                    localShowLibrary = false
+                },
+                onDismiss = { localShowLibrary = false }
+            )
+        }
     }
 
     if (showCreateCustomModal || editingExercise != null) {
@@ -692,8 +727,9 @@ private fun MetricMiniBox(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ExerciseLibraryModal(
+fun ExerciseLibraryFullScreen(
     lang: AppLanguage,
+    selectedDayLabel: String,
     existingNames: Set<String>,
     remainingSlots: Int,
     onAddSingle: (PresetExerciseTemplate) -> Unit,
@@ -701,11 +737,14 @@ private fun ExerciseLibraryModal(
     onDismiss: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
+    val noAnim = tokens.performance.noAnimations
     var query by remember { mutableStateOf("") }
     var selectedMuscle by remember { mutableStateOf<MuscleGroup?>(null) }
     var selectedBucket by remember { mutableStateOf(EquipmentBucket.ALL) }
     var multiSelectMode by remember { mutableStateOf(true) }
     val selectedNames = remember { mutableStateListOf<String>() }
+
+    BackHandler(onBack = onDismiss)
 
     val filtered by remember(lang) {
         derivedStateOf {
@@ -723,278 +762,433 @@ private fun ExerciseLibraryModal(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("exercise_library_fullscreen")
     ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 14.dp, vertical = 20.dp)
-                .fillMaxWidth()
-                .heightIn(max = 720.dp)
-                .ironGlassSurface(tokens)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = lang.t("Pustaka Gerakan (${GymPresets.EXERCISE_LIBRARY.size})", "Exercise Library (${GymPresets.EXERCISE_LIBRARY.size})"),
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = tokens.palette.onSurface
-                    )
-                    Text(
-                        text = lang.t("Sisa slot hari ini: $remainingSlots", "Remaining slots today: $remainingSlots"),
-                        fontSize = 12.sp,
-                        color = tokens.palette.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Close", tint = tokens.palette.onSurfaceVariant, size = 18.dp)
-                }
-            }
+        AmbientPhaseBackdrop()
 
-            // Search Input
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text(lang.t("Cari nama gerakan, otot, atau alat...", "Search movement, muscle, or gear...")) },
-                leadingIcon = { ThemedIcon(IronPulseIcon.SEARCH, contentDescription = null, tint = tokens.accentColor, size = 18.dp) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) {
-                            ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Clear", size = 18.dp)
-                        }
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Full-Screen Pinned Top App Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .ironGlassBar(tokens, bottomHairlineColor = tokens.surfaceBorderColor)
+                    .statusBarsPadding(),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier
+                        .widthIn(max = 720.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .tactilePress(disabledByPerf = noAnim)
+                            .testTag("exercise_library_back_button")
+                    ) {
+                        ThemedIcon(
+                            icon = IronPulseIcon.BACK,
+                            contentDescription = lang.t("Kembali", "Back"),
+                            tint = tokens.palette.onSurface,
+                            size = 22.dp
+                        )
                     }
-                },
-                singleLine = true,
-                shape = tokens.inputShape,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = tokens.accentColor,
-                    unfocusedBorderColor = tokens.surfaceBorderColor,
-                    focusedTextColor = tokens.palette.onSurface,
-                    unfocusedTextColor = tokens.palette.onSurface
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Muscle Filters
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                item {
-                    FilterPill(
-                        label = lang.t("Semua Otot", "All Muscles"),
-                        selected = selectedMuscle == null,
-                        onClick = { selectedMuscle = null }
-                    )
-                }
-                items(MuscleGroup.entries) { mg ->
-                    FilterPill(
-                        label = mg.label(lang),
-                        selected = selectedMuscle == mg,
-                        onClick = { selectedMuscle = if (selectedMuscle == mg) null else mg }
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = lang.t(
+                                "Pustaka Gerakan (${GymPresets.EXERCISE_LIBRARY.size})",
+                                "Exercise Library (${GymPresets.EXERCISE_LIBRARY.size})"
+                            ),
+                            fontSize = 18.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = tokens.palette.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "$selectedDayLabel · ${lang.t("Menampilkan ${filtered.size} gerakan", "Showing ${filtered.size} movements")}",
+                            fontSize = 12.sp,
+                            color = tokens.palette.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IronPulseTonalSurface(
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = if (remainingSlots <= 0) Color(0x2EF59E0B) else tokens.accentColor.copy(alpha = 0.14f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (remainingSlots <= 0) Color(0x80F59E0B) else tokens.accentColor.copy(alpha = 0.35f)
+                        )
+                    ) {
+                        Text(
+                            text = lang.t("$remainingSlots slot", "$remainingSlots left"),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (remainingSlots <= 0) tokens.warningColor else tokens.accentTextColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
                 }
             }
 
-            // Equipment Filters
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(EquipmentBucket.entries) { bucket ->
-                    FilterPill(
-                        label = bucket.label(lang),
-                        selected = selectedBucket == bucket,
-                        onClick = { selectedBucket = bucket }
-                    )
-                }
-            }
-
-            // Multi-select Toggle Bar
-            Row(
+            // Centered Responsive Catalog Content
+            Column(
                 modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 720.dp)
+                    .align(Alignment.CenterHorizontally)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(tokens.wellBg)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = lang.t("Mode Pilih Banyak", "Multi-select mode"),
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = tokens.palette.onSurface
-                )
-                Switch(
-                    checked = multiSelectMode,
-                    onCheckedChange = {
-                        multiSelectMode = it
-                        if (!it) selectedNames.clear()
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = tokens.onAccentColor,
-                        checkedTrackColor = tokens.accentColor
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Search Input
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = {
+                            Text(lang.t("Cari nama gerakan, otot, atau alat...", "Search movement, muscle, or gear..."))
+                        },
+                        leadingIcon = {
+                            ThemedIcon(IronPulseIcon.SEARCH, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
+                        },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { query = "" },
+                                    modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                                ) {
+                                    ThemedIcon(IronPulseIcon.CLOSE, contentDescription = "Clear", size = 18.dp)
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = tokens.inputShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = tokens.accentColor,
+                            unfocusedBorderColor = tokens.surfaceBorderColor,
+                            focusedTextColor = tokens.palette.onSurface,
+                            unfocusedTextColor = tokens.palette.onSurface
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("exercise_library_search")
                     )
-                )
-            }
 
-            // Bounded Scrollable List (non-nested!)
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (filtered.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = lang.t("Tidak ada gerakan yang cocok.", "No matching exercises found."),
-                                fontSize = 13.sp,
-                                color = tokens.palette.onSurfaceVariant
+                    // Muscle Filters
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        item {
+                            FilterPill(
+                                label = lang.t("Semua Otot", "All Muscles"),
+                                selected = selectedMuscle == null,
+                                onClick = { selectedMuscle = null }
+                            )
+                        }
+                        items(MuscleGroup.entries) { mg ->
+                            FilterPill(
+                                label = mg.label(lang),
+                                selected = selectedMuscle == mg,
+                                onClick = { selectedMuscle = if (selectedMuscle == mg) null else mg }
                             )
                         }
                     }
-                } else {
-                    items(filtered, key = { it.name }) { tmpl ->
-                        val isAlreadyInDay = existingNames.contains(tmpl.name.lowercase(Locale.ROOT))
-                        val isChecked = selectedNames.contains(tmpl.name)
 
-                        IronPulseTonalSurface(
-                            onClick = {
-                                if (multiSelectMode) {
-                                    if (isChecked) selectedNames.remove(tmpl.name)
-                                    else if (selectedNames.size < remainingSlots) selectedNames.add(tmpl.name)
-                                } else {
-                                    onAddSingle(tmpl)
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            baseColor = if (isChecked) tokens.accentColor.copy(alpha = 0.14f) else tokens.palette.surfaceContainerLow,
-                            border = BorderStroke(
-                                1.dp,
-                                if (isChecked) tokens.accentColor else tokens.surfaceBorderColor
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                if (multiSelectMode) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(if (isChecked) tokens.accentColor else Color.Transparent)
-                                            .border(
-                                                1.5.dp,
-                                                if (isChecked) tokens.accentColor else tokens.palette.onSurfaceVariant,
-                                                RoundedCornerShape(6.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (isChecked) {
-                                            ThemedIcon(
-                                                icon = IronPulseIcon.CHECK,
-                                                contentDescription = null,
-                                                tint = tokens.onAccentColor,
-                                                size = 16.dp
-                                            )
-                                        }
-                                    }
-                                }
+                    // Equipment Filters
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(EquipmentBucket.entries) { bucket ->
+                            FilterPill(
+                                label = bucket.label(lang),
+                                selected = selectedBucket == bucket,
+                                onClick = { selectedBucket = bucket }
+                            )
+                        }
+                    }
 
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = tmpl.name,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = tokens.palette.onSurface,
-                                            modifier = Modifier.weight(1f, fill = false)
-                                        )
-                                        if (isAlreadyInDay) {
-                                            SmallMetaBadge(
-                                                text = lang.t("Terpasang", "Added"),
-                                                color = Color(0xFF34D399),
-                                                fill = Color(0x1E34D399)
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(3.dp))
-                                    Text(
-                                        text = buildString {
-                                            append(tmpl.muscleGroup.label(lang))
-                                            append(" · ")
-                                            append(tmpl.equipment)
-                                            append(" · ")
-                                            append("${tmpl.targetSets}×${tmpl.targetReps}")
-                                            if (tmpl.usesWeight) {
-                                                append(" · ${GymModelHelpers.formatWeight(tmpl.targetWeightKg)}kg")
-                                            }
-                                        },
-                                        fontSize = 11.5.sp,
-                                        color = tokens.palette.onSurfaceVariant
+                    // Multi-select Toggle Bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .ironGlassSurface(tokens, subtle = true, radiusOverride = 12.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = lang.t("Mode Pilih Banyak", "Multi-select mode"),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = tokens.palette.onSurface
+                            )
+                            Text(
+                                text = if (multiSelectMode) {
+                                    lang.t(
+                                        "${selectedNames.size} dipilih · maks $remainingSlots",
+                                        "${selectedNames.size} selected · max $remainingSlots"
                                     )
-                                }
+                                } else {
+                                    lang.t("Ketuk gerakan untuk langsung menambahkan", "Tap any movement to add immediately")
+                                },
+                                fontSize = 11.5.sp,
+                                color = tokens.palette.onSurfaceVariant
+                            )
+                        }
+                        if (multiSelectMode && selectedNames.isNotEmpty()) {
+                            TextButton(
+                                onClick = { selectedNames.clear() },
+                                modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                            ) {
+                                Text(
+                                    text = lang.t("Reset", "Clear"),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.accentTextColor
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = multiSelectMode,
+                            onCheckedChange = {
+                                multiSelectMode = it
+                                if (!it) selectedNames.clear()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = tokens.onAccentColor,
+                                checkedTrackColor = tokens.accentColor
+                            )
+                        )
+                    }
+                }
 
-                                if (!multiSelectMode) {
-                                    IconButton(
-                                        onClick = { onAddSingle(tmpl) },
-                                        enabled = remainingSlots > 0,
-                                        modifier = Modifier.size(34.dp)
-                                    ) {
-                                        ThemedIcon(
-                                            icon = IronPulseIcon.ADD,
-                                            contentDescription = lang.t("Tambah", "Add"),
-                                            tint = if (remainingSlots > 0) tokens.accentColor else tokens.palette.onSurfaceVariant,
-                                            size = 18.dp
+                // Full-Height Scrollable Catalog
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 2.dp,
+                        bottom = if (multiSelectMode) 16.dp else 28.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (filtered.isEmpty()) {
+                        item(key = "library_empty") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .ironGlassSurface(tokens)
+                                    .padding(28.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ThemedIcon(
+                                    icon = IronPulseIcon.SEARCH,
+                                    contentDescription = null,
+                                    tint = tokens.mutedTextColor,
+                                    size = 30.dp
+                                )
+                                Text(
+                                    text = lang.t("Tidak ada gerakan yang cocok.", "No matching exercises found."),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface
+                                )
+                                Text(
+                                    text = lang.t(
+                                        "Coba ubah kata kunci atau filter otot/alat di atas.",
+                                        "Try adjusting your search or muscle/equipment filters above."
+                                    ),
+                                    fontSize = 12.sp,
+                                    color = tokens.palette.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        itemsIndexed(filtered, key = { _, it -> it.name }) { idx, tmpl ->
+                            val isAlreadyInDay = existingNames.contains(tmpl.name.lowercase(Locale.ROOT))
+                            val isChecked = selectedNames.contains(tmpl.name)
+
+                            IronPulseTonalSurface(
+                                onClick = {
+                                    if (multiSelectMode) {
+                                        if (isChecked) selectedNames.remove(tmpl.name)
+                                        else if (selectedNames.size < remainingSlots) selectedNames.add(tmpl.name)
+                                    } else {
+                                        onAddSingle(tmpl)
+                                    }
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                baseColor = if (isChecked) tokens.accentColor.copy(alpha = 0.14f) else tokens.palette.surfaceContainerLow,
+                                border = BorderStroke(
+                                    if (isChecked) 1.4.dp else 1.dp,
+                                    if (isChecked) tokens.accentColor else tokens.surfaceBorderColor
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .staggeredCardEntrance(idx, active = true, disabledByPerf = noAnim)
+                                    .then(if (noAnim) Modifier else Modifier.animateItem())
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    if (multiSelectMode) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clip(RoundedCornerShape(7.dp))
+                                                .background(if (isChecked) tokens.accentColor else Color.Transparent)
+                                                .border(
+                                                    1.5.dp,
+                                                    if (isChecked) tokens.accentColor else tokens.palette.onSurfaceVariant,
+                                                    RoundedCornerShape(7.dp)
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isChecked) {
+                                                ThemedIcon(
+                                                    icon = IronPulseIcon.CHECK,
+                                                    contentDescription = null,
+                                                    tint = tokens.onAccentColor,
+                                                    size = 16.dp
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = tmpl.name,
+                                                fontSize = 14.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = tokens.palette.onSurface,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+                                            if (isAlreadyInDay) {
+                                                SmallMetaBadge(
+                                                    text = lang.t("Terpasang", "Added"),
+                                                    color = Color(0xFF34D399),
+                                                    fill = Color(0x1E34D399)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = buildString {
+                                                append(tmpl.muscleGroup.label(lang))
+                                                append(" · ")
+                                                append(tmpl.equipment)
+                                                append(" · ")
+                                                append("${tmpl.targetSets}×${tmpl.targetReps}")
+                                                if (tmpl.usesWeight) {
+                                                    append(" · ${GymModelHelpers.formatWeight(tmpl.targetWeightKg)}kg")
+                                                }
+                                            },
+                                            fontSize = 12.sp,
+                                            color = tokens.palette.onSurfaceVariant
                                         )
+                                        if (tmpl.notes.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = tmpl.notes,
+                                                fontSize = 11.5.sp,
+                                                lineHeight = 15.5.sp,
+                                                color = tokens.mutedTextColor,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+
+                                    if (!multiSelectMode) {
+                                        IconButton(
+                                            onClick = { onAddSingle(tmpl) },
+                                            enabled = remainingSlots > 0,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .tactilePress(enabled = remainingSlots > 0, disabledByPerf = noAnim)
+                                        ) {
+                                            ThemedIcon(
+                                                icon = IronPulseIcon.ADD,
+                                                contentDescription = lang.t("Tambah", "Add"),
+                                                tint = if (remainingSlots > 0) tokens.accentColor else tokens.palette.onSurfaceVariant,
+                                                size = 20.dp
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                    if (!multiSelectMode) {
+                        item(key = "library_nav_spacer") {
+                            Spacer(modifier = Modifier.navigationBarsPadding())
+                        }
+                    }
                 }
             }
 
+            // Sticky Full-Width Bottom Confirm Bar
             if (multiSelectMode) {
-                IronPulseButton(
-                    onClick = {
-                        val chosen = GymPresets.EXERCISE_LIBRARY.filter { selectedNames.contains(it.name) }
-                        onAddBatch(chosen)
-                    },
-                    enabled = selectedNames.isNotEmpty() && remainingSlots > 0,
-                    shape = tokens.buttonShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = tokens.accentColor,
-                        contentColor = tokens.onAccentColor
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .ironGlassBar(tokens, topHairlineColor = tokens.surfaceBorderColor)
+                        .navigationBarsPadding(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    ThemedIcon(IronPulseIcon.ADD, contentDescription = null, size = 18.dp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = lang.t(
-                            "Tambahkan Terpilih (${selectedNames.size})",
-                            "Add Selected (${selectedNames.size})"
-                        ),
-                        fontWeight = FontWeight.Bold
-                    )
+                    Box(
+                        modifier = Modifier
+                            .widthIn(max = 720.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        IronPulseButton(
+                            onClick = {
+                                val chosen = GymPresets.EXERCISE_LIBRARY.filter { selectedNames.contains(it.name) }
+                                onAddBatch(chosen)
+                            },
+                            enabled = selectedNames.isNotEmpty() && remainingSlots > 0,
+                            shape = tokens.buttonShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = tokens.accentColor,
+                                contentColor = tokens.onAccentColor
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .testTag("exercise_library_confirm_button")
+                        ) {
+                            ThemedIcon(IronPulseIcon.ADD, contentDescription = null, size = 18.dp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = lang.t(
+                                    "Tambahkan Terpilih (${selectedNames.size})",
+                                    "Add Selected (${selectedNames.size})"
+                                ),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -1,8 +1,16 @@
 package com.fathan.ironpulse.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,7 +33,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
@@ -95,7 +103,9 @@ import com.fathan.ironpulse.ui.components.VisualColorPickerDialog
 import com.fathan.ironpulse.ui.components.VisualColorPickerMode
 import com.fathan.ironpulse.ui.components.VisualPickColorPill
 import com.fathan.ironpulse.ui.components.resolvePreviewAccentForTheme
+import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.fluidModalEntrance
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.theme.IronPulseButton
@@ -166,8 +176,6 @@ fun SettingsScreen(
     var pendingDeleteTone by remember { mutableStateOf<CustomRingtone?>(null) }
 
     val fallbackListState = rememberLazyListState()
-    val listKey = currentCategory?.name ?: "HUB"
-    val listState = subTabListStates[listKey] ?: fallbackListState
     var headerHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val headerHeightDp = with(density) { headerHeightPx.toDp() }
@@ -175,245 +183,305 @@ fun SettingsScreen(
     val itemAnimMod: Modifier = Modifier
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = contentPadding.calculateTopPadding() + headerHeightDp + 18.dp,
-                bottom = contentPadding.calculateBottomPadding() + 40.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        AnimatedContent(
+            targetState = currentCategory,
+            transitionSpec = {
+                if (noAnim) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else if (targetState != null) {
+                    (slideInHorizontally(tween(240)) { it / 5 } + fadeIn(tween(200))) togetherWith
+                        (slideOutHorizontally(tween(190)) { -it / 7 } + fadeOut(tween(160)))
+                } else {
+                    (slideInHorizontally(tween(240)) { -it / 5 } + fadeIn(tween(200))) togetherWith
+                        (slideOutHorizontally(tween(190)) { it / 7 } + fadeOut(tween(160)))
+                }
+            },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .widthIn(max = 640.dp)
-                .fillMaxSize()
-                .testTag("settings_list")
-        ) {
-            when (currentCategory) {
-                null -> {
-                    items(
-                        items = SettingsCategory.entries,
-                        key = { "settings_hub_${it.name}" },
-                        contentType = { "settings_hub_row" }
-                    ) { category ->
-                        SettingsCategoryRow(
-                            category = category,
-                            state = state,
-                            onClick = { selectCategory(category) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
+                .fillMaxSize(),
+            label = "settingsCategoryTransition"
+        ) { category ->
+            val listState = subTabListStates[category?.name ?: "HUB"] ?: fallbackListState
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = contentPadding.calculateTopPadding() + headerHeightDp + 18.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 40.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("settings_list")
+            ) {
+                when (category) {
+                    null -> {
+                        itemsIndexed(
+                            items = SettingsCategory.entries,
+                            key = { _, it -> "settings_hub_${it.name}" },
+                            contentType = { _, _ -> "settings_hub_row" }
+                        ) { idx, cat ->
+                            SettingsCategoryRow(
+                                category = cat,
+                                state = state,
+                                onClick = { selectCategory(cat) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(idx, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                     }
-                }
 
-                SettingsCategory.PROFILE -> {
-                    item(key = "profile_hero", contentType = "profile_hero") {
-                        ProfileHeroCard(
-                            state = state,
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
+                    SettingsCategory.PROFILE -> {
+                        item(key = "profile_hero", contentType = "profile_hero") {
+                            ProfileHeroCard(
+                                state = state,
+                                modifier = Modifier
+                                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "profile_name", contentType = "profile_name") {
+                            ProfileDisplayNameCard(
+                                state = state,
+                                onSaveName = { viewModel.updateProfile(displayName = it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "profile_signout", contentType = "profile_signout") {
+                            ProfileSignOutCard(
+                                onRequestSignOut = { confirmSignOut = true },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                     }
-                    item(key = "profile_name", contentType = "profile_name") {
-                        ProfileDisplayNameCard(
-                            state = state,
-                            onSaveName = { viewModel.updateProfile(displayName = it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "profile_signout", contentType = "profile_signout") {
-                        ProfileSignOutCard(
-                            onRequestSignOut = { confirmSignOut = true },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                }
 
-                SettingsCategory.THEME -> {
-                    item(key = "themes_grid", contentType = "themes_grid") {
-                        ThemesGridCard(
-                            selectedTheme = state.appPrefs.uiTheme,
-                            onSelectTheme = { viewModel.setUiTheme(it) },
-                            onResetTheme = { viewModel.resetThemeCustomization() },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
+                    SettingsCategory.THEME -> {
+                        item(key = "themes_grid", contentType = "themes_grid") {
+                            ThemesGridCard(
+                                selectedTheme = state.appPrefs.uiTheme,
+                                onSelectTheme = { viewModel.setUiTheme(it) },
+                                onResetTheme = { viewModel.resetThemeCustomization() },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "accent_tint", contentType = "accent_tint") {
+                            AccentAndTintSettingsCard(
+                                accentColorHex = state.appPrefs.accentColorHex,
+                                materialTintColorHex = state.appPrefs.materialTintColorHex,
+                                onSelectAccent = { viewModel.setAccentColor(it) },
+                                onOpenAccentPicker = { activeColorPickerMode = VisualColorPickerMode.ACCENT },
+                                onOpenTintPicker = { activeColorPickerMode = VisualColorPickerMode.SURFACE_TINT },
+                                onSelectMaterialTint = { viewModel.setMaterialTintColor(it) },
+                                selectedDayTimeMode = state.appPrefs.todayThemeMode,
+                                onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "day_phase_mood", contentType = "day_phase_mood") {
+                            TodayPhaseMoodCard(
+                                selectedMode = state.appPrefs.todayThemeMode,
+                                onSelectMode = { viewModel.setTodayThemeMode(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                     }
-                    item(key = "accent_tint", contentType = "accent_tint") {
-                        AccentAndTintSettingsCard(
-                            accentColorHex = state.appPrefs.accentColorHex,
-                            materialTintColorHex = state.appPrefs.materialTintColorHex,
-                            onSelectAccent = { viewModel.setAccentColor(it) },
-                            onOpenAccentPicker = { activeColorPickerMode = VisualColorPickerMode.ACCENT },
-                            onOpenTintPicker = { activeColorPickerMode = VisualColorPickerMode.SURFACE_TINT },
-                            onSelectMaterialTint = { viewModel.setMaterialTintColor(it) },
-                            selectedDayTimeMode = state.appPrefs.todayThemeMode,
-                            onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "day_phase_mood", contentType = "day_phase_mood") {
-                        TodayPhaseMoodCard(
-                            selectedMode = state.appPrefs.todayThemeMode,
-                            onSelectMode = { viewModel.setTodayThemeMode(it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                }
 
-                SettingsCategory.CONFIGURATION -> {
-                    item(key = "mascot_personality_card", contentType = "mascot_personality_card") {
-                        MascotPersonalitySettingsCard(
-                            selected = state.appPrefs.mascotPersonality,
-                            eyeStateFlow = viewModel.mascotEyeFlow,
-                            onSelect = { viewModel.setMascotPersonality(it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
+                    SettingsCategory.CONFIGURATION -> {
+                        item(key = "mascot_personality_card", contentType = "mascot_personality_card") {
+                            MascotPersonalitySettingsCard(
+                                selected = state.appPrefs.mascotPersonality,
+                                eyeStateFlow = viewModel.mascotEyeFlow,
+                                onSelect = { viewModel.setMascotPersonality(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "performance_card", contentType = "performance_card") {
+                            PerformanceSettingsCard(
+                                perf = state.appPrefs.performance,
+                                onApplyPreset = { viewModel.applyPerformancePreset(it) },
+                                onUpdatePerf = { noAnimations, noAmbientGlow, staticMascot ->
+                                    viewModel.setPerformance(
+                                        noAnimations = noAnimations,
+                                        noAmbientGlow = noAmbientGlow,
+                                        staticMascot = staticMascot
+                                    )
+                                },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                     }
-                    item(key = "performance_card", contentType = "performance_card") {
-                        PerformanceSettingsCard(
-                            perf = state.appPrefs.performance,
-                            onApplyPreset = { viewModel.applyPerformancePreset(it) },
-                            onUpdatePerf = { noAnimations, noAmbientGlow, staticMascot ->
-                                viewModel.setPerformance(
-                                    noAnimations = noAnimations,
-                                    noAmbientGlow = noAmbientGlow,
-                                    staticMascot = staticMascot
+
+                    SettingsCategory.ALARM -> {
+                        item(key = "alarm_audio", contentType = "alarm_audio") {
+                            AlarmAudioSettingsCard(
+                                state = state,
+                                viewModel = viewModel,
+                                modifier = Modifier
+                                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "alarm_feedback", contentType = "alarm_feedback") {
+                            AlarmFeedbackSettingsCard(
+                                state = state,
+                                viewModel = viewModel,
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "alarm_diagnostics", contentType = "alarm_diagnostics") {
+                            AlarmDiagnosticsCard(
+                                state = state,
+                                viewModel = viewModel,
+                                onRequestNotificationPermission = onRequestNotificationPermission,
+                                onOpenExactAlarmSettings = onOpenExactAlarmSettings,
+                                modifier = Modifier
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "ringtone_header", contentType = "ringtone_header") {
+                            RingtoneManagerHeaderCard(
+                                uploading = state.uploadingRingtone,
+                                onPickCustomRingtone = onPickCustomRingtone,
+                                modifier = Modifier
+                                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        if (state.customRingtones.isNotEmpty()) {
+                            item(key = "custom_ringtones_label", contentType = "section_label") {
+                                Text(
+                                    text = lang.t(
+                                        "Nada Kustom Saya (${state.customRingtones.size})",
+                                        "My Custom Ringtones (${state.customRingtones.size})"
+                                    ),
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                 )
-                            },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                }
-
-                SettingsCategory.ALARM -> {
-                    item(key = "alarm_audio", contentType = "alarm_audio") {
-                        AlarmAudioSettingsCard(
-                            state = state,
-                            viewModel = viewModel,
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "alarm_feedback", contentType = "alarm_feedback") {
-                        AlarmFeedbackSettingsCard(
-                            state = state,
-                            viewModel = viewModel,
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "alarm_diagnostics", contentType = "alarm_diagnostics") {
-                        AlarmDiagnosticsCard(
-                            state = state,
-                            viewModel = viewModel,
-                            onRequestNotificationPermission = onRequestNotificationPermission,
-                            onOpenExactAlarmSettings = onOpenExactAlarmSettings,
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "ringtone_header", contentType = "ringtone_header") {
-                        RingtoneManagerHeaderCard(
-                            uploading = state.uploadingRingtone,
-                            onPickCustomRingtone = onPickCustomRingtone,
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    if (state.customRingtones.isNotEmpty()) {
-                        item(key = "custom_ringtones_label", contentType = "section_label") {
+                            }
+                            itemsIndexed(
+                                items = state.customRingtones,
+                                key = { _, it -> "custom_tone_${it.id}" },
+                                contentType = { _, _ -> "ringtone_row" }
+                            ) { idx, tone ->
+                                val defaultAlarmId = state.profile?.defaultRingtoneId ?: "builtin_athletic_bell"
+                                val restRingtoneId = state.profile?.restRingtoneId ?: "builtin_kettlebell_chime"
+                                CustomRingtoneItemCard(
+                                    tone = tone,
+                                    isPreviewing = state.previewingRingtoneId == tone.id,
+                                    isAlarmDefault = defaultAlarmId == tone.id,
+                                    isRestDefault = restRingtoneId == tone.id,
+                                    onPreview = { viewModel.previewRingtone(tone.id) },
+                                    onDelete = { pendingDeleteTone = tone },
+                                    onAssignAlarm = { viewModel.updateProfile(defaultRingtoneId = tone.id) },
+                                    onAssignRest = { viewModel.updateProfile(restRingtoneId = tone.id) },
+                                    modifier = Modifier
+                                        .staggeredCardEntrance(idx + 4, active = tabActive, disabledByPerf = noAnim)
+                                        .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                                )
+                            }
+                        }
+                        item(key = "builtin_ringtones_label", contentType = "section_label") {
                             Text(
-                                text = lang.t(
-                                    "Nada Kustom Saya (${state.customRingtones.size})",
-                                    "My Custom Ringtones (${state.customRingtones.size})"
-                                ),
+                                text = lang.t("Nada Bawaan IronPulse (5 Synth)", "Built-in Synth Ringtones (5)"),
                                 fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = tokens.palette.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
-                        items(
-                            items = state.customRingtones,
-                            key = { "custom_tone_${it.id}" },
-                            contentType = { "ringtone_row" }
-                        ) { tone ->
+                        itemsIndexed(
+                            items = GymModelHelpers.BUILTIN_RINGTONES,
+                            key = { _, it -> "builtin_tone_${it.id}" },
+                            contentType = { _, _ -> "ringtone_row" }
+                        ) { idx, spec ->
                             val defaultAlarmId = state.profile?.defaultRingtoneId ?: "builtin_athletic_bell"
                             val restRingtoneId = state.profile?.restRingtoneId ?: "builtin_kettlebell_chime"
-                            CustomRingtoneItemCard(
-                                tone = tone,
-                                isPreviewing = state.previewingRingtoneId == tone.id,
-                                isAlarmDefault = defaultAlarmId == tone.id,
-                                isRestDefault = restRingtoneId == tone.id,
-                                onPreview = { viewModel.previewRingtone(tone.id) },
-                                onDelete = { pendingDeleteTone = tone },
-                                onAssignAlarm = { viewModel.updateProfile(defaultRingtoneId = tone.id) },
-                                onAssignRest = { viewModel.updateProfile(restRingtoneId = tone.id) },
-                                modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
+                            BuiltinRingtoneItemCard(
+                                spec = spec,
+                                isPreviewing = state.previewingRingtoneId == spec.id,
+                                isAlarmDefault = defaultAlarmId == spec.id,
+                                isRestDefault = restRingtoneId == spec.id,
+                                onPreview = { viewModel.previewRingtone(spec.id) },
+                                onAssignAlarm = { viewModel.updateProfile(defaultRingtoneId = spec.id) },
+                                onAssignRest = { viewModel.updateProfile(restRingtoneId = spec.id) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(idx + 4, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
                     }
-                    item(key = "builtin_ringtones_label", contentType = "section_label") {
-                        Text(
-                            text = lang.t("Nada Bawaan IronPulse (5 Synth)", "Built-in Synth Ringtones (5)"),
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.palette.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
-                    }
-                    items(
-                        items = GymModelHelpers.BUILTIN_RINGTONES,
-                        key = { "builtin_tone_${it.id}" },
-                        contentType = { "ringtone_row" }
-                    ) { spec ->
-                        val defaultAlarmId = state.profile?.defaultRingtoneId ?: "builtin_athletic_bell"
-                        val restRingtoneId = state.profile?.restRingtoneId ?: "builtin_kettlebell_chime"
-                        BuiltinRingtoneItemCard(
-                            spec = spec,
-                            isPreviewing = state.previewingRingtoneId == spec.id,
-                            isAlarmDefault = defaultAlarmId == spec.id,
-                            isRestDefault = restRingtoneId == spec.id,
-                            onPreview = { viewModel.previewRingtone(spec.id) },
-                            onAssignAlarm = { viewModel.updateProfile(defaultRingtoneId = spec.id) },
-                            onAssignRest = { viewModel.updateProfile(restRingtoneId = spec.id) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                }
 
-                SettingsCategory.SYSTEM -> {
-                    item(key = "system_language", contentType = "system_language") {
-                        SystemLanguageCard(
-                            selectedLang = state.appPrefs.lang,
-                            onSelectLang = { viewModel.setLang(it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
+                    SettingsCategory.SYSTEM -> {
+                        item(key = "system_language", contentType = "system_language") {
+                            SystemLanguageCard(
+                                selectedLang = state.appPrefs.lang,
+                                onSelectLang = { viewModel.setLang(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "system_clock", contentType = "system_clock") {
+                            SystemClockFormatCard(
+                                clockFormat = state.appPrefs.clockFormat,
+                                clockSecondsFlow = viewModel.clockSecondsFlow,
+                                onSelectFormat = { viewModel.setClockFormat(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "system_workout_display", contentType = "system_workout_display") {
+                            SystemWorkoutDisplayCard(
+                                keepScreenOnWorkout = state.appPrefs.keepScreenOnWorkout,
+                                onToggleKeepScreenOn = { viewModel.setKeepScreenOnWorkout(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "system_guide", contentType = "system_guide") {
+                            SystemGuideCard(
+                                onOpenTutorial = { viewModel.openTutorial(startWithLang = false) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                     }
-                    item(key = "system_clock", contentType = "system_clock") {
-                        SystemClockFormatCard(
-                            clockFormat = state.appPrefs.clockFormat,
-                            clockSecondsFlow = viewModel.clockSecondsFlow,
-                            onSelectFormat = { viewModel.setClockFormat(it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "system_workout_display", contentType = "system_workout_display") {
-                        SystemWorkoutDisplayCard(
-                            keepScreenOnWorkout = state.appPrefs.keepScreenOnWorkout,
-                            onToggleKeepScreenOn = { viewModel.setKeepScreenOnWorkout(it) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                    item(key = "system_guide", contentType = "system_guide") {
-                        SystemGuideCard(
-                            onOpenTutorial = { viewModel.openTutorial(startWithLang = false) },
-                            modifier = if (noAnim) itemAnimMod else Modifier.animateItem()
-                        )
-                    }
-                }
 
-                SettingsCategory.ABOUT -> {
-                    item(key = "about_full_page", contentType = "about_full_page") {
-                        AboutContentCards(
-                            wrapHeaderInCard = true,
-                            modifier = if (noAnim) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().animateItem()
-                        )
+                    SettingsCategory.ABOUT -> {
+                        item(key = "about_full_page", contentType = "about_full_page") {
+                            AboutContentCards(
+                                wrapHeaderInCard = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) Modifier else Modifier.animateItem())
+                            )
+                        }
                     }
                 }
             }
@@ -893,7 +961,6 @@ private fun ProfileDisplayNameCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(46.dp)
-                .tactilePress(enabled = nameDraft.trim().isNotEmpty(), disabledByPerf = noAnim)
         ) {
             ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, size = 18.dp)
             Spacer(modifier = Modifier.width(6.dp))
@@ -928,7 +995,6 @@ private fun ProfileSignOutCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(46.dp)
-                .tactilePress(disabledByPerf = noAnim)
         ) {
             ThemedIcon(IronPulseIcon.LOGOUT, contentDescription = null, tint = tokens.dangerColor, size = 18.dp)
             Spacer(modifier = Modifier.width(8.dp))

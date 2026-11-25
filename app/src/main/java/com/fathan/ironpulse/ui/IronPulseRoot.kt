@@ -10,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -65,6 +67,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
@@ -84,6 +87,7 @@ import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.screens.AuthScreen
+import com.fathan.ironpulse.ui.screens.ExerciseLibraryFullScreen
 import com.fathan.ironpulse.ui.screens.ExercisesScreen
 import com.fathan.ironpulse.ui.screens.HistoryScreen
 import com.fathan.ironpulse.ui.screens.ScheduleScreen
@@ -98,6 +102,7 @@ import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun IronPulseRoot(
@@ -197,13 +202,21 @@ fun IronPulseRoot(
                     val tourScrollScope = rememberCoroutineScope()
                     var medalSlotTargetCenter by remember { mutableStateOf(Offset.Zero) }
                     var flyingMedalState by remember { mutableStateOf<Pair<MedalTier, Offset>?>(null) }
+                    var showExerciseLibraryScreen by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(state.activeTab) {
+                        if (state.activeTab != AppTab.EXERCISES) {
+                            showExerciseLibraryScreen = false
+                        }
+                    }
 
                     val modalBlocking = state.showNamePrompt ||
                         state.tutorialOpen ||
                         state.cooldownAlertTarget != null ||
                         state.activeTestAlarm != null ||
                         state.pendingMedalUnlock != null ||
-                        flyingMedalState != null
+                        flyingMedalState != null ||
+                        showExerciseLibraryScreen
 
                     val showFloatingMascot by remember(
                         state.activeTab,
@@ -212,6 +225,7 @@ fun IronPulseRoot(
                         state.activeTestAlarm,
                         state.pendingMedalUnlock,
                         flyingMedalState,
+                        showExerciseLibraryScreen,
                         todayListState
                     ) {
                         derivedStateOf {
@@ -219,7 +233,8 @@ fun IronPulseRoot(
                                 state.tutorialOpen ||
                                 state.activeTestAlarm != null ||
                                 state.pendingMedalUnlock != null ||
-                                flyingMedalState != null
+                                flyingMedalState != null ||
+                                showExerciseLibraryScreen
                             if (hiddenByModal) {
                                 false
                             } else if (state.activeTab != AppTab.TODAY) {
@@ -233,12 +248,13 @@ fun IronPulseRoot(
                     var prevShowFloating by remember { mutableStateOf(showFloatingMascot) }
                     var isReturningHome by remember { mutableStateOf(false) }
                     var homeLandingTick by remember { mutableIntStateOf(0) }
+                    val resolvedReturningHome = if (prevShowFloating != showFloatingMascot) {
+                        prevShowFloating && !showFloatingMascot
+                    } else {
+                        isReturningHome
+                    }
                     LaunchedEffect(showFloatingMascot) {
-                        if (prevShowFloating && !showFloatingMascot) {
-                            isReturningHome = true
-                        } else if (!prevShowFloating && showFloatingMascot) {
-                            isReturningHome = false
-                        }
+                        isReturningHome = resolvedReturningHome
                         prevShowFloating = showFloatingMascot
                     }
 
@@ -246,7 +262,7 @@ fun IronPulseRoot(
                         targetValue = if (showFloatingMascot) 1f else 0f,
                         animationSpec = when {
                             noAnim -> tween(0)
-                            isReturningHome -> IronPulseMotion.ReturnMorphSpring
+                            resolvedReturningHome -> IronPulseMotion.ReturnMorphSpring
                             else -> IronPulseMotion.MorphSpring
                         },
                         finishedListener = { finalVal ->
@@ -344,7 +360,8 @@ fun IronPulseRoot(
                                             state = tabState,
                                             viewModel = viewModel,
                                             contentPadding = innerPadding,
-                                            listState = exercisesListState
+                                            listState = exercisesListState,
+                                            onOpenLibrary = { showExerciseLibraryScreen = true }
                                         )
 
                                         AppTab.SETTINGS -> SettingsScreen(
@@ -482,7 +499,7 @@ fun IronPulseRoot(
 
                         // LAYER 3: Bottom Navigation Bar
                         AnimatedVisibility(
-                            visible = state.activeTab != AppTab.SETTINGS,
+                            visible = state.activeTab != AppTab.SETTINGS && !showExerciseLibraryScreen,
                             enter = if (noAnim) EnterTransition.None else slideInVertically(tween(220)) { it } + fadeIn(tween(180)),
                             exit = if (noAnim) ExitTransition.None else slideOutVertically(tween(180)) { it } + fadeOut(tween(140)),
                             modifier = Modifier
@@ -520,7 +537,42 @@ fun IronPulseRoot(
                             onSaveAnchor = { sideRight, yRatio -> viewModel.setFloatingOrbAnchor(sideRight, yRatio) }
                         )
 
-                        // LAYER 5: In-Window Modals
+                        // LAYER 5: Full-Screen Routes & In-Window Modals
+                        AnimatedVisibility(
+                            visible = showExerciseLibraryScreen,
+                            enter = if (noAnim) {
+                                EnterTransition.None
+                            } else {
+                                slideInVertically(tween(280)) { it / 7 } +
+                                    scaleIn(initialScale = 0.975f, animationSpec = IronPulseMotion.ModalEntranceSpring) +
+                                    fadeIn(tween(220))
+                            },
+                            exit = if (noAnim) {
+                                ExitTransition.None
+                            } else {
+                                slideOutVertically(tween(210)) { it / 9 } +
+                                    scaleOut(targetScale = 0.975f, animationSpec = tween(210)) +
+                                    fadeOut(tween(180))
+                            }
+                        ) {
+                            val selectedDay = state.selectedExerciseDayKey
+                            val dayExercises = state.schedules[selectedDay]?.exercises ?: emptyList()
+                            ExerciseLibraryFullScreen(
+                                lang = lang,
+                                selectedDayLabel = selectedDay.label(lang),
+                                existingNames = dayExercises.map { it.name.lowercase(Locale.ROOT) }.toSet(),
+                                remainingSlots = (30 - dayExercises.size).coerceAtLeast(0),
+                                onAddSingle = { tmpl ->
+                                    viewModel.addTemplatesToDay(selectedDay, listOf(tmpl))
+                                },
+                                onAddBatch = { tmpls ->
+                                    viewModel.addTemplatesToDay(selectedDay, tmpls)
+                                    showExerciseLibraryScreen = false
+                                },
+                                onDismiss = { showExerciseLibraryScreen = false }
+                            )
+                        }
+
                         if (state.showNamePrompt) {
                             NamePromptModal(
                                 initialName = state.profile?.displayName ?: state.userDisplayName ?: "",
@@ -650,6 +702,7 @@ private fun PersistedTabStage(
 ) {
     var visitedTabs by remember { mutableStateOf(setOf(activeTab)) }
     var previousTab by remember { mutableStateOf<AppTab?>(null) }
+    var transitionFromTab by remember { mutableStateOf<AppTab?>(null) }
     var transitionDir by remember { mutableIntStateOf(1) }
     val progress = remember { Animatable(1f) }
 
@@ -680,13 +733,16 @@ private fun PersistedTabStage(
         }
         val prev = previousTab
         if (prev != null && prev != activeTab && !noAnim) {
+            transitionFromTab = prev
             transitionDir = if (activeTab.ordinal >= prev.ordinal) 1 else -1
             progress.snapTo(0f)
             if (needsFirstBuild) {
                 withFrameNanos { }
             }
             progress.animateTo(1f, IronPulseMotion.TabSlideSpring)
+            transitionFromTab = null
         } else {
+            transitionFromTab = null
             progress.snapTo(1f)
         }
         previousTab = activeTab
@@ -697,7 +753,7 @@ private fun PersistedTabStage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex(0.5f)
+                    .zIndex(0.4f)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
@@ -712,19 +768,35 @@ private fun PersistedTabStage(
         visitedTabs.forEach { tab ->
             key(tab) {
                 val isCurrent = tab == activeTab
+                val isOutgoing = !isCurrent && tab == transitionFromTab && !noAnim
                 var cachedTabState by remember { mutableStateOf(state) }
                 if (isCurrent) {
                     cachedTabState = state
                 }
-                val z = if (isCurrent) 1f else 0f
+                val z = when {
+                    isCurrent -> 1f
+                    isOutgoing -> 0.7f
+                    else -> 0f
+                }
                 val mod = Modifier
                     .fillMaxSize()
                     .zIndex(z)
                     .graphicsLayer {
                         if (isCurrent) {
                             val p = progress.value
-                            alpha = if (noAnim) 1f else p.coerceIn(0f, 1f)
-                            translationX = if (noAnim) 0f else (1f - p) * transitionDir * (size.width * 0.055f)
+                            val clampedP = p.coerceIn(0f, 1f)
+                            alpha = if (noAnim) 1f else clampedP
+                            translationX = if (noAnim) 0f else (1f - p) * transitionDir * (size.width * 0.065f)
+                            val s = if (noAnim) 1f else lerp(0.978f, 1f, clampedP)
+                            scaleX = s
+                            scaleY = s
+                        } else if (isOutgoing) {
+                            val p = progress.value.coerceIn(0f, 1f)
+                            alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
+                            translationX = -p * transitionDir * (size.width * 0.045f)
+                            val s = lerp(1f, 0.97f, p)
+                            scaleX = s
+                            scaleY = s
                         } else {
                             alpha = 0f
                         }

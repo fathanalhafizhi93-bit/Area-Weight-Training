@@ -345,7 +345,6 @@ fun AuthScreen(
                     modifier = Modifier
                         .testTag("google_sign_in_button")
                         .height(52.dp)
-                        .tactilePress(enabled = !authLoading, disabledByPerf = noAnim)
                 ) {
                     if (authLoading) {
                         CircularProgressIndicator(

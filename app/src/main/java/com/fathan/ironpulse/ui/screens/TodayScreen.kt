@@ -86,6 +86,7 @@ import com.fathan.ironpulse.ui.components.TodayMascot
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.rememberScaledResourceBitmap
+import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
@@ -132,6 +133,7 @@ fun TodayScreen(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val tabActive = LocalTabActive.current
     val secUnit = lang.t("d", "s")
     val activeSchedule = state.schedules[state.todayDayKey]
     val dayLabel = state.todayDayKey.label(lang)
@@ -206,6 +208,7 @@ fun TodayScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
                     .ironGlassSurface(tokens, borderOverride = tokens.phaseTokens.heroBorder)
             ) {
                 if (heroBitmap != null) {
@@ -394,7 +397,9 @@ fun TodayScreen(
                 onTapMascot = onTapMascot,
                 onPetMascot = onPetMascot,
                 onReplayVoice = onReplayMascotVoice,
-                modifier = Modifier.testTag("today_mascot_card")
+                modifier = Modifier
+                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                    .testTag("today_mascot_card")
             )
         }
 
@@ -422,6 +427,7 @@ fun TodayScreen(
                     } else null,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                         .testTag("start_workout_cta")
                 ) {
                     Row(
@@ -487,6 +493,7 @@ fun TodayScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
                     .tutorialSpotlightTarget(TutorialSpotlightTarget.TODAY_REST_TIMER)
             ) {
                 RestTimerHeroCard(
@@ -506,6 +513,7 @@ fun TodayScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(4, active = tabActive, disabledByPerf = noAnim)
                         .ironGlassSurface(tokens)
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -545,8 +553,7 @@ fun TodayScreen(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
-                        ),
-                        modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                        )
                     ) {
                         Text(lang.t("Buka Tab Jadwal", "Open Schedule Tab"), fontWeight = FontWeight.Bold)
                     }
@@ -557,6 +564,7 @@ fun TodayScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(4, active = tabActive, disabledByPerf = noAnim)
                         .ironGlassSurface(tokens)
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -592,8 +600,7 @@ fun TodayScreen(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = tokens.accentColor,
                             contentColor = tokens.onAccentColor
-                        ),
-                        modifier = Modifier.tactilePress(disabledByPerf = noAnim)
+                        )
                     ) {
                         Text(lang.t("+ Tambah Gerakan Sekarang", "+ Add Exercise Now"), fontWeight = FontWeight.Bold)
                     }
@@ -604,6 +611,7 @@ fun TodayScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(4, active = tabActive, disabledByPerf = noAnim)
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom
@@ -660,6 +668,7 @@ fun TodayScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .staggeredCardEntrance(idx + 5, active = tabActive, disabledByPerf = noAnim)
                         .then(if (noAnim) Modifier else Modifier.animateItem())
                         .tactilePress(pressedScale = 0.98f, disabledByPerf = noAnim)
                         .ironGlassSurface(
@@ -1016,9 +1025,7 @@ private fun RestTimerHeroCard(
                 shape = buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp),
-                modifier = Modifier
-                    .height(44.dp)
-                    .tactilePress(disabledByPerf = noAnim)
+                modifier = Modifier.height(44.dp)
             ) {
                 Text("-15$secUnit", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = tokens.palette.onSurface)
             }
@@ -1033,7 +1040,6 @@ private fun RestTimerHeroCard(
                 modifier = Modifier
                     .weight(1f)
                     .height(44.dp)
-                    .tactilePress(disabledByPerf = noAnim)
             ) {
                 ThemedIcon(
                     icon = if (restRunning) IronPulseIcon.PAUSE else IronPulseIcon.PLAY,
@@ -1058,9 +1064,7 @@ private fun RestTimerHeroCard(
                 shape = buttonShape,
                 border = BorderStroke(1.dp, tokens.subtleBorderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp),
-                modifier = Modifier
-                    .height(44.dp)
-                    .tactilePress(disabledByPerf = noAnim)
+                modifier = Modifier.height(44.dp)
             ) {
                 Text("+15$secUnit", fontFamily = tokens.fontPack.monoFont, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = tokens.palette.onSurface)
             }
