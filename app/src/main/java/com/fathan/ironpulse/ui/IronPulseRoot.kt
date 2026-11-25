@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -65,19 +66,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
-import com.fathan.ironpulse.ui.components.IronPulseIcon
-import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.CooldownAlertModal
 import com.fathan.ironpulse.ui.components.FloatingMascotDock
+import com.fathan.ironpulse.ui.components.FlyingMedalOverlay
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
+import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LocalTutorialSpotlightRegistry
+import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
 import com.fathan.ironpulse.ui.components.NamePromptModal
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
+import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.ExercisesScreen
@@ -191,23 +195,31 @@ fun IronPulseRoot(
                     val spotlightRegistry = remember { TutorialSpotlightRegistry() }
                     spotlightRegistry.active = state.tutorialOpen
                     val tourScrollScope = rememberCoroutineScope()
+                    var medalSlotTargetCenter by remember { mutableStateOf(Offset.Zero) }
+                    var flyingMedalState by remember { mutableStateOf<Pair<MedalTier, Offset>?>(null) }
 
                     val modalBlocking = state.showNamePrompt ||
                         state.tutorialOpen ||
                         state.cooldownAlertTarget != null ||
-                        state.activeTestAlarm != null
+                        state.activeTestAlarm != null ||
+                        state.pendingMedalUnlock != null ||
+                        flyingMedalState != null
 
                     val showFloatingMascot by remember(
                         state.activeTab,
                         state.showNamePrompt,
                         state.tutorialOpen,
                         state.activeTestAlarm,
+                        state.pendingMedalUnlock,
+                        flyingMedalState,
                         todayListState
                     ) {
                         derivedStateOf {
                             val hiddenByModal = state.showNamePrompt ||
                                 state.tutorialOpen ||
-                                state.activeTestAlarm != null
+                                state.activeTestAlarm != null ||
+                                state.pendingMedalUnlock != null ||
+                                flyingMedalState != null
                             if (hiddenByModal) {
                                 false
                             } else if (state.activeTab != AppTab.TODAY) {
@@ -298,7 +310,9 @@ fun IronPulseRoot(
                                             state = tabState,
                                             contentPadding = innerPadding,
                                             onStartTodayWorkout = { viewModel.openWorkout(null) },
-                                            listState = historyListState
+                                            listState = historyListState,
+                                            landingBurstTick = state.medalLandingBurstTick,
+                                            onMedalSlotPositioned = { medalSlotTargetCenter = it }
                                         )
 
                                         AppTab.EXERCISES -> ExercisesScreen(
@@ -529,6 +543,7 @@ fun IronPulseRoot(
                                 cooldownSecondsFlow = viewModel.cooldownSecondsFlow,
                                 exerciseName = cooldownTarget.exerciseName,
                                 setNumber = cooldownTarget.setNumber,
+                                bypassesRemaining = cooldownTarget.bypassesRemaining,
                                 onBypass = { viewModel.bypassCooldownAndComplete() },
                                 onDismiss = { viewModel.dismissCooldownAlert() }
                             )
@@ -543,6 +558,46 @@ fun IronPulseRoot(
                                 onStartWorkout = { viewModel.dismissInAppTestAlarm(openWorkoutAfter = true) },
                                 onSnooze = { viewModel.snoozeInAppTestAlarm() },
                                 onDismiss = { viewModel.dismissInAppTestAlarm(openWorkoutAfter = false) }
+                            )
+                        }
+
+                        // Monthly Medal Unlock Celebration + Flight to History Top Showcase
+                        val unlockEvent = state.pendingMedalUnlock
+                        if (unlockEvent != null && flyingMedalState == null) {
+                            MedalUnlockCelebrationOverlay(
+                                event = unlockEvent,
+                                mascot = state.mascot,
+                                mascotEyeFlow = viewModel.mascotEyeFlow,
+                                onStartFlightToHistory = { sourceCenter ->
+                                    if (noAnim || sourceCenter == Offset.Zero) {
+                                        viewModel.confirmMedalUnlockAndFlyToHistory()
+                                        navigateToTab(AppTab.HISTORY)
+                                        tourScrollScope.launch {
+                                            historyListState.scrollToItem(0)
+                                            viewModel.triggerMedalLandingBurst()
+                                        }
+                                    } else {
+                                        flyingMedalState = unlockEvent.tier to sourceCenter
+                                        viewModel.confirmMedalUnlockAndFlyToHistory()
+                                        navigateToTab(AppTab.HISTORY)
+                                        tourScrollScope.launch {
+                                            historyListState.scrollToItem(0)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+
+                        val flight = flyingMedalState
+                        if (flight != null) {
+                            FlyingMedalOverlay(
+                                tier = flight.first,
+                                startCenter = flight.second,
+                                targetCenter = medalSlotTargetCenter,
+                                onFlightFinished = {
+                                    flyingMedalState = null
+                                    viewModel.triggerMedalLandingBurst()
+                                }
                             )
                         }
                     }

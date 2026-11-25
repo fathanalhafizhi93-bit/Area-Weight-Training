@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.DayTimeMode
+import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.UiTheme
@@ -207,6 +208,45 @@ class PreferencesStore(context: Context) {
     fun setTutorialSeen(uid: String, seen: Boolean) {
         prefs.edit().putBoolean("tutorial_seen_$uid", seen).apply()
     }
+
+    fun getSeenMedalTier(uid: String, monthKey: String): MedalTier {
+        val raw = prefs.getString("medal_seen_${uid}_$monthKey", null)
+        return MedalTier.fromWire(raw)
+    }
+
+    fun setSeenMedalTier(uid: String, monthKey: String, tier: MedalTier) {
+        prefs.edit().putString("medal_seen_${uid}_$monthKey", tier.wireValue).apply()
+    }
+
+    fun loadSessionGuard(uid: String, dateKey: String): SessionGuardSnapshot {
+        val prefix = "sg_${uid}_$dateKey"
+        return SessionGuardSnapshot(
+            firstSetElapsedMs = prefs.getLong("${prefix}_first", 0L),
+            lastVerifiedSetElapsedMs = prefs.getLong("${prefix}_last", 0L),
+            bypassesUsed = prefs.getInt("${prefix}_byp", 0)
+        )
+    }
+
+    fun saveSessionGuard(
+        uid: String,
+        dateKey: String,
+        firstSetElapsedMs: Long,
+        lastVerifiedSetElapsedMs: Long,
+        bypassesUsed: Int
+    ) {
+        val prefix = "sg_${uid}_$dateKey"
+        prefs.edit()
+            .putLong("${prefix}_first", firstSetElapsedMs)
+            .putLong("${prefix}_last", lastVerifiedSetElapsedMs)
+            .putInt("${prefix}_byp", bypassesUsed)
+            .apply()
+    }
+
+    data class SessionGuardSnapshot(
+        val firstSetElapsedMs: Long = 0L,
+        val lastVerifiedSetElapsedMs: Long = 0L,
+        val bypassesUsed: Int = 0
+    )
 
     companion object {
         private const val PREFS_NAME = "ironpulse_ui_prefs_v1"

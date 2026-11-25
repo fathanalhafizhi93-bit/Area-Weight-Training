@@ -76,7 +76,9 @@ import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.ExerciseItem
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.SessionVerificationResult
 import com.fathan.ironpulse.model.TimerDirection
+import com.fathan.ironpulse.model.WorkoutIntegrityEvaluator
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.TactileStepperControl
@@ -345,6 +347,13 @@ fun WorkoutScreen(
                                 }
                             }
                         }
+                    }
+
+                    if (hasExercises) {
+                        WorkoutMedalVerificationStrip(
+                            verification = state.todayVerification,
+                            liveElapsedSec = state.liveSessionElapsedSeconds
+                        )
                     }
                 }
             }
@@ -1759,3 +1768,71 @@ private fun SummaryStatPill(
         )
     }
 }
+
+@Composable
+private fun WorkoutMedalVerificationStrip(
+    verification: SessionVerificationResult,
+    liveElapsedSec: Int
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+    val effectiveSec = maxOf(verification.effectiveDurationSeconds, liveElapsedSec)
+    val mins = effectiveSec / 60
+    val verified = verification.isVerified
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("workout_medal_verification_strip")
+            .ironTonalControl(
+                tokens = tokens,
+                shape = RoundedCornerShape(12.dp),
+                baseColor = if (verified) tokens.accentColor.copy(alpha = 0.14f) else tokens.wellBg,
+                isAccent = verified
+            )
+            .border(
+                1.dp,
+                if (verified) tokens.accentColor.copy(alpha = 0.45f) else tokens.subtleBorderColor,
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ThemedIcon(
+            icon = if (verified) IronPulseIcon.CHECK_CIRCLE else IronPulseIcon.TIMER,
+            contentDescription = null,
+            tint = if (verified) tokens.accentTextColor else tokens.mutedTextColor,
+            size = 15.dp
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (verified) {
+                    lang.t(
+                        "Terverifikasi Medali Hari Ini · ${verification.verifiedSets} set sah · $mins mnt",
+                        "Today Medal Verified · ${verification.verifiedSets} valid sets · $mins min"
+                    )
+                } else {
+                    lang.t(
+                        "Progres Medali: ${verification.verifiedExercises}/${WorkoutIntegrityEvaluator.MIN_EXERCISES} gerakan · ${verification.verifiedSets}/${WorkoutIntegrityEvaluator.MIN_VERIFIED_SETS} set sah · $mins/15 mnt",
+                        "Medal Progress: ${verification.verifiedExercises}/${WorkoutIntegrityEvaluator.MIN_EXERCISES} exercises · ${verification.verifiedSets}/${WorkoutIntegrityEvaluator.MIN_VERIFIED_SETS} valid sets · $mins/15m"
+                    )
+                },
+                fontSize = 11.sp,
+                fontWeight = if (verified) FontWeight.ExtraBold else FontWeight.SemiBold,
+                color = if (verified) tokens.accentTextColor else tokens.palette.onSurface
+            )
+            if (!verified && verification.fastTappedSets > 0) {
+                Text(
+                    text = lang.t(
+                        "${verification.fastTappedSets} set terlalu cepat tidak masuk hitungan medali.",
+                        "${verification.fastTappedSets} fast-tapped sets excluded from medal credit."
+                    ),
+                    fontSize = 10.sp,
+                    color = tokens.warningColor
+                )
+            }
+        }
+    }
+}
+

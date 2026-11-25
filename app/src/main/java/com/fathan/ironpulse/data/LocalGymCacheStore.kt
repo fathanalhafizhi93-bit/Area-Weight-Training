@@ -301,6 +301,10 @@ class LocalGymCacheStore(private val context: Context) {
         put("dayKey", log.dayKey.key)
         put("focusTitle", log.focusTitle)
         put("completed", log.completed)
+        put("activeDurationSeconds", log.activeDurationSeconds)
+        put("firstSetElapsedMs", log.firstSetElapsedMs)
+        put("serverCreatedAtMs", log.serverCreatedAtMs)
+        put("serverUpdatedAtMs", log.serverUpdatedAtMs)
         put("entries", JSONArray().apply {
             log.entries.forEach { entry ->
                 put(JSONObject().apply {
@@ -319,6 +323,8 @@ class LocalGymCacheStore(private val context: Context) {
                                 put("reps", s.reps)
                                 put("durationSeconds", s.durationSeconds)
                                 put("completed", s.completed)
+                                put("medalVerified", s.medalVerified)
+                                put("completedAtEpochMs", s.completedAtEpochMs)
                             })
                         }
                     })
@@ -345,7 +351,9 @@ class LocalGymCacheStore(private val context: Context) {
                             weightKg = so.optDouble("weightKg", 0.0),
                             reps = so.optInt("reps", 0),
                             durationSeconds = so.optInt("durationSeconds", 0),
-                            completed = so.optBoolean("completed", false)
+                            completed = so.optBoolean("completed", false),
+                            medalVerified = so.optBoolean("medalVerified", true),
+                            completedAtEpochMs = so.optLong("completedAtEpochMs", 0L)
                         )
                     }
                 }
@@ -367,7 +375,11 @@ class LocalGymCacheStore(private val context: Context) {
             dayKey = DayKey.fromKey(o.optString("dayKey")),
             focusTitle = o.optString("focusTitle", "Latihan").ifBlank { "Latihan" },
             entries = entries,
-            completed = o.optBoolean("completed", false)
+            completed = o.optBoolean("completed", false),
+            activeDurationSeconds = o.optInt("activeDurationSeconds", 0).coerceAtLeast(0),
+            firstSetElapsedMs = o.optLong("firstSetElapsedMs", 0L).coerceAtLeast(0L),
+            serverCreatedAtMs = o.optLong("serverCreatedAtMs", 0L).coerceAtLeast(0L),
+            serverUpdatedAtMs = o.optLong("serverUpdatedAtMs", 0L).coerceAtLeast(0L)
         )
     }
 }

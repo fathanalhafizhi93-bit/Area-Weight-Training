@@ -63,7 +63,11 @@ import com.fathan.ironpulse.model.CustomRingtone
 import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DayTimeMode
 import com.fathan.ironpulse.model.DayTimePhase
+import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.MedalTier
+import com.fathan.ironpulse.model.MedalUnlockEvent
+import com.fathan.ironpulse.model.MonthlyMedalEvaluator
 import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
@@ -73,6 +77,8 @@ import com.fathan.ironpulse.model.ScheduleLibraryState
 import com.fathan.ironpulse.model.ScheduleProgramMerger
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.UserProfile
+import com.fathan.ironpulse.model.VerificationRejectReason
+import com.fathan.ironpulse.model.WorkoutIntegrityEvaluator
 import com.fathan.ironpulse.model.WorkoutLog
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.model.WorkoutSetLog
@@ -85,6 +91,7 @@ import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
+import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
@@ -101,6 +108,7 @@ import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.ClockCornerOrbPalette
 import com.fathan.ironpulse.ui.screens.HeroAnimatedAtmosphereLayer
+import com.fathan.ironpulse.ui.screens.HistoryScreen
 import com.fathan.ironpulse.ui.screens.SettingsCategory
 import com.fathan.ironpulse.ui.screens.SettingsScreen
 import com.fathan.ironpulse.ui.screens.TodayScreen
@@ -2522,7 +2530,224 @@ class StartupSmokeTest {
         assertEquals(2, secondaryClicks)
         assertEquals(2, tonalClicks)
     }
+
+    private fun buildTestWorkoutLog(
+        dateKey: String,
+        exerciseCount: Int = 2,
+        setsPerExercise: Int = 3,
+        durationSeconds: Int = 960,
+        medalVerifiedSets: Boolean = true,
+        serverCreatedAtMs: Long = 0L
+    ): WorkoutLog {
+        val entries = (1..exerciseCount).map { idx ->
+            WorkoutLogEntry(
+                exerciseId = "ex_$idx",
+                name = "Exercise $idx",
+                muscleGroup = MuscleGroup.DADA,
+                trackingMode = ExerciseTrackingMode.REPS,
+                usesWeight = true,
+                sets = (1..setsPerExercise).map { s ->
+                    WorkoutSetLog(
+                        setNumber = s,
+                        weightKg = 40.0,
+                        reps = 10,
+                        completed = true,
+                        medalVerified = medalVerifiedSets
+                    )
+                }
+            )
+        }
+        return WorkoutLog(
+            userId = "u1",
+            dateKey = dateKey,
+            dayKey = DayKey.MON,
+            focusTitle = "Upper Body",
+            entries = entries,
+            completed = true,
+            activeDurationSeconds = durationSeconds,
+            serverCreatedAtMs = serverCreatedAtMs
+        )
+    }
+
+    @Test
+    fun workoutIntegrityEvaluator_blocksFastTapTimeTravelAndShortSessions() {
+        // 1. Spam-tapping sets (<20s / over bypass limit) -> not verified even with 15+ min
+        val spammedLog = buildTestWorkoutLog(
+            dateKey = "2026-11-10",
+            exerciseCount = 2,
+            setsPerExercise = 3,
+            durationSeconds = 1200,
+            medalVerifiedSets = false
+        )
+        val spammedRes = WorkoutIntegrityEvaluator.evaluate(spammedLog)
+        assertFalse(spammedRes.isVerified)
+        assertEquals(VerificationRejectReason.INSUFFICIENT_VOLUME, spammedRes.rejectReason)
+        assertEquals(6, spammedRes.fastTappedSets)
+
+        // 2. Real volume but rushed under 15 minutes -> rejected
+        val rushedLog = buildTestWorkoutLog(
+            dateKey = "2026-11-10",
+            exerciseCount = 2,
+            setsPerExercise = 3,
+            durationSeconds = 420,
+            medalVerifiedSets = true
+        )
+        val rushedRes = WorkoutIntegrityEvaluator.evaluate(rushedLog)
+        assertFalse(rushedRes.isVerified)
+        assertEquals(VerificationRejectReason.INSUFFICIENT_DURATION, rushedRes.rejectReason)
+
+        // 3. Backdated device clock vs Firestore server createdAt -> rejected
+        val cal = java.util.Calendar.getInstance().apply { set(2026, 10, 20, 12, 0, 0) }
+        val spoofedLog = buildTestWorkoutLog(
+            dateKey = "2026-11-01",
+            exerciseCount = 2,
+            setsPerExercise = 3,
+            durationSeconds = 1200,
+            medalVerifiedSets = true,
+            serverCreatedAtMs = cal.timeInMillis
+        )
+        val spoofedRes = WorkoutIntegrityEvaluator.evaluate(spoofedLog)
+        assertFalse(spoofedRes.isVerified)
+        assertEquals(VerificationRejectReason.SERVER_DATE_MISMATCH, spoofedRes.rejectReason)
+
+        // 4. Legit >= 2 exercises, >= 6 paced sets, >= 15 min -> verified
+        val validLog = buildTestWorkoutLog(
+            dateKey = "2026-11-20",
+            exerciseCount = 2,
+            setsPerExercise = 3,
+            durationSeconds = 960,
+            medalVerifiedSets = true,
+            serverCreatedAtMs = cal.timeInMillis
+        )
+        assertTrue(WorkoutIntegrityEvaluator.evaluate(validLog).isVerified)
+
+        // 5. Legit 15+ min timer cardio session -> verified
+        val cardioLog = WorkoutLog(
+            userId = "u1",
+            dateKey = "2026-11-21",
+            dayKey = DayKey.SAT,
+            focusTitle = "Cardio",
+            entries = listOf(
+                WorkoutLogEntry(
+                    exerciseId = "treadmill_run",
+                    name = "Treadmill",
+                    muscleGroup = MuscleGroup.KARDIO,
+                    trackingMode = ExerciseTrackingMode.TIMER,
+                    usesWeight = false,
+                    sets = listOf(
+                        WorkoutSetLog(
+                            setNumber = 1,
+                            weightKg = 0.0,
+                            reps = 0,
+                            durationSeconds = 950,
+                            completed = true,
+                            medalVerified = true
+                        )
+                    )
+                )
+            ),
+            completed = true,
+            activeDurationSeconds = 950
+        )
+        assertTrue(WorkoutIntegrityEvaluator.evaluate(cardioLog).isVerified)
+    }
+
+    @Test
+    fun monthlyMedalEvaluator_computesBronze12Silver16Gold20AndArchive() {
+        val novLogs = (1..12).map { d ->
+            buildTestWorkoutLog(String.format(java.util.Locale.US, "2026-11-%02d", d))
+        } + listOf(
+            // Add a short/unverified log on day 13 — must NOT count as verified day
+            buildTestWorkoutLog("2026-11-13", durationSeconds = 120)
+        )
+        val novSummary = MonthlyMedalEvaluator.summarizeMonth("2026-11", novLogs)
+        assertEquals(12, novSummary.verifiedDays)
+        assertEquals(1, novSummary.shortLogDays)
+        assertEquals(MedalTier.BRONZE, novSummary.tier)
+        assertEquals(MedalTier.SILVER, novSummary.nextTier)
+        assertEquals(4, novSummary.daysToNextTier)
+
+        val silverLogs = (1..16).map { d ->
+            buildTestWorkoutLog(String.format(java.util.Locale.US, "2026-10-%02d", d))
+        }
+        assertEquals(MedalTier.SILVER, MonthlyMedalEvaluator.summarizeMonth("2026-10", silverLogs).tier)
+
+        val goldLogs = (1..20).map { d ->
+            buildTestWorkoutLog(String.format(java.util.Locale.US, "2026-09-%02d", d))
+        }
+        val goldSummary = MonthlyMedalEvaluator.summarizeMonth("2026-09", goldLogs)
+        assertEquals(MedalTier.GOLD, goldSummary.tier)
+        assertEquals(null, goldSummary.nextTier)
+
+        val archive = MonthlyMedalEvaluator.earnedMonthlyMedalsArchive(novLogs + silverLogs + goldLogs)
+        assertEquals(listOf("2026-11", "2026-10", "2026-09"), archive.map { it.monthKey })
+    }
+
+    @Test
+    fun historyScreen_displaysTopMonthlyMedalShowcaseAndCelebrationOverlayFlowsToHistory() {
+        val silverLogs = (1..16).map { d ->
+            buildTestWorkoutLog(String.format(java.util.Locale.US, "2026-11-%02d", d))
+        }
+        val summary = MonthlyMedalEvaluator.summarizeMonth("2026-11", silverLogs)
+        var flightTriggeredSource: Offset? = null
+        val eyeFlow = MutableStateFlow(MascotEyeState())
+
+        composeRule.setContent {
+            var showUnlock by remember { mutableStateOf(true) }
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                CompositionLocalProvider(LocalTabActive provides true) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        HistoryScreen(
+                            state = IronPulseUiState(
+                                userUid = "u1",
+                                authReady = true,
+                                historyLoading = false,
+                                todayDateKey = "2026-11-16",
+                                workoutHistory = silverLogs,
+                                currentMonthMedal = summary
+                            ),
+                            contentPadding = PaddingValues(0.dp),
+                            onStartTodayWorkout = {}
+                        )
+                        if (showUnlock) {
+                            MedalUnlockCelebrationOverlay(
+                                event = MedalUnlockEvent(
+                                    monthKey = "2026-11",
+                                    tier = MedalTier.SILVER,
+                                    verifiedDays = 16
+                                ),
+                                mascot = MascotUiState(urgentMood = MascotMood.CELEBRATE),
+                                mascotEyeFlow = eyeFlow,
+                                onStartFlightToHistory = { src ->
+                                    flightTriggeredSource = src
+                                    showUnlock = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
+        composeRule.onNodeWithText("Medali Perak").assertIsDisplayed()
+        composeRule.onNodeWithTag("medal_save_to_history_button").performClick()
+        composeRule.waitForIdle()
+
+        assertNotNull(flightTriggeredSource)
+        composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
+        composeRule.onNodeWithTag("history_monthly_medal_card").assertIsDisplayed()
+        composeRule.onNodeWithTag("history_medal_emblem_slot").assertIsDisplayed()
+    }
 }
+
 
 
 

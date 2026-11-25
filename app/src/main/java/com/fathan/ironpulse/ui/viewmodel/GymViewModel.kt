@@ -7,6 +7,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
+import android.os.SystemClock
 import androidx.compose.runtime.Immutable
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
@@ -39,14 +40,21 @@ import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MascotSpeechLine
+import com.fathan.ironpulse.model.MedalTier
+import com.fathan.ironpulse.model.MedalUnlockEvent
+import com.fathan.ironpulse.model.MonthlyMedalEvaluator
+import com.fathan.ironpulse.model.MonthlyMedalSummary
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.SavedCustomSchedule
 import com.fathan.ironpulse.model.ScheduleLibraryState
 import com.fathan.ironpulse.model.ScheduleProgramMerger
+import com.fathan.ironpulse.model.SessionVerificationResult
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.UserProfile
+import com.fathan.ironpulse.model.VerificationRejectReason
+import com.fathan.ironpulse.model.WorkoutIntegrityEvaluator
 import com.fathan.ironpulse.model.WorkoutLog
 import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.model.WorkoutSetLog
@@ -110,7 +118,8 @@ data class RestTimerDisplayState(
 data class CooldownTarget(
     val exerciseId: String,
     val exerciseName: String,
-    val setNumber: Int
+    val setNumber: Int,
+    val bypassesRemaining: Int = WorkoutIntegrityEvaluator.MAX_COOLDOWN_BYPASSES_PER_SESSION
 )
 
 @Immutable
@@ -202,7 +211,22 @@ data class IronPulseUiState(
     val savedCustomSchedules: List<SavedCustomSchedule> = emptyList(),
     val activeScheduleProfileId: String? = null,
     val activeScheduleProfileName: String? = null,
-    val applyingScheduleProfile: Boolean = false
+    val applyingScheduleProfile: Boolean = false,
+    val todayVerification: SessionVerificationResult = SessionVerificationResult(
+        isVerified = false,
+        verifiedExercises = 0,
+        verifiedSets = 0,
+        totalCompletedSets = 0,
+        fastTappedSets = 0,
+        verifiedTimerSeconds = 0,
+        effectiveDurationSeconds = 0,
+        serverDateValid = true,
+        rejectReason = VerificationRejectReason.NO_COMPLETED_SETS
+    ),
+    val currentMonthMedal: MonthlyMedalSummary? = null,
+    val pendingMedalUnlock: MedalUnlockEvent? = null,
+    val medalLandingBurstTick: Int = 0,
+    val liveSessionElapsedSeconds: Int = 0
 ) {
     val isSignedIn: Boolean get() = userUid != null
 }
@@ -265,6 +289,15 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private val _mascotEyeState = MutableStateFlow(MascotEyeState())
     private val _scheduleLibrary = MutableStateFlow(ScheduleLibraryState())
     private val _applyingScheduleProfile = MutableStateFlow(false)
+    private val _liveSessionElapsedSeconds = MutableStateFlow(0)
+    private val _pendingMedalUnlock = MutableStateFlow<MedalUnlockEvent?>(null)
+    private val _medalLandingBurstTick = MutableStateFlow(0)
+
+    private var sessionGuardDateKey: String = ""
+    private var sessionFirstSetElapsedMs: Long = 0L
+    private var sessionLastVerifiedSetElapsedMs: Long = 0L
+    private var sessionBypassesUsed: Int = 0
+    private var lastAutoVerifySaveDateKey: String = ""
 
     val clockSecondsFlow: StateFlow<Long> = _clockSeconds.asStateFlow()
     val exerciseTimersFlow: StateFlow<Map<String, ExerciseTimerUiState>> = _exerciseTimers.asStateFlow()
@@ -352,7 +385,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val timePhase: DayTimePhase,
         val todayLog: WorkoutLog?,
         val workoutHistory: List<WorkoutLog>,
-        val weeklyStreak: Int
+        val weeklyStreak: Int,
+        val liveSessionElapsedSec: Int
     )
 
     private data class ShellUiState(
@@ -370,7 +404,9 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val uploadingRingtone: Boolean,
         val hasNotifPerm: Boolean,
         val canExactAlarm: Boolean,
-        val mascot: MascotUiState
+        val mascot: MascotUiState,
+        val pendingMedalUnlock: MedalUnlockEvent?,
+        val medalLandingBurstTick: Int
     )
 
     private val cloudFlow = combine(
@@ -406,7 +442,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         _workoutHistory
     ) { d, dt, phase, tl, wh ->
         arrayOf(d, dt, phase, tl, wh)
-    }.combine(_weeklyStreak) { arr, streak ->
+    }.combine(combine(_weeklyStreak, _liveSessionElapsedSeconds) { s, l -> s to l }) { arr, (streak, liveElapsed) ->
         @Suppress("UNCHECKED_CAST")
         WorkoutRuntimeState(
             todayDayKey = arr[0] as DayKey,
@@ -414,7 +450,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             timePhase = arr[2] as DayTimePhase,
             todayLog = arr[3] as WorkoutLog?,
             workoutHistory = arr[4] as List<WorkoutLog>,
-            weeklyStreak = streak
+            weeklyStreak = streak,
+            liveSessionElapsedSec = liveElapsed
         )
     }
 
@@ -430,8 +467,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         },
         combine(_hasNotifPerm, _canExactAlarm, _mascotState) { hn, ce, ms ->
             Triple(hn, ce, ms)
+        },
+        combine(_pendingMedalUnlock, _medalLandingBurstTick) { pm, lb ->
+            pm to lb
         }
-    ) { g1, g2, g3, g4 ->
+    ) { g1, g2, g3, g4, g5 ->
         @Suppress("UNCHECKED_CAST")
         ShellUiState(
             appPrefs = g1[0] as AppPreferences,
@@ -448,7 +488,9 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             uploadingRingtone = g3.third,
             hasNotifPerm = g4.first,
             canExactAlarm = g4.second,
-            mascot = g4.third
+            mascot = g4.third,
+            pendingMedalUnlock = g5.first,
+            medalLandingBurstTick = g5.second
         )
     }
 
@@ -574,6 +616,32 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyList()
         }
+        val syntheticTodayLog = WorkoutLog(
+            userId = cloud.user?.uid.orEmpty(),
+            dateKey = run.todayDateKey,
+            dayKey = run.todayDayKey,
+            focusTitle = todaySched?.focusTitle ?: run.todayLog?.focusTitle ?: "Latihan",
+            entries = entries,
+            completed = run.todayLog?.completed ?: false,
+            activeDurationSeconds = maxOf(run.todayLog?.activeDurationSeconds ?: 0, run.liveSessionElapsedSec),
+            firstSetElapsedMs = run.todayLog?.firstSetElapsedMs ?: 0L,
+            serverCreatedAtMs = run.todayLog?.serverCreatedAtMs ?: 0L,
+            serverUpdatedAtMs = run.todayLog?.serverUpdatedAtMs ?: 0L
+        )
+        val todayVerif = WorkoutIntegrityEvaluator.evaluate(
+            syntheticTodayLog,
+            liveElapsedSecondsOverride = run.liveSessionElapsedSec
+        )
+        val currentMonthKey = run.todayDateKey.takeIf { it.length >= 7 }?.substring(0, 7) ?: ""
+        val mergedLogsForMedal = rememberMergedLogsForMedal(run.workoutHistory, run.todayLog, run.todayDateKey)
+        val monthMedalSummary = if (currentMonthKey.isNotEmpty()) {
+            MonthlyMedalEvaluator.summarizeMonth(
+                monthKey = currentMonthKey,
+                logs = mergedLogsForMedal,
+                todayDateKey = run.todayDateKey,
+                liveTodayElapsedSec = run.liveSessionElapsedSec
+            )
+        } else null
 
         IronPulseUiState(
             authReady = cloud.authReady,
@@ -614,7 +682,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             savedCustomSchedules = schedLib.savedSchedules,
             activeScheduleProfileId = schedLib.activeProfileId,
             activeScheduleProfileName = schedLib.activeProfileName,
-            applyingScheduleProfile = applyingSched
+            applyingScheduleProfile = applyingSched,
+            todayVerification = todayVerif,
+            currentMonthMedal = monthMedalSummary,
+            pendingMedalUnlock = shell.pendingMedalUnlock,
+            medalLandingBurstTick = shell.medalLandingBurstTick,
+            liveSessionElapsedSeconds = run.liveSessionElapsedSec
         )
     }.stateIn(
         scope = viewModelScope,
@@ -675,6 +748,13 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     _tutorialOpen.value = false
                     _scheduleLibrary.value = ScheduleLibraryState()
                     _applyingScheduleProfile.value = false
+                    _liveSessionElapsedSeconds.value = 0
+                    _pendingMedalUnlock.value = null
+                    sessionGuardDateKey = ""
+                    sessionFirstSetElapsedMs = 0L
+                    sessionLastVerifiedSetElapsedMs = 0L
+                    sessionBypassesUsed = 0
+                    lastAutoVerifySaveDateKey = ""
                     initialGreetingFired = false
                 } else if (activeSyncedUid != firebaseUser.uid || userSyncJob?.isActive != true) {
                     userSyncJob?.cancel()
@@ -843,6 +923,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                         GymModelHelpers.computeWeeklyStreak(hist)
                     }
                     _historyLoading.value = false
+                    evaluateAndTriggerMedalUnlock()
                     scheduleCachePersist(uid)
                 }
             }
@@ -851,6 +932,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                     repo.observeTodayLog(uid, dateKey).collect { log ->
                         _todayLog.value = log
                         refreshMascotDialogueOnly()
+                        evaluateAndTriggerMedalUnlock()
                         scheduleCachePersist(uid)
                     }
                 }
@@ -963,6 +1045,39 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                         val vol = (_profile.value?.volume ?: 0.85).toFloat()
                         audioEngine.play(restTone, vol, loop = false, customRingtones = _customRingtones.value)
                         completeTimerSet(exId, setNum, secs)
+                    }
+                }
+
+                // Live monotonic workout session elapsed timer + automatic 15-min verification sync
+                val uid = _user.value?.uid
+                val curDate = _todayDateKey.value
+                if (uid != null) {
+                    ensureSessionGuardLoadedFor(uid, curDate)
+                    val curTodayLog = _todayLog.value
+                    val hasAnyDoneToday = curTodayLog?.dateKey == curDate &&
+                        curTodayLog.entries.any { e -> e.sets.any { s -> s.completed } }
+                    if (hasAnyDoneToday && sessionFirstSetElapsedMs > 0L) {
+                        val monoSec = ((SystemClock.elapsedRealtime() - sessionFirstSetElapsedMs) / 1000L)
+                            .toInt()
+                            .coerceAtLeast(0)
+                        val bestSec = maxOf(curTodayLog?.activeDurationSeconds ?: 0, monoSec)
+                        if (_liveSessionElapsedSeconds.value != bestSec) {
+                            _liveSessionElapsedSeconds.value = bestSec
+                        }
+                        if (bestSec >= WorkoutIntegrityEvaluator.MIN_SESSION_DURATION_SECONDS &&
+                            (curTodayLog?.activeDurationSeconds ?: 0) < WorkoutIntegrityEvaluator.MIN_SESSION_DURATION_SECONDS &&
+                            lastAutoVerifySaveDateKey != curDate
+                        ) {
+                            val preCheck = WorkoutIntegrityEvaluator.evaluate(curTodayLog!!, liveElapsedSecondsOverride = bestSec)
+                            if (preCheck.isVerified) {
+                                lastAutoVerifySaveDateKey = curDate
+                                launch {
+                                    mutateTodayEntries { it }
+                                }
+                            }
+                        }
+                    } else if (_liveSessionElapsedSeconds.value != 0) {
+                        _liveSessionElapsedSeconds.value = 0
                     }
                 }
 
@@ -1262,6 +1377,78 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Workout & Exercise Timers + 30s Cooldown Guard ---
 
+    private fun rememberMergedLogsForMedal(
+        history: List<WorkoutLog>,
+        todayLog: WorkoutLog?,
+        todayDateKey: String
+    ): List<WorkoutLog> {
+        if (todayLog == null || todayLog.dateKey != todayDateKey) return history
+        val existingToday = history.firstOrNull { it.dateKey == todayDateKey }
+        val mergedToday = if (existingToday != null) {
+            todayLog.copy(
+                activeDurationSeconds = maxOf(todayLog.activeDurationSeconds, existingToday.activeDurationSeconds),
+                serverCreatedAtMs = if (todayLog.serverCreatedAtMs > 0L) todayLog.serverCreatedAtMs else existingToday.serverCreatedAtMs,
+                serverUpdatedAtMs = maxOf(todayLog.serverUpdatedAtMs, existingToday.serverUpdatedAtMs)
+            )
+        } else todayLog
+        return history.filterNot { it.dateKey == todayDateKey } + mergedToday
+    }
+
+    private fun ensureSessionGuardLoadedFor(uid: String, dateKey: String) {
+        if (sessionGuardDateKey == dateKey) return
+        val snap = prefsStore.loadSessionGuard(uid, dateKey)
+        val nowElapsed = SystemClock.elapsedRealtime()
+        sessionGuardDateKey = dateKey
+        // Handle device reboot safely where monotonic elapsedRealtime resets below saved anchor
+        sessionFirstSetElapsedMs = if (snap.firstSetElapsedMs in 1L..nowElapsed) snap.firstSetElapsedMs else 0L
+        sessionLastVerifiedSetElapsedMs = if (snap.lastVerifiedSetElapsedMs in 1L..nowElapsed) snap.lastVerifiedSetElapsedMs else 0L
+        sessionBypassesUsed = snap.bypassesUsed.coerceAtLeast(0)
+    }
+
+    private fun evaluateAndTriggerMedalUnlock() {
+        val uid = _user.value?.uid ?: return
+        val curDate = _todayDateKey.value
+        if (curDate.length < 7) return
+        val monthKey = curDate.substring(0, 7)
+        val mergedLogs = rememberMergedLogsForMedal(_workoutHistory.value, _todayLog.value, curDate)
+        val summary = MonthlyMedalEvaluator.summarizeMonth(
+            monthKey = monthKey,
+            logs = mergedLogs,
+            todayDateKey = curDate,
+            liveTodayElapsedSec = _liveSessionElapsedSeconds.value
+        )
+        val todayVerif = summary.dayVerifications[curDate]
+        if (todayVerif?.isVerified == true && summary.tier != MedalTier.NONE) {
+            val seenTier = prefsStore.getSeenMedalTier(uid, monthKey)
+            if (summary.tier.thresholdDays > seenTier.thresholdDays) {
+                val pending = _pendingMedalUnlock.value
+                if (pending == null || pending.monthKey != monthKey || summary.tier.thresholdDays > pending.tier.thresholdDays) {
+                    _pendingMedalUnlock.value = MedalUnlockEvent(
+                        monthKey = monthKey,
+                        tier = summary.tier,
+                        verifiedDays = summary.verifiedDays
+                    )
+                }
+            }
+        }
+    }
+
+    fun confirmMedalUnlockAndFlyToHistory() {
+        val uid = _user.value?.uid
+        val event = _pendingMedalUnlock.value ?: return
+        if (uid != null) {
+            prefsStore.setSeenMedalTier(uid, event.monthKey, event.tier)
+        }
+        _pendingMedalUnlock.value = null
+        haptics.workoutComplete()
+        updateMascotSpeech(forceMood = MascotMood.CELEBRATE, playChirp = true, speakTts = false, bypassLock = true)
+    }
+
+    fun triggerMedalLandingBurst() {
+        _medalLandingBurstTick.value += 1
+        haptics.setComplete()
+    }
+
     fun requestToggleSetComplete(exerciseId: String, setNumber: Int) {
         val entries = currentTodayEntriesSnapshot()
         val entry = entries.firstOrNull { it.exerciseId == exerciseId } ?: return
@@ -1270,22 +1457,28 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         if (targetSet.completed) {
             // Unchecking does not require cooldown
             haptics.setUncheck()
-            performToggleSetComplete(exerciseId, setNumber, enforceCooldown = false)
+            performToggleSetComplete(exerciseId, setNumber, enforceCooldown = false, medalVerifiedSet = true)
             return
         }
+
+        val uid = _user.value?.uid
+        if (uid != null) ensureSessionGuardLoadedFor(uid, _todayDateKey.value)
 
         val now = System.currentTimeMillis()
         if (now < _cooldownUntilMs.value) {
             haptics.cooldownBlocked()
+            val bypassLeft = (WorkoutIntegrityEvaluator.MAX_COOLDOWN_BYPASSES_PER_SESSION - sessionBypassesUsed)
+                .coerceAtLeast(0)
             _cooldownAlertTarget.value = CooldownTarget(
                 exerciseId = exerciseId,
                 exerciseName = entry.name,
-                setNumber = setNumber
+                setNumber = setNumber,
+                bypassesRemaining = bypassLeft
             )
             return
         }
 
-        performToggleSetComplete(exerciseId, setNumber, enforceCooldown = true)
+        performToggleSetComplete(exerciseId, setNumber, enforceCooldown = true, medalVerifiedSet = true)
     }
 
     fun dismissCooldownAlert() {
@@ -1295,15 +1488,45 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     fun bypassCooldownAndComplete() {
         val target = _cooldownAlertTarget.value ?: return
         _cooldownAlertTarget.value = null
-        performToggleSetComplete(target.exerciseId, target.setNumber, enforceCooldown = true)
+        val uid = _user.value?.uid
+        val curDate = _todayDateKey.value
+        if (uid != null) ensureSessionGuardLoadedFor(uid, curDate)
+
+        val nowElapsed = SystemClock.elapsedRealtime()
+        val gapSec = if (sessionLastVerifiedSetElapsedMs > 0L) {
+            (nowElapsed - sessionLastVerifiedSetElapsedMs) / 1000L
+        } else 999L
+
+        val isMedalVerified = when {
+            gapSec >= WorkoutIntegrityEvaluator.FAST_TAP_MIN_GAP_SECONDS -> true
+            sessionBypassesUsed < WorkoutIntegrityEvaluator.MAX_COOLDOWN_BYPASSES_PER_SESSION -> {
+                sessionBypassesUsed += 1
+                true
+            }
+            else -> false
+        }
+
+        performToggleSetComplete(
+            target.exerciseId,
+            target.setNumber,
+            enforceCooldown = true,
+            medalVerifiedSet = isMedalVerified
+        )
     }
 
     private fun performToggleSetComplete(
         exerciseId: String,
         setNumber: Int,
-        enforceCooldown: Boolean
+        enforceCooldown: Boolean,
+        medalVerifiedSet: Boolean = true
     ) {
         viewModelScope.launch {
+            val uid = _user.value?.uid
+            val curDate = _todayDateKey.value
+            if (uid != null) ensureSessionGuardLoadedFor(uid, curDate)
+
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val nowEpoch = System.currentTimeMillis()
             var becameCompleted = false
             var nextCompletedCount = 0
             var nextTotalCount = 0
@@ -1316,7 +1539,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                             else {
                                 val nextDone = !s.completed
                                 if (nextDone) becameCompleted = true
-                                s.copy(completed = nextDone)
+                                s.copy(
+                                    completed = nextDone,
+                                    medalVerified = if (nextDone) medalVerifiedSet else true,
+                                    completedAtEpochMs = if (nextDone) nowEpoch else 0L
+                                )
                             }
                         }
                     )
@@ -1327,9 +1554,24 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             if (becameCompleted) {
+                if (sessionFirstSetElapsedMs == 0L) {
+                    sessionFirstSetElapsedMs = nowElapsed
+                }
+                if (medalVerifiedSet) {
+                    sessionLastVerifiedSetElapsedMs = nowElapsed
+                }
+                if (uid != null) {
+                    prefsStore.saveSessionGuard(
+                        uid = uid,
+                        dateKey = curDate,
+                        firstSetElapsedMs = sessionFirstSetElapsedMs,
+                        lastVerifiedSetElapsedMs = sessionLastVerifiedSetElapsedMs,
+                        bypassesUsed = sessionBypassesUsed
+                    )
+                }
                 if (enforceCooldown) {
-                    _cooldownUntilMs.value = System.currentTimeMillis() + 30_000L
-                    _cooldownSeconds.value = 30
+                    _cooldownUntilMs.value = System.currentTimeMillis() + (WorkoutIntegrityEvaluator.SET_COOLDOWN_SECONDS * 1000L)
+                    _cooldownSeconds.value = WorkoutIntegrityEvaluator.SET_COOLDOWN_SECONDS
                 }
                 val pct = if (nextTotalCount > 0) (nextCompletedCount * 100) / nextTotalCount else 0
                 val isAllDone = nextTotalCount > 0 && nextCompletedCount == nextTotalCount
@@ -1349,6 +1591,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 triggerAutoRestIfEnabled(exerciseId)
                 updateMascotSpeech(forceMood = mood, playChirp = true, speakTts = true, bypassLock = isAllDone)
+                evaluateAndTriggerMedalUnlock()
             } else {
                 refreshMascotDialogueOnly()
             }
@@ -1358,6 +1601,26 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     fun completeTimerSet(exerciseId: String, setNumber: Int, durationSeconds: Int) {
         val safeDuration = durationSeconds.coerceIn(1, 10800)
         viewModelScope.launch {
+            val uid = _user.value?.uid
+            val curDate = _todayDateKey.value
+            if (uid != null) ensureSessionGuardLoadedFor(uid, curDate)
+
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val nowEpoch = System.currentTimeMillis()
+            if (sessionFirstSetElapsedMs == 0L) {
+                sessionFirstSetElapsedMs = (nowElapsed - safeDuration * 1000L).coerceAtLeast(1L)
+            }
+            sessionLastVerifiedSetElapsedMs = nowElapsed
+            if (uid != null) {
+                prefsStore.saveSessionGuard(
+                    uid = uid,
+                    dateKey = curDate,
+                    firstSetElapsedMs = sessionFirstSetElapsedMs,
+                    lastVerifiedSetElapsedMs = sessionLastVerifiedSetElapsedMs,
+                    bypassesUsed = sessionBypassesUsed
+                )
+            }
+
             var becameCompleted = false
             var nextCompletedCount = 0
             var nextTotalCount = 0
@@ -1369,7 +1632,12 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                             if (s.setNumber != setNumber) s
                             else {
                                 if (!s.completed) becameCompleted = true
-                                s.copy(durationSeconds = safeDuration, completed = true)
+                                s.copy(
+                                    durationSeconds = safeDuration,
+                                    completed = true,
+                                    medalVerified = true,
+                                    completedAtEpochMs = nowEpoch
+                                )
                             }
                         }
                     )
@@ -1379,12 +1647,13 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 mapped
             }
             if (becameCompleted) {
-                _cooldownUntilMs.value = System.currentTimeMillis() + 30_000L
-                _cooldownSeconds.value = 30
+                _cooldownUntilMs.value = System.currentTimeMillis() + (WorkoutIntegrityEvaluator.SET_COOLDOWN_SECONDS * 1000L)
+                _cooldownSeconds.value = WorkoutIntegrityEvaluator.SET_COOLDOWN_SECONDS
                 val isAllDone = nextTotalCount > 0 && nextCompletedCount == nextTotalCount
                 val mood = if (isAllDone) MascotMood.CELEBRATE else MascotMood.CLAP
                 triggerAutoRestIfEnabled(exerciseId)
                 updateMascotSpeech(forceMood = mood, playChirp = true, speakTts = true, bypassLock = isAllDone)
+                evaluateAndTriggerMedalUnlock()
             }
         }
     }
@@ -1587,13 +1856,25 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 .ifEmpty { "Latihan Hari Ini" }
             val existedBefore = curLog != null && curLog.dateKey == curDate
 
+            val monoElapsedSec = if (sessionGuardDateKey == curDate && sessionFirstSetElapsedMs > 0L) {
+                ((SystemClock.elapsedRealtime() - sessionFirstSetElapsedMs) / 1000L).toInt().coerceAtLeast(0)
+            } else 0
+            val activeDurSec = maxOf(curLog?.activeDurationSeconds ?: 0, monoElapsedSec)
+            if (_liveSessionElapsedSeconds.value != activeDurSec) {
+                _liveSessionElapsedSeconds.value = activeDurSec
+            }
+
             val optimistic = WorkoutLog(
                 userId = uid,
                 dateKey = curDate,
                 dayKey = curDay,
                 focusTitle = focusTitle,
                 entries = nextEntries,
-                completed = allDone
+                completed = allDone,
+                activeDurationSeconds = activeDurSec,
+                firstSetElapsedMs = sessionFirstSetElapsedMs,
+                serverCreatedAtMs = curLog?.serverCreatedAtMs ?: 0L,
+                serverUpdatedAtMs = curLog?.serverUpdatedAtMs ?: 0L
             )
             _todayLog.value = optimistic
             try {
@@ -1601,6 +1882,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 _snackbarEvents.tryEmit("Gagal menyimpan log: ${e.localizedMessage ?: "Coba lagi."}")
             }
+            evaluateAndTriggerMedalUnlock()
         }
     }
 

@@ -279,7 +279,9 @@ data class WorkoutSetLog(
     val weightKg: Double,
     val reps: Int,
     val durationSeconds: Int = 0,
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    val medalVerified: Boolean = true,
+    val completedAtEpochMs: Long = 0L
 )
 
 @Immutable
@@ -301,7 +303,11 @@ data class WorkoutLog(
     val dayKey: DayKey,
     val focusTitle: String,
     val entries: List<WorkoutLogEntry> = emptyList(),
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    val activeDurationSeconds: Int = 0,
+    val firstSetElapsedMs: Long = 0L,
+    val serverCreatedAtMs: Long = 0L,
+    val serverUpdatedAtMs: Long = 0L
 )
 
 @Immutable

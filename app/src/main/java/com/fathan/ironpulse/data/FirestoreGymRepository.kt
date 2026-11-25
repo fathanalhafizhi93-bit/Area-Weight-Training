@@ -538,7 +538,12 @@ class FirestoreGymRepository(
             .collection("workoutLogs").document(log.dateKey)
         val path = "users/$uid/workoutLogs/${log.dateKey}"
         val safeFocus = log.focusTitle.trim().take(80).ifEmpty { "Latihan Hari Ini" }
-        val entriesPayload = log.entries.take(30).map(::entryToMap)
+        val entriesPayload = log.entries.take(30).mapIndexed { idx, entry ->
+            entryToMap(
+                entry = entry,
+                sessionDurationSec = if (idx == 0) log.activeDurationSeconds else null
+            )
+        }
 
         try {
             if (!existedBefore) {
@@ -689,8 +694,11 @@ class FirestoreGymRepository(
         val dateKey = doc.getString("dateKey") ?: doc.id
         if (!Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(dateKey)) return null
         val rawEntries = doc.get("entries") as? List<*> ?: emptyList<Any>()
+        var parsedSessionDurationSec = 0
         val entries = rawEntries.mapIndexedNotNull { idx, item ->
             val map = item as? Map<*, *> ?: return@mapIndexedNotNull null
+            val entryDur = (map["sessionDurationSec"] as? Number)?.toInt()?.coerceIn(0, 86400) ?: 0
+            if (entryDur > parsedSessionDurationSec) parsedSessionDurationSec = entryDur
             val rawSets = map["sets"] as? List<*> ?: emptyList<Any>()
             val sets = rawSets.mapIndexedNotNull { sIdx, sItem ->
                 val sMap = sItem as? Map<*, *> ?: return@mapIndexedNotNull null
@@ -699,7 +707,9 @@ class FirestoreGymRepository(
                     weightKg = (sMap["weightKg"] as? Number)?.toDouble() ?: 0.0,
                     reps = (sMap["reps"] as? Number)?.toInt() ?: 0,
                     durationSeconds = (sMap["durationSeconds"] as? Number)?.toInt() ?: 0,
-                    completed = (sMap["completed"] as? Boolean) ?: false
+                    completed = (sMap["completed"] as? Boolean) ?: false,
+                    medalVerified = (sMap["medalVerified"] as? Boolean) ?: true,
+                    completedAtEpochMs = (sMap["completedAtMs"] as? Number)?.toLong() ?: 0L
                 )
             }
             val trackingMode = ExerciseTrackingMode.fromWire(map["trackingMode"] as? String)
@@ -715,13 +725,18 @@ class FirestoreGymRepository(
                 sets = sets
             )
         }
+        val serverCreatedAtMs = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L
+        val serverUpdatedAtMs = doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
         return WorkoutLog(
             userId = doc.getString("userId") ?: uid,
             dateKey = dateKey,
             dayKey = DayKey.fromKey(doc.getString("dayKey")),
             focusTitle = doc.getString("focusTitle") ?: "Latihan",
             entries = entries,
-            completed = doc.getBoolean("completed") ?: false
+            completed = doc.getBoolean("completed") ?: false,
+            activeDurationSeconds = parsedSessionDurationSec,
+            serverCreatedAtMs = serverCreatedAtMs,
+            serverUpdatedAtMs = serverUpdatedAtMs
         )
     }
 
@@ -741,24 +756,35 @@ class FirestoreGymRepository(
         "targetDurationSeconds" to ex.targetDurationSeconds
     )
 
-    private fun entryToMap(entry: WorkoutLogEntry): Map<String, Any> = mapOf(
-        "exerciseId" to entry.exerciseId,
-        "name" to entry.name,
-        "muscleGroup" to entry.muscleGroup.label,
-        "trackingMode" to entry.trackingMode.wireValue,
-        "usesWeight" to entry.usesWeight,
-        "timerDirection" to entry.timerDirection.wireValue,
-        "targetDurationSeconds" to entry.targetDurationSeconds,
-        "sets" to entry.sets.map { s ->
-            mapOf(
-                "setNumber" to s.setNumber,
-                "weightKg" to s.weightKg,
-                "reps" to s.reps,
-                "durationSeconds" to s.durationSeconds,
-                "completed" to s.completed
-            )
+    private fun entryToMap(
+        entry: WorkoutLogEntry,
+        sessionDurationSec: Int? = null
+    ): Map<String, Any> {
+        val map = mutableMapOf<String, Any>(
+            "exerciseId" to entry.exerciseId,
+            "name" to entry.name,
+            "muscleGroup" to entry.muscleGroup.label,
+            "trackingMode" to entry.trackingMode.wireValue,
+            "usesWeight" to entry.usesWeight,
+            "timerDirection" to entry.timerDirection.wireValue,
+            "targetDurationSeconds" to entry.targetDurationSeconds,
+            "sets" to entry.sets.map { s ->
+                mapOf(
+                    "setNumber" to s.setNumber,
+                    "weightKg" to s.weightKg,
+                    "reps" to s.reps,
+                    "durationSeconds" to s.durationSeconds,
+                    "completed" to s.completed,
+                    "medalVerified" to s.medalVerified,
+                    "completedAtMs" to s.completedAtEpochMs
+                )
+            }
+        )
+        if (sessionDurationSec != null && sessionDurationSec > 0) {
+            map["sessionDurationSec"] = sessionDurationSec.coerceIn(0, 86400)
         }
-    )
+        return map
+    }
 
     companion object {
         private const val TAG = "IronPulseFirestore"

@@ -40,7 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,8 +52,12 @@ import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.MonthlyMedalEvaluator
+import com.fathan.ironpulse.model.VerificationRejectReason
+import com.fathan.ironpulse.model.WorkoutIntegrityEvaluator
 import com.fathan.ironpulse.model.WorkoutLog
 import com.fathan.ironpulse.ui.components.IronPulseIcon
+import com.fathan.ironpulse.ui.components.MonthlyMedalShowcaseCard
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
 import com.fathan.ironpulse.ui.components.tactilePress
@@ -78,7 +84,9 @@ fun HistoryScreen(
     state: IronPulseUiState,
     contentPadding: PaddingValues,
     onStartTodayWorkout: () -> Unit,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    landingBurstTick: Int = 0,
+    onMedalSlotPositioned: (Offset) -> Unit = {}
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -91,22 +99,37 @@ fun HistoryScreen(
     var viewMonth by remember { mutableIntStateOf(currentMonth) }
     var selectedDateKey by remember { mutableStateOf(state.todayDateKey) }
 
-    val logsByDate = remember(state.workoutHistory) {
-        state.workoutHistory.associateBy { it.dateKey }
+    val mergedLogs = remember(state.workoutHistory, state.todayLog) {
+        val byDate = LinkedHashMap<String, WorkoutLog>(state.workoutHistory.size + 1)
+        state.workoutHistory.forEach { byDate[it.dateKey] = it }
+        val today = state.todayLog
+        if (today != null) {
+            val existing = byDate[today.dateKey]
+            val todayDone = today.entries.sumOf { e -> e.sets.count { it.completed } }
+            val existingDone = existing?.entries?.sumOf { e -> e.sets.count { it.completed } } ?: -1
+            if (existing == null || todayDone >= existingDone) {
+                byDate[today.dateKey] = today
+            }
+        }
+        byDate.values.toList()
+    }
+
+    val logsByDate = remember(mergedLogs) {
+        mergedLogs.associateBy { it.dateKey }
     }
 
     val monthPrefix = remember(viewYear, viewMonth) {
         String.format(Locale.US, "%04d-%02d", viewYear, viewMonth + 1)
     }
 
-    val completedSessions = remember(state.workoutHistory) {
-        state.workoutHistory.count { log ->
+    val completedSessions = remember(mergedLogs) {
+        mergedLogs.count { log ->
             log.completed || log.entries.any { entry -> entry.sets.any { it.completed } }
         }
     }
     val weeklyStreak = state.weeklyStreak
-    val monthlyVolumeKg = remember(state.workoutHistory, monthPrefix) {
-        state.workoutHistory
+    val monthlyVolumeKg = remember(mergedLogs, monthPrefix) {
+        mergedLogs
             .filter { it.dateKey.startsWith(monthPrefix) }
             .sumOf { log ->
                 log.entries.filter { it.usesWeight && it.trackingMode == ExerciseTrackingMode.REPS }
@@ -130,6 +153,34 @@ fun HistoryScreen(
         }
         val loc = if (lang == AppLanguage.EN) Locale.US else Locale.forLanguageTag("id-ID")
         SimpleDateFormat("MMMM yyyy", loc).format(cal.time)
+    }
+
+    val viewedMonthMedal = remember(
+        monthPrefix,
+        mergedLogs,
+        state.currentMonthMedal,
+        state.todayDateKey,
+        state.liveSessionElapsedSeconds
+    ) {
+        val vmMedal = state.currentMonthMedal
+        if (vmMedal != null && vmMedal.monthKey == monthPrefix) {
+            vmMedal
+        } else {
+            MonthlyMedalEvaluator.summarizeMonth(
+                monthKey = monthPrefix,
+                logs = mergedLogs,
+                todayDateKey = state.todayDateKey,
+                liveTodayElapsedSec = state.liveSessionElapsedSeconds
+            )
+        }
+    }
+
+    val archiveMedals = remember(mergedLogs, state.todayDateKey, state.liveSessionElapsedSeconds) {
+        MonthlyMedalEvaluator.earnedMonthlyMedalsArchive(
+            logs = mergedLogs,
+            todayDateKey = state.todayDateKey,
+            liveTodayElapsedSec = state.liveSessionElapsedSeconds
+        )
     }
 
     val calendarCells = remember(viewYear, viewMonth) {
@@ -156,6 +207,26 @@ fun HistoryScreen(
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
         ) {
+        // 0. Top Monthly Medal Showcase (always at very top of History tab)
+        item(key = "history_monthly_medal", contentType = "monthly_medal") {
+            MonthlyMedalShowcaseCard(
+                summary = viewedMonthMedal,
+                monthTitle = monthTitle,
+                archiveMedals = archiveMedals,
+                landingBurstTick = landingBurstTick,
+                onSelectArchiveMonth = { ym ->
+                    val parts = ym.split("-")
+                    val y = parts.getOrNull(0)?.toIntOrNull()
+                    val m = parts.getOrNull(1)?.toIntOrNull()?.minus(1)
+                    if (y != null && m != null && m in 0..11) {
+                        viewYear = y
+                        viewMonth = m
+                    }
+                },
+                onMedalSlotPositioned = onMedalSlotPositioned
+            )
+        }
+
         // Header Card
         item(key = "history_header", contentType = "header") {
             Column(
@@ -335,24 +406,24 @@ fun HistoryScreen(
                                         Box(modifier = Modifier.weight(1f).aspectRatio(1f))
                                     } else {
                                         val log = logsByDate[cell.dateKey]
-                                        val totalSets = log?.entries?.sumOf { it.sets.size } ?: 0
                                         val doneSets = log?.entries?.sumOf { e -> e.sets.count { it.completed } } ?: 0
-                                        val isFull = log != null && (log.completed || (totalSets > 0 && doneSets == totalSets))
-                                        val isPartial = log != null && !isFull && doneSets > 0
+                                        val dayVerif = viewedMonthMedal.dayVerifications[cell.dateKey]
+                                        val isMedalVerified = dayVerif?.isVerified == true
+                                        val isShortLog = log != null && !isMedalVerified && doneSets > 0
                                         val isToday = cell.dateKey == state.todayDateKey
                                         val isSelected = cell.dateKey == selectedDateKey
 
                                         val bg = when {
-                                            isFull -> tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.16f else 0.20f)
-                                            isPartial -> tokens.infoColor.copy(alpha = 0.16f)
+                                            isMedalVerified -> tokens.accentColor.copy(alpha = if (tokens.isLightTheme) 0.16f else 0.22f)
+                                            isShortLog -> tokens.infoColor.copy(alpha = 0.16f)
                                             isToday -> tokens.subtleChipBg
                                             else -> tokens.wellBg
                                         }
                                         val border = when {
                                             isSelected -> tokens.accentColor
                                             isToday -> tokens.palette.onSurface.copy(alpha = 0.45f)
-                                            isFull -> tokens.accentColor.copy(alpha = 0.48f)
-                                            isPartial -> tokens.infoColor.copy(alpha = 0.48f)
+                                            isMedalVerified -> tokens.accentColor.copy(alpha = 0.52f)
+                                            isShortLog -> tokens.infoColor.copy(alpha = 0.48f)
                                             else -> tokens.subtleBorderColor
                                         }
 
@@ -365,7 +436,7 @@ fun HistoryScreen(
                                                     tokens = tokens,
                                                     shape = RoundedCornerShape(10.dp),
                                                     baseColor = bg,
-                                                    isAccent = isFull
+                                                    isAccent = isMedalVerified
                                                 )
                                                 .border(if (isSelected) 2.dp else 1.dp, border, RoundedCornerShape(10.dp))
                                                 .clickable { selectedDateKey = cell.dateKey },
@@ -376,20 +447,20 @@ fun HistoryScreen(
                                                     text = "${cell.dayOfMonth}",
                                                     fontFamily = FontFamily.Monospace,
                                                     fontSize = 13.sp,
-                                                    fontWeight = if (isSelected || isToday || isFull) FontWeight.ExtraBold else FontWeight.Medium,
+                                                    fontWeight = if (isSelected || isToday || isMedalVerified) FontWeight.ExtraBold else FontWeight.Medium,
                                                     color = when {
-                                                        isFull -> tokens.accentTextColor
-                                                        isPartial -> tokens.infoColor
+                                                        isMedalVerified -> tokens.accentTextColor
+                                                        isShortLog -> tokens.infoColor
                                                         else -> tokens.palette.onSurface
                                                     }
                                                 )
-                                                if (isFull || isPartial) {
+                                                if (isMedalVerified || isShortLog) {
                                                     Spacer(modifier = Modifier.height(2.dp))
                                                     Box(
                                                         modifier = Modifier
                                                             .size(5.dp)
                                                             .clip(CircleShape)
-                                                            .background(if (isFull) tokens.accentColor else tokens.infoColor)
+                                                            .background(if (isMedalVerified) tokens.accentColor else tokens.infoColor)
                                                     )
                                                 }
                                             }
@@ -404,11 +475,11 @@ fun HistoryScreen(
                     HorizontalDivider(color = tokens.dividerColor)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CalendarLegendItem(tokens.accentTextColor, lang.t("Selesai Penuh", "Completed"))
-                        CalendarLegendItem(tokens.infoColor, lang.t("Sebagian", "Partial"))
+                        CalendarLegendItem(tokens.accentTextColor, lang.t("Sah Medali", "Medal Verified"))
+                        CalendarLegendItem(tokens.infoColor, lang.t("Log Singkat", "Short Log"))
                         CalendarLegendItem(tokens.palette.onSurface.copy(alpha = 0.55f), lang.t("Hari Ini", "Today"))
                     }
                 }
@@ -517,12 +588,75 @@ fun HistoryScreen(
                         val doneSets = selectedLog.entries.sumOf { e -> e.sets.count { it.completed } }
                         val totalSets = selectedLog.entries.sumOf { it.sets.size }
 
+                        val selectedVerif = remember(
+                            selectedLog,
+                            selectedDateKey,
+                            viewedMonthMedal,
+                            state.todayDateKey,
+                            state.liveSessionElapsedSeconds
+                        ) {
+                            viewedMonthMedal.dayVerifications[selectedDateKey]
+                                ?: WorkoutIntegrityEvaluator.evaluate(
+                                    log = selectedLog,
+                                    liveElapsedSecondsOverride = if (selectedDateKey == state.todayDateKey) state.liveSessionElapsedSeconds else 0
+                                )
+                        }
+
                         Text(
                             text = selectedLog.focusTitle,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = tokens.palette.onSurface
                         )
+
+                        // Session Verification Transparency Badge
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .ironTonalControl(
+                                    tokens = tokens,
+                                    shape = RoundedCornerShape(10.dp),
+                                    baseColor = if (selectedVerif.isVerified) {
+                                        tokens.accentColor.copy(alpha = 0.14f)
+                                    } else {
+                                        tokens.infoColor.copy(alpha = 0.12f)
+                                    },
+                                    isAccent = selectedVerif.isVerified
+                                )
+                                .border(
+                                    1.dp,
+                                    if (selectedVerif.isVerified) tokens.accentColor.copy(alpha = 0.45f) else tokens.infoColor.copy(alpha = 0.40f),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemedIcon(
+                                icon = if (selectedVerif.isVerified) IronPulseIcon.CHECK_CIRCLE else IronPulseIcon.INFO,
+                                contentDescription = null,
+                                tint = if (selectedVerif.isVerified) tokens.accentTextColor else tokens.infoColor,
+                                size = 15.dp
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = selectedVerif.statusDescription(lang),
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (selectedVerif.isVerified) tokens.accentTextColor else tokens.palette.onSurface
+                                )
+                                if (selectedVerif.fastTappedSets > 0) {
+                                    Text(
+                                        text = lang.t(
+                                            "${selectedVerif.fastTappedSets} set terlalu cepat (<20 dtk / lewat batas bypass) tidak dihitung ke medali.",
+                                            "${selectedVerif.fastTappedSets} fast-tapped sets (<20s / over bypass limit) excluded from medal."
+                                        ),
+                                        fontSize = 10.5.sp,
+                                        color = tokens.palette.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),

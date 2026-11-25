@@ -213,6 +213,7 @@ fun CooldownAlertModal(
     cooldownSecondsFlow: StateFlow<Int>,
     exerciseName: String,
     setNumber: Int,
+    bypassesRemaining: Int = 2,
     onBypass: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -315,10 +316,17 @@ fun CooldownAlertModal(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = lang.t(
-                    "Jeda 30 detik mencegah klik ganda atau ketukan tidak sengaja pada \"$exerciseName\" Set #$setNumber. Gunakan Timer Istirahat untuk jeda antar set.",
-                    "This 30s guard prevents accidental taps on \"$exerciseName\" Set #$setNumber. Use the Rest Timer for between-set recovery."
-                ),
+                text = if (bypassesRemaining > 0) {
+                    lang.t(
+                        "Jeda 30 detik menjaga keaslian set untuk Medali Bulanan pada \"$exerciseName\" Set #$setNumber. Sisa lewati sah sesi ini: $bypassesRemaining×.",
+                        "This 30s guard keeps sets authentic for Monthly Medals on \"$exerciseName\" Set #$setNumber. Valid bypasses left this session: $bypassesRemaining×."
+                    )
+                } else {
+                    lang.t(
+                        "Kuota lewati sah sesi ini sudah habis. Set tetap tersimpan di catatan pribadi, namun tidak dihitung ke kuota Medali Bulanan.",
+                        "Valid bypass quota reached for this session. This set still saves to your log, but won't count toward Monthly Medals."
+                    )
+                },
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 textAlign = TextAlign.Center,
@@ -342,14 +350,21 @@ fun CooldownAlertModal(
                     onClick = onBypass,
                     shape = tokens.buttonShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = tokens.accentColor,
+                        containerColor = if (bypassesRemaining > 0) tokens.accentColor else tokens.warningColor,
                         contentColor = tokens.onAccentColor
                     ),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
                     ThemedIcon(IronPulseIcon.CHECK, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(lang.t("Tetap Centang (Lewati)", "Confirm Anyway"), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (bypassesRemaining > 0) {
+                            lang.t("Tetap Centang (Sisa $bypassesRemaining×)", "Confirm Anyway ($bypassesRemaining left)")
+                        } else {
+                            lang.t("Catat Saja (Non-Medali)", "Log Only (No Medal Credit)")
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
