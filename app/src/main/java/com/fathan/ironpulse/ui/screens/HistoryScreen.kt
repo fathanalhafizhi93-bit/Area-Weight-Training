@@ -91,13 +91,13 @@ fun HistoryScreen(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
-    val todayCal = remember(state.todayDateKey) { Calendar.getInstance() }
+    val todayCal = remember(state.todayDateKey) { parseDateKeyToCalendar(state.todayDateKey) }
     val currentYear = todayCal.get(Calendar.YEAR)
     val currentMonth = todayCal.get(Calendar.MONTH)
 
-    var viewYear by remember { mutableIntStateOf(currentYear) }
-    var viewMonth by remember { mutableIntStateOf(currentMonth) }
-    var selectedDateKey by remember { mutableStateOf(state.todayDateKey) }
+    var viewYear by remember(currentYear, currentMonth) { mutableIntStateOf(currentYear) }
+    var viewMonth by remember(currentYear, currentMonth) { mutableIntStateOf(currentMonth) }
+    var selectedDateKey by remember(state.todayDateKey) { mutableStateOf(state.todayDateKey) }
 
     val mergedLogs = remember(state.workoutHistory, state.todayLog) {
         val byDate = LinkedHashMap<String, WorkoutLog>(state.workoutHistory.size + 1)
@@ -866,4 +866,18 @@ private fun buildMonthGrid(year: Int, month: Int): List<CalendarDayCell?> {
         cells.add(null)
     }
     return cells
+}
+
+private fun parseDateKeyToCalendar(dateKey: String): Calendar {
+    val parts = dateKey.trim().split("-")
+    val year = parts.getOrNull(0)?.toIntOrNull()
+    val monthOneBased = parts.getOrNull(1)?.toIntOrNull()
+    val day = parts.getOrNull(2)?.toIntOrNull()
+    return Calendar.getInstance().apply {
+        if (year != null && monthOneBased != null && monthOneBased in 1..12 && day != null && day in 1..31) {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, monthOneBased - 1)
+            set(Calendar.DAY_OF_MONTH, day)
+        }
+    }
 }

@@ -31,7 +31,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.down
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.moveTo
@@ -45,6 +47,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.fathan.ironpulse.data.AppPreferences
 import com.fathan.ironpulse.data.FirestoreGymRepository
@@ -698,6 +702,7 @@ class StartupSmokeTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
     fun pulseMascotTutorial_greetsUserSelectsLanguageAndToursAllFiveTabs() {
         val visitedTabs = mutableListOf<AppTab>()
         val chirpsPlayed = mutableListOf<String>()
@@ -732,21 +737,21 @@ class StartupSmokeTest {
         composeRule.waitForIdle()
         // Welcome bubble stage greets by first name and allows selecting language
         composeRule.onNodeWithTag("pulse_tutorial_welcome_card").assertIsDisplayed()
-        composeRule.onNodeWithText("Hai, Fathan! Aku Pulse").assertIsDisplayed()
-        composeRule.onNodeWithTag("pulse_tutorial_start_hint").assertIsDisplayed()
+        composeRule.onNodeWithText("Hai, Fathan! Aku Pulse").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("pulse_tutorial_start_hint").performScrollTo().assertIsDisplayed()
 
         // Tap Pulse mascot on welcome stage
-        composeRule.onNodeWithTag("pulse_tutorial_mascot").performClick()
+        composeRule.onNodeWithTag("pulse_tutorial_mascot").performScrollTo().performClick()
         assertEquals(1, mascotTappedCount)
 
         // Switch language to English and back to Indonesian without advancing step
-        composeRule.onNodeWithTag("pulse_tutorial_lang_en").performClick()
+        composeRule.onNodeWithTag("pulse_tutorial_lang_en").performScrollTo().performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Hi, Fathan! I'm Pulse").assertIsDisplayed()
+        composeRule.onNodeWithText("Hi, Fathan! I'm Pulse").performScrollTo().assertIsDisplayed()
 
-        composeRule.onNodeWithTag("pulse_tutorial_lang_id").performClick()
+        composeRule.onNodeWithTag("pulse_tutorial_lang_id").performScrollTo().performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Hai, Fathan! Aku Pulse").assertIsDisplayed()
+        composeRule.onNodeWithText("Hai, Fathan! Aku Pulse").performScrollTo().assertIsDisplayed()
 
         val tapScreen = {
             composeRule.onNodeWithTag("pulse_tutorial_tap_area")
@@ -785,6 +790,7 @@ class StartupSmokeTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
     fun pulseMascotTutorial_skipShowsPulseConfirmationAndSupportsResumeOrSkip() {
         val visitedTabs = mutableListOf<AppTab>()
         var completed = false
@@ -1715,6 +1721,7 @@ class StartupSmokeTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
     fun todayScreen_elevatesStartWorkoutCtaAboveRestTimerAndMascotAcrossAllThemes() {
         val defaultSchedules = GymPresets.createDefaultSchedules("u_today").toMutableMap()
         val mondayExercises = GymPresets.createDefaultSchedules("u_today")[DayKey.MON]?.exercises ?: emptyList()
@@ -2201,75 +2208,84 @@ class StartupSmokeTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
     fun settingsHub_rendersOrderedVerticalListAndNavigatesToAboutSubpageWithBack() {
         val context = ApplicationProvider.getApplicationContext<android.app.Application>()
         if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
             com.google.firebase.FirebaseApp.initializeApp(context)
         }
-        val viewModel = GymViewModel(context)
-        val uiState = IronPulseUiState(
-            authReady = true,
-            userUid = "u_settings",
-            userDisplayName = "Fathan",
-            userEmail = "fathan@ironpulse.app",
-            appPrefs = AppPreferences(
-                uiTheme = UiTheme.XMATERIAL_YOU,
-                lang = AppLanguage.ID,
-                performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(context)
+            )[GymViewModel::class.java]
+            val uiState = IronPulseUiState(
+                authReady = true,
+                userUid = "u_settings",
+                userDisplayName = "Fathan",
+                userEmail = "fathan@ironpulse.app",
+                appPrefs = AppPreferences(
+                    uiTheme = UiTheme.XMATERIAL_YOU,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
             )
-        )
-        var hubBackCalls = 0
+            var hubBackCalls = 0
 
-        composeRule.setContent {
-            IronPulseTheme(prefs = uiState.appPrefs) {
-                CompositionLocalProvider(LocalTabActive provides true) {
-                    SettingsScreen(
-                        state = uiState,
-                        viewModel = viewModel,
-                        contentPadding = PaddingValues(0.dp),
-                        onBack = { hubBackCalls += 1 },
-                        onRequestNotificationPermission = {},
-                        onOpenExactAlarmSettings = {},
-                        onPickCustomRingtone = {}
-                    )
+            composeRule.setContent {
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        SettingsScreen(
+                            state = uiState,
+                            viewModel = viewModel,
+                            contentPadding = PaddingValues(0.dp),
+                            onBack = { hubBackCalls += 1 },
+                            onRequestNotificationPermission = {},
+                            onOpenExactAlarmSettings = {},
+                            onPickCustomRingtone = {}
+                        )
+                    }
                 }
             }
+
+            composeRule.waitForIdle()
+            // Verify exact category order in top-to-bottom hub list
+            assertEquals(
+                listOf(
+                    SettingsCategory.PROFILE,
+                    SettingsCategory.THEME,
+                    SettingsCategory.CONFIGURATION,
+                    SettingsCategory.ALARM,
+                    SettingsCategory.SYSTEM,
+                    SettingsCategory.ABOUT
+                ),
+                SettingsCategory.entries
+            )
+            SettingsCategory.entries.forEach { cat ->
+                composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(cat.testTag))
+                composeRule.onNodeWithTag(cat.testTag).assertIsDisplayed()
+            }
+
+            // Open About full sub-page inside Settings
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.ABOUT.testTag))
+            composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("About IronPulse").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("v0.0.1 alpha").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Fathan, and Artificial intelligence").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("fathan.").performScrollTo().assertIsDisplayed()
+
+            // Press subpage Back button -> returns to 6-item vertical hub list
+            composeRule.onNodeWithTag("settings_subpage_back_button").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.PROFILE.testTag))
+            composeRule.onNodeWithTag(SettingsCategory.PROFILE.testTag).assertIsDisplayed()
+            composeRule.onNodeWithTag("settings_hub_back_button").performClick()
+            assertEquals(1, hubBackCalls)
+        } finally {
+            vmStore.clear()
         }
-
-        composeRule.waitForIdle()
-        // Verify exact category order in top-to-bottom hub list
-        assertEquals(
-            listOf(
-                SettingsCategory.PROFILE,
-                SettingsCategory.THEME,
-                SettingsCategory.CONFIGURATION,
-                SettingsCategory.ALARM,
-                SettingsCategory.SYSTEM,
-                SettingsCategory.ABOUT
-            ),
-            SettingsCategory.entries
-        )
-        SettingsCategory.entries.forEach { cat ->
-            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(cat.testTag))
-            composeRule.onNodeWithTag(cat.testTag).assertIsDisplayed()
-        }
-
-        // Open About full sub-page inside Settings
-        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.ABOUT.testTag))
-        composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("About IronPulse").assertIsDisplayed()
-        composeRule.onNodeWithText("v0.0.1 alpha").assertIsDisplayed()
-        composeRule.onNodeWithText("Fathan, and Artificial intelligence").assertIsDisplayed()
-        composeRule.onNodeWithText("fathan.").assertIsDisplayed()
-
-        // Press subpage Back button -> returns to 6-item vertical hub list
-        composeRule.onNodeWithTag("settings_subpage_back_button").performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.PROFILE.testTag))
-        composeRule.onNodeWithTag(SettingsCategory.PROFILE.testTag).assertIsDisplayed()
-        composeRule.onNodeWithTag("settings_hub_back_button").performClick()
-        assertEquals(1, hubBackCalls)
     }
 
     @Test
@@ -2373,53 +2389,61 @@ class StartupSmokeTest {
         if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
             com.google.firebase.FirebaseApp.initializeApp(context)
         }
-        val viewModel = GymViewModel(context)
-        val uiState = IronPulseUiState(
-            authReady = true,
-            userUid = "u_theme_groups",
-            appPrefs = AppPreferences(
-                uiTheme = UiTheme.MATERIAL_YOU,
-                lang = AppLanguage.ID,
-                performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(context)
+            )[GymViewModel::class.java]
+            val uiState = IronPulseUiState(
+                authReady = true,
+                userUid = "u_theme_groups",
+                appPrefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
             )
-        )
 
-        composeRule.setContent {
-            IronPulseTheme(prefs = uiState.appPrefs) {
-                CompositionLocalProvider(LocalTabActive provides true) {
-                    SettingsScreen(
-                        state = uiState,
-                        viewModel = viewModel,
-                        contentPadding = PaddingValues(0.dp),
-                        onBack = {},
-                        onRequestNotificationPermission = {},
-                        onOpenExactAlarmSettings = {},
-                        onPickCustomRingtone = {}
-                    )
+            composeRule.setContent {
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        SettingsScreen(
+                            state = uiState,
+                            viewModel = viewModel,
+                            contentPadding = PaddingValues(0.dp),
+                            onBack = {},
+                            onRequestNotificationPermission = {},
+                            onOpenExactAlarmSettings = {},
+                            onPickCustomRingtone = {}
+                        )
+                    }
                 }
             }
-        }
 
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag(SettingsCategory.THEME.testTag).performClick()
-        composeRule.waitForIdle()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag(SettingsCategory.THEME.testTag).performClick()
+            composeRule.waitForIdle()
 
-        // Both groups rendered cleanly inside ThemesGridCard on modern phone viewport
-        composeRule.onNodeWithTag("themes_group_standard").assertIsDisplayed()
-        composeRule.onNodeWithText("Tema Standar").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_card_material-you").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_card_carbon-forge").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_card_amoled-stealth").assertIsDisplayed()
+            // Both groups rendered cleanly inside ThemesGridCard on modern phone viewport
+            composeRule.onNodeWithTag("themes_group_standard").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Tema Standar").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("theme_card_material-you").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("theme_card_carbon-forge").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("theme_card_amoled-stealth").performScrollTo().assertIsDisplayed()
 
-        composeRule.onNodeWithTag("themes_group_exclusive").assertIsDisplayed()
-        composeRule.onNodeWithText("Tema Eksklusif").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_card_ubuntu-yaru").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_card_frutiger-aero").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_card_xmaterial-you").assertIsDisplayed()
+            composeRule.onNodeWithTag("themes_group_exclusive").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Tema Eksklusif").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("theme_card_ubuntu-yaru").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("theme_card_frutiger-aero").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("theme_card_xmaterial-you").performScrollTo().assertIsDisplayed()
 
-        // Ensure separation is by group ONLY (no extra "Eksklusif" pills on individual cards)
-        composeRule.onAllNodesWithText("Eksklusif").fetchSemanticsNodes().let { nodes ->
-            assertEquals(0, nodes.size)
+            // Ensure separation is by group ONLY (no extra "Eksklusif" pills on individual cards)
+            composeRule.onAllNodesWithText("Eksklusif").fetchSemanticsNodes().let { nodes ->
+                assertEquals(0, nodes.size)
+            }
+        } finally {
+            vmStore.clear()
         }
     }
 
@@ -2684,6 +2708,7 @@ class StartupSmokeTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
     fun historyScreen_displaysTopMonthlyMedalShowcaseAndCelebrationOverlayFlowsToHistory() {
         val silverLogs = (1..16).map { d ->
             buildTestWorkoutLog(String.format(java.util.Locale.US, "2026-11-%02d", d))
@@ -2737,14 +2762,17 @@ class StartupSmokeTest {
 
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
-        composeRule.onNodeWithText("Medali Perak").assertIsDisplayed()
-        composeRule.onNodeWithTag("medal_save_to_history_button").performClick()
+        composeRule.onNode(
+            hasText("Medali Perak") and hasAnyAncestor(hasTestTag("medal_unlock_celebration_overlay")),
+            useUnmergedTree = true
+        ).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("medal_save_to_history_button").performScrollTo().performClick()
         composeRule.waitForIdle()
 
         assertNotNull(flightTriggeredSource)
         composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
-        composeRule.onNodeWithTag("history_monthly_medal_card").assertIsDisplayed()
-        composeRule.onNodeWithTag("history_medal_emblem_slot").assertIsDisplayed()
+        composeRule.onNodeWithTag("history_monthly_medal_card").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("history_medal_emblem_slot").performScrollTo().assertIsDisplayed()
     }
 }
 
