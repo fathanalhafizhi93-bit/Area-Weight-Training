@@ -243,9 +243,11 @@ fun ScheduleScreen(
                     onSelectRingtone = { nextId ->
                         viewModel.updateScheduleFields(dayKey = day, ringtoneId = nextId)
                     },
-                    modifier = Modifier
-                        .staggeredCardEntrance(idx + 2, active = tabActive, disabledByPerf = noAnim)
-                        .then(if (noAnim) Modifier else Modifier.animateItem())
+                    modifier = if (idx < 3) {
+                        Modifier.staggeredCardEntrance(idx + 2, active = tabActive, disabledByPerf = noAnim)
+                    } else {
+                        Modifier
+                    }
                 )
             }
         }

@@ -56,8 +56,8 @@ object IronPulseMotion {
     )
 
     val ReturnMorphSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.68f,
-        stiffness = 135f
+        dampingRatio = 0.72f,
+        stiffness = 260f
     )
 
     val OrbSnapSpring: SpringSpec<Float> = spring(
@@ -211,16 +211,28 @@ private class StaggeredCardEntranceNode(
         constraints: Constraints
     ): MeasureResult {
         val placeable = measurable.measure(constraints)
-        val density = currentValueOf(LocalDensity).density
+        val a = alphaAnim.value.coerceIn(0f, 1f)
+        val tFrac = offsetFractionAnim.value
+        val s = scaleAnim.value
+        val settled = !alphaAnim.isRunning &&
+            !offsetFractionAnim.isRunning &&
+            !scaleAnim.isRunning &&
+            abs(a - 1f) < 0.002f &&
+            abs(tFrac) < 0.002f &&
+            abs(s - 1f) < 0.002f
+        val density = if (settled) 1f else currentValueOf(LocalDensity).density
         val slidePx = 20f * density
         return layout(placeable.width, placeable.height) {
-            placeable.placeWithLayer(0, 0) {
-                alpha = alphaAnim.value.coerceIn(0f, 1f)
-                translationY = offsetFractionAnim.value * slidePx
-                val s = scaleAnim.value
-                scaleX = s
-                scaleY = s
-                transformOrigin = TransformOrigin(0.5f, 0.35f)
+            if (settled) {
+                placeable.place(0, 0)
+            } else {
+                placeable.placeWithLayer(0, 0) {
+                    alpha = a
+                    translationY = tFrac * slidePx
+                    scaleX = s
+                    scaleY = s
+                    transformOrigin = TransformOrigin(0.5f, 0.35f)
+                }
             }
         }
     }
@@ -265,13 +277,22 @@ private class FluidModalEntranceNode : Modifier.Node(), LayoutModifierNode {
         constraints: Constraints
     ): MeasureResult {
         val placeable = measurable.measure(constraints)
+        val s = scaleAnim.value
+        val a = alphaAnim.value
+        val settled = !scaleAnim.isRunning &&
+            !alphaAnim.isRunning &&
+            abs(s - 1f) < 0.001f &&
+            abs(a - 1f) < 0.002f
         return layout(placeable.width, placeable.height) {
-            placeable.placeWithLayer(0, 0) {
-                val s = scaleAnim.value
-                scaleX = s
-                scaleY = s
-                alpha = alphaAnim.value
-                transformOrigin = TransformOrigin.Center
+            if (settled) {
+                placeable.place(0, 0)
+            } else {
+                placeable.placeWithLayer(0, 0) {
+                    scaleX = s
+                    scaleY = s
+                    alpha = a
+                    transformOrigin = TransformOrigin.Center
+                }
             }
         }
     }
@@ -383,11 +404,16 @@ private class TactilePressNode(
         constraints: Constraints
     ): MeasureResult {
         val placeable = measurable.measure(constraints)
+        val s = scaleAnim.value
+        val settled = !scaleAnim.isRunning && abs(s - 1f) < 0.001f
         return layout(placeable.width, placeable.height) {
-            placeable.placeWithLayer(0, 0) {
-                val s = scaleAnim.value
-                scaleX = s
-                scaleY = s
+            if (settled) {
+                placeable.place(0, 0)
+            } else {
+                placeable.placeWithLayer(0, 0) {
+                    scaleX = s
+                    scaleY = s
+                }
             }
         }
     }

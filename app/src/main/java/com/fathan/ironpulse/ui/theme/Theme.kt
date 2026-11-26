@@ -30,12 +30,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -54,6 +55,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import java.util.concurrent.ConcurrentHashMap
@@ -299,6 +301,8 @@ val LocalIronPulseTokens = staticCompositionLocalOf {
 }
 
 val LocalTabActive = compositionLocalOf { true }
+val LocalTabSettled = compositionLocalOf { true }
+val LocalScrollActiveState = staticCompositionLocalOf<State<Boolean>> { mutableStateOf(false) }
 
 /**
  * Hardware-accelerated repeating GPU shader textures cached once per density/mode key.
@@ -344,7 +348,8 @@ object ThemeMaterialShaderCache {
     }
 
     private fun buildCarbonTwillBrush(cell: Int, subtle: Boolean): ShaderBrush {
-        val tileSize = cell * 4
+        val period = cell * 4
+        val tileSize = period * 2
         val bitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(bitmap)
         val hiPaint = Paint().apply {
@@ -360,9 +365,9 @@ object ThemeMaterialShaderCache {
             isAntiAlias = false
         }
 
-        for (row in 0 until 4) {
-            for (col in 0 until 4) {
-                val phase = (col - row + 4) % 4
+        for (row in 0 until 8) {
+            for (col in 0 until 8) {
+                val phase = ((col % 4) - (row % 4) + 4) % 4
                 val left = col * cell.toFloat()
                 val top = row * cell.toFloat()
                 val right = left + cell
@@ -409,7 +414,8 @@ object ThemeMaterialShaderCache {
     }
 
     private fun buildAmoledStealthMatrixBrush(cell: Int, subtle: Boolean): ShaderBrush {
-        val tileSize = cell * 2
+        val period = cell * 2
+        val tileSize = period * 2
         val bitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(bitmap)
         val dotSize = (cell / 4f).coerceAtLeast(1.2f)
@@ -422,8 +428,14 @@ object ThemeMaterialShaderCache {
             isAntiAlias = false
         }
         // Staggered micro-dot stealth matrix: crisp OLED feel, near-zero pixel luminance
-        canvas.drawRect(0f, 0f, dotSize, dotSize, dotPaint)
-        canvas.drawRect(cell.toFloat(), cell.toFloat(), cell + dotSize, cell + dotSize, faintDotPaint)
+        for (py in 0 until 2) {
+            for (px in 0 until 2) {
+                val ox = (px * period).toFloat()
+                val oy = (py * period).toFloat()
+                canvas.drawRect(ox, oy, ox + dotSize, oy + dotSize, dotPaint)
+                canvas.drawRect(ox + cell, oy + cell, ox + cell + dotSize, oy + cell + dotSize, faintDotPaint)
+            }
+        }
         val imageShader = ImageShader(bitmap.asImageBitmap(), TileMode.Repeated, TileMode.Repeated)
         return ShaderBrush(imageShader)
     }
@@ -1010,11 +1022,16 @@ fun Modifier.ironTonalControl(
             lowerMidStop = Color(0xFF0078C4)
             bottomStop = Color(0xFF005D9E)
         }
-    } else if (isAccent) {
+    } else if (isAccent && alpha >= 0.72f) {
         topStop = lerp(opaqueBase, Color.White, 0.36f).copy(alpha = alpha)
         upperMidStop = baseColor
         lowerMidStop = lerp(opaqueBase, Color.Black, 0.14f).copy(alpha = alpha)
         bottomStop = lerp(opaqueBase, Color.Black, 0.24f).copy(alpha = alpha)
+    } else if (isAccent) {
+        topStop = lerp(opaqueBase, Color.White, 0.56f).copy(alpha = (alpha * 1.15f).coerceAtMost(0.95f))
+        upperMidStop = baseColor
+        lowerMidStop = lerp(opaqueBase, Color(0xFFC5EBFF), 0.28f).copy(alpha = alpha)
+        bottomStop = lerp(opaqueBase, Color(0xFFD9FAEB), 0.24f).copy(alpha = alpha)
     } else if (isNight) {
         topStop = lerp(opaqueBase, Color(0xFF93E2FF), 0.20f).copy(alpha = alpha)
         upperMidStop = baseColor
@@ -1113,7 +1130,6 @@ fun IronPulseTonalSurface(
     }
     val interactiveOuterModifier = if (onClick != null) {
         Modifier
-            .then(if (minTouchTarget) Modifier.minimumInteractiveComponentSize() else Modifier)
             .then(
                 if (enableTactilePress) {
                     Modifier.tactilePress(
@@ -1131,6 +1147,27 @@ fun IronPulseTonalSurface(
                 enabled = enabled,
                 role = Role.Button,
                 onClick = onClick
+            )
+            .then(
+                if (minTouchTarget) {
+                    Modifier.layout { measurable, constraints ->
+                        // Measure visual child with exact caller constraints (not inflated to 48.dp)
+                        val placeable = measurable.measure(constraints)
+                        val minTouchPx = 48.dp.roundToPx()
+                        val w = maxOf(placeable.width, minTouchPx)
+                            .coerceIn(constraints.minWidth, maxOf(constraints.maxWidth, minTouchPx))
+                        val h = maxOf(placeable.height, minTouchPx)
+                            .coerceIn(constraints.minHeight, maxOf(constraints.maxHeight, minTouchPx))
+                        layout(w, h) {
+                            placeable.placeRelative(
+                                (w - placeable.width) / 2,
+                                (h - placeable.height) / 2
+                            )
+                        }
+                    }
+                } else {
+                    Modifier
+                }
             )
     } else {
         Modifier

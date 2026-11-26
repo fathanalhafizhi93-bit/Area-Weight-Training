@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -94,6 +95,7 @@ import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.MaterialYouPalette
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -1484,9 +1486,11 @@ fun TodayMascot(
     voiceEnabled: Boolean,
     orbVisibleAlpha: () -> Float = { 1f },
     orbAnimActive: Boolean = true,
+    orbAnimActiveProvider: (() -> Boolean)? = null,
     hideForTutorial: Boolean = false,
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     landingPulseTick: Int = 0,
+    landingPulseTickState: State<Int>? = null,
     onTapMascot: () -> Unit,
     onPetMascot: () -> Unit = {},
     onReplayVoice: () -> Unit,
@@ -1504,13 +1508,14 @@ fun TodayMascot(
     }
     val phaseColor = orbPalette.cardAccent
     val noAnim = tokens.performance.noAnimations
+    val effectiveLandingTick = landingPulseTickState?.value ?: landingPulseTick
 
     val landScaleX = remember { Animatable(1f) }
     val landScaleY = remember { Animatable(1f) }
     val landOffsetY = remember { Animatable(0f) }
     val landRingProgress = remember { Animatable(0f) }
-    LaunchedEffect(landingPulseTick, noAnim) {
-        if (landingPulseTick <= 0 || noAnim) {
+    LaunchedEffect(effectiveLandingTick, noAnim) {
+        if (effectiveLandingTick <= 0 || noAnim) {
             landScaleX.snapTo(1f)
             landScaleY.snapTo(1f)
             landOffsetY.snapTo(0f)
@@ -1556,10 +1561,22 @@ fun TodayMascot(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
+        var orbCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+        val tabSettled = LocalTabSettled.current
+        LaunchedEffect(tabSettled) {
+            val coords = orbCoords
+            if (tabSettled && coords != null && coords.isAttached) {
+                val rect = coords.boundsInRoot()
+                if (rect.width > 10f) {
+                    homeOrbBoundsHolder?.rect = rect
+                }
+            }
+        }
         Box(
             modifier = Modifier
                 .size(50.dp)
                 .onGloballyPositioned { coords ->
+                    orbCoords = coords
                     if (coords.isAttached) {
                         val rect = coords.boundsInRoot()
                         if (rect.width > 10f) {
@@ -1591,7 +1608,7 @@ fun TodayMascot(
                 mascot = mascot,
                 eyeStateFlow = eyeStateFlow,
                 size = 50.dp,
-                animActive = orbAnimActive
+                animActive = orbAnimActiveProvider?.invoke() ?: orbAnimActive
             )
         }
 
@@ -1886,15 +1903,21 @@ fun FloatingMascotDock(
                             }
                         }
                     }
-                    ThemedIcon(
-                        icon = IronPulseIcon.CLOSE,
-                        contentDescription = "Tutup",
-                        tint = tokens.mutedTextColor,
-                        size = 18.dp,
+                    Box(
                         modifier = Modifier
-                            .padding(start = 6.dp)
-                            .clickable { bubbleOpen = false }
-                    )
+                            .padding(start = 4.dp)
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable { bubbleOpen = false },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ThemedIcon(
+                            icon = IronPulseIcon.CLOSE,
+                            contentDescription = "Tutup",
+                            tint = tokens.mutedTextColor,
+                            size = 18.dp
+                        )
+                    }
                 }
             }
         }

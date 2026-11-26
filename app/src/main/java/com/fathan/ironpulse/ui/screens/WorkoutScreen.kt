@@ -585,9 +585,11 @@ fun WorkoutScreen(
                         onAddSet = { viewModel.addSetToExercise(entry.exerciseId) },
                         onRemoveSet = { viewModel.removeSetFromExercise(entry.exerciseId) },
                         secUnit = secUnit,
-                        modifier = Modifier
-                            .staggeredCardEntrance(listIdx + 2, active = tabActive, disabledByPerf = noAnim)
-                            .then(if (noAnim) Modifier else Modifier.animateItem())
+                        modifier = if (listIdx < 2) {
+                            Modifier.staggeredCardEntrance(listIdx + 2, active = tabActive, disabledByPerf = noAnim)
+                        } else {
+                            Modifier
+                        }
                     )
                 }
             }

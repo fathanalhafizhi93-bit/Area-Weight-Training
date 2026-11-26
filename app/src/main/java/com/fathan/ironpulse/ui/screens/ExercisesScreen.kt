@@ -167,8 +167,12 @@ fun ExercisesScreen(
                             text = lang.t("Program Latihan Harian", "Daily Exercise Planner"),
                             fontSize = 21.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = tokens.palette.onSurface
+                            color = tokens.palette.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "${exercises.size}/30",
                             fontFamily = FontFamily.Monospace,
@@ -413,9 +417,11 @@ fun ExercisesScreen(
                     onMoveDown = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = false) },
                     onEdit = { editingExercise = ex },
                     onDelete = { pendingDeleteExercise = ex },
-                    modifier = Modifier
-                        .staggeredCardEntrance(idx + 3, active = tabActive, disabledByPerf = noAnim)
-                        .then(if (noAnim) Modifier else Modifier.animateItem())
+                    modifier = if (idx < 3) {
+                        Modifier.staggeredCardEntrance(idx + 3, active = tabActive, disabledByPerf = noAnim)
+                    } else {
+                        Modifier
+                    }
                 )
             }
         }
@@ -1037,10 +1043,7 @@ fun ExerciseLibraryFullScreen(
                                     if (isChecked) 1.4.dp else 1.dp,
                                     if (isChecked) tokens.accentColor else tokens.surfaceBorderColor
                                 ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .staggeredCardEntrance(idx, active = true, disabledByPerf = noAnim)
-                                    .then(if (noAnim) Modifier else Modifier.animateItem())
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier.padding(14.dp),

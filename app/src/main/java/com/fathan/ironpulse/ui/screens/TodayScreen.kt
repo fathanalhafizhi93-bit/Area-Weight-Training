@@ -117,8 +117,10 @@ fun TodayScreen(
     mascotEyeFlow: StateFlow<MascotEyeState>,
     homeOrbAlphaProvider: () -> Float = { 1f },
     homeOrbAnimActive: Boolean = true,
+    homeOrbAnimActiveProvider: (() -> Boolean)? = null,
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     homeLandingTick: Int = 0,
+    homeLandingTickState: State<Int>? = null,
     onTapMascot: () -> Unit,
     onPetMascot: () -> Unit = {},
     onReplayMascotVoice: () -> Unit,
@@ -383,7 +385,7 @@ fun TodayScreen(
             }
         }
 
-        // 2. INTERACTIVE PULSE COMPANION CARD (Directly beneath Hero clock card)
+        // 2. INTERACTIVE PULSE COMPANION CARD (Frame-0 layout so mascot return flight never waits)
         item(key = "today_mascot_card", contentType = "mascot") {
             TodayMascot(
                 mascot = state.mascot,
@@ -391,15 +393,15 @@ fun TodayScreen(
                 voiceEnabled = state.appPrefs.mascotVoiceEnabled,
                 orbVisibleAlpha = homeOrbAlphaProvider,
                 orbAnimActive = homeOrbAnimActive,
+                orbAnimActiveProvider = homeOrbAnimActiveProvider,
                 hideForTutorial = state.tutorialOpen,
                 homeOrbBoundsHolder = homeOrbBoundsHolder,
                 landingPulseTick = homeLandingTick,
+                landingPulseTickState = homeLandingTickState,
                 onTapMascot = onTapMascot,
                 onPetMascot = onPetMascot,
                 onReplayVoice = onReplayMascotVoice,
-                modifier = Modifier
-                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
-                    .testTag("today_mascot_card")
+                modifier = Modifier.testTag("today_mascot_card")
             )
         }
 
@@ -668,8 +670,13 @@ fun TodayScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .staggeredCardEntrance(idx + 5, active = tabActive, disabledByPerf = noAnim)
-                        .then(if (noAnim) Modifier else Modifier.animateItem())
+                        .then(
+                            if (idx < 3) {
+                                Modifier.staggeredCardEntrance(idx + 5, active = tabActive, disabledByPerf = noAnim)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .tactilePress(pressedScale = 0.98f, disabledByPerf = noAnim)
                         .ironGlassSurface(
                             tokens = tokens,
@@ -1264,109 +1271,129 @@ internal fun HeroAnimatedAtmosphereLayer(
         resolveClockCornerOrbPalette(tokens)
     }
 
-    Spacer(
-        modifier = modifier
-            .testTag("hero_atmosphere_layer")
-            .drawWithCache {
-                val bgGradient = Brush.linearGradient(colors = listOf(heroStart, heroMid, heroEnd))
-                if (size.width <= 2f || size.height <= 2f) {
-                    return@drawWithCache onDrawBehind {
-                        drawRect(bgGradient)
+    Box(modifier = modifier.testTag("hero_atmosphere_layer")) {
+        // Static cached background + core orb + inner rim (never invalidated during animation or scroll)
+        Spacer(
+            modifier = Modifier
+                .matchParentSize()
+                .drawWithCache {
+                    val bgGradient = Brush.linearGradient(colors = listOf(heroStart, heroMid, heroEnd))
+                    if (size.width <= 2f || size.height <= 2f) {
+                        return@drawWithCache onDrawBehind { drawRect(bgGradient) }
                     }
-                }
-
-                // Centered right on the top-right vertex so the card clip reveals a large 1/4 quarter-circle
-                val cx = size.width
-                val cy = 0f
-                val center = Offset(cx, cy)
-
-                val orbRadius = (size.minDimension * 0.68f)
-                    .coerceIn(136.dp.toPx(), 200.dp.toPx())
-                    .coerceAtLeast(1f)
-                val ringRadius = (orbRadius + 12.dp.toPx()).coerceAtLeast(1f)
-                val auraRadius = (orbRadius * 1.30f).coerceAtLeast(1f)
-                val ringStrokePx = 1.75.dp.toPx()
-                val innerRimStrokePx = 0.85.dp.toPx()
-                val nodeRadiusPx = 2.4.dp.toPx()
-
-                val auraBrush = Brush.radialGradient(
-                    colors = listOf(
-                        glowColor.copy(alpha = 0.14f),
-                        accentBright.copy(alpha = 0.05f),
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = auraRadius
-                )
-                val orbBrush = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.0f to orbPalette.orbCoreCenter,
-                        0.55f to orbPalette.orbCoreMid,
-                        1.0f to Color.Transparent
-                    ),
-                    center = center,
-                    radius = orbRadius
-                )
-                // Symmetric dual-lobe sweep so rotating highlights glide continuously across the 1/4 quadrant
-                val ringSweepBrush = Brush.sweepGradient(
-                    0.00f to orbPalette.ringBright,
-                    0.14f to orbPalette.ringAccent,
-                    0.28f to orbPalette.ringRest,
-                    0.40f to orbPalette.ringAccent,
-                    0.50f to orbPalette.ringBright,
-                    0.64f to orbPalette.ringAccent,
-                    0.78f to orbPalette.ringRest,
-                    0.90f to orbPalette.ringAccent,
-                    1.00f to orbPalette.ringBright,
-                    center = center
-                )
-
-                onDrawBehind {
-                    drawRect(bgGradient)
-
-                    if (!noAmbientGlow) {
-                        val pulseScale = 0.96f + 0.07f * breatheState.value
+                    val center = Offset(size.width, 0f)
+                    val orbRadius = (size.minDimension * 0.68f)
+                        .coerceIn(136.dp.toPx(), 200.dp.toPx())
+                        .coerceAtLeast(1f)
+                    val innerRimStrokePx = 0.85.dp.toPx()
+                    val orbBrush = Brush.radialGradient(
+                        colorStops = arrayOf(
+                            0.0f to orbPalette.orbCoreCenter,
+                            0.55f to orbPalette.orbCoreMid,
+                            1.0f to Color.Transparent
+                        ),
+                        center = center,
+                        radius = orbRadius
+                    )
+                    val rimColor = orbPalette.ringRest.copy(
+                        alpha = (orbPalette.ringRest.alpha * 1.4f).coerceAtMost(0.18f)
+                    )
+                    onDrawBehind {
+                        drawRect(bgGradient)
+                        drawCircle(brush = orbBrush, radius = orbRadius, center = center)
                         drawCircle(
-                            brush = auraBrush,
-                            radius = auraRadius * pulseScale,
-                            center = center
+                            color = rimColor,
+                            radius = orbRadius * 0.94f,
+                            center = center,
+                            style = Stroke(width = innerRimStrokePx)
                         )
                     }
+                }
+        )
 
-                    // Large soft 1/4 gradient orb + thin inner arc rim
-                    drawCircle(
-                        brush = orbBrush,
-                        radius = orbRadius,
+        // GPU-scaled breathing ambient aura (only matrix scale updates, zero Canvas redraw)
+        if (!noAmbientGlow) {
+            Spacer(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        val pulseScale = 0.96f + 0.07f * breatheState.value
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                        transformOrigin = TransformOrigin(1f, 0f)
+                    }
+                    .drawWithCache {
+                        if (size.width <= 2f || size.height <= 2f) {
+                            return@drawWithCache onDrawBehind {}
+                        }
+                        val center = Offset(size.width, 0f)
+                        val orbRadius = (size.minDimension * 0.68f)
+                            .coerceIn(136.dp.toPx(), 200.dp.toPx())
+                            .coerceAtLeast(1f)
+                        val auraRadius = (orbRadius * 1.30f).coerceAtLeast(1f)
+                        val auraBrush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = 0.14f),
+                                accentBright.copy(alpha = 0.05f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = auraRadius
+                        )
+                        onDrawBehind {
+                            drawCircle(brush = auraBrush, radius = auraRadius, center = center)
+                        }
+                    }
+            )
+        }
+
+        // GPU-rotated luminous ring + symmetric orbital light beads (zero Canvas redraw)
+        Spacer(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    rotationZ = ringAngleState.value
+                    transformOrigin = TransformOrigin(1f, 0f)
+                }
+                .drawWithCache {
+                    if (size.width <= 2f || size.height <= 2f) {
+                        return@drawWithCache onDrawBehind {}
+                    }
+                    val cx = size.width
+                    val cy = 0f
+                    val center = Offset(cx, cy)
+                    val orbRadius = (size.minDimension * 0.68f)
+                        .coerceIn(136.dp.toPx(), 200.dp.toPx())
+                        .coerceAtLeast(1f)
+                    val ringRadius = (orbRadius + 12.dp.toPx()).coerceAtLeast(1f)
+                    val ringStrokePx = 1.75.dp.toPx()
+                    val nodeRadiusPx = 2.4.dp.toPx()
+                    val ringSweepBrush = Brush.sweepGradient(
+                        0.00f to orbPalette.ringBright,
+                        0.14f to orbPalette.ringAccent,
+                        0.28f to orbPalette.ringRest,
+                        0.40f to orbPalette.ringAccent,
+                        0.50f to orbPalette.ringBright,
+                        0.64f to orbPalette.ringAccent,
+                        0.78f to orbPalette.ringRest,
+                        0.90f to orbPalette.ringAccent,
+                        1.00f to orbPalette.ringBright,
                         center = center
                     )
-                    drawCircle(
-                        color = orbPalette.ringRest.copy(alpha = (orbPalette.ringRest.alpha * 1.4f).coerceAtMost(0.18f)),
-                        radius = orbRadius * 0.94f,
-                        center = center,
-                        style = Stroke(width = innerRimStrokePx)
-                    )
-
-                    // Slow rotating thin luminous ring + symmetric orbital light beads across the 1/4 rim
-                    rotate(degrees = ringAngleState.value, pivot = center) {
+                    val bead1 = Offset(cx + ringRadius, cy)
+                    val bead2 = Offset(cx - ringRadius, cy)
+                    onDrawBehind {
                         drawCircle(
                             brush = ringSweepBrush,
                             radius = ringRadius,
                             center = center,
                             style = Stroke(width = ringStrokePx, cap = StrokeCap.Round)
                         )
-                        drawCircle(
-                            color = orbPalette.ringBright,
-                            radius = nodeRadiusPx,
-                            center = Offset(cx + ringRadius, cy)
-                        )
-                        drawCircle(
-                            color = orbPalette.ringBright,
-                            radius = nodeRadiusPx,
-                            center = Offset(cx - ringRadius, cy)
-                        )
+                        drawCircle(color = orbPalette.ringBright, radius = nodeRadiusPx, center = bead1)
+                        drawCircle(color = orbPalette.ringBright, radius = nodeRadiusPx, center = bead2)
                     }
                 }
-            }
-    )
+        )
+    }
 }
 

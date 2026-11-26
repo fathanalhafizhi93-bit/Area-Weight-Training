@@ -47,10 +47,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +61,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -72,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import com.fathan.ironpulse.model.MedalTier
+import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.CooldownAlertModal
@@ -98,11 +101,15 @@ import com.fathan.ironpulse.ui.screens.SettingsScreen
 import com.fathan.ironpulse.ui.screens.TodayScreen
 import com.fathan.ironpulse.ui.screens.WorkoutScreen
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.viewmodel.AppTab
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
-import kotlinx.coroutines.delay
+import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
+import com.fathan.ironpulse.ui.viewmodel.MascotUiState
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -220,7 +227,7 @@ fun IronPulseRoot(
                         flyingMedalState != null ||
                         showExerciseLibraryScreen
 
-                    val showFloatingMascot by remember(
+                    val showFloatingMascotState = remember(
                         state.activeTab,
                         state.showNamePrompt,
                         state.tutorialOpen,
@@ -247,68 +254,40 @@ fun IronPulseRoot(
                         }
                     }
 
-                    val prevFloatStateRef = remember { booleanArrayOf(showFloatingMascot) }
-                    var hadStartedReturn by remember { mutableStateOf(false) }
-                    var homeLandingTick by remember { mutableIntStateOf(0) }
-                    SideEffect {
-                        val prev = prevFloatStateRef[0]
-                        if (prev != showFloatingMascot) {
-                            if (prev && !showFloatingMascot) {
-                                hadStartedReturn = true
-                            } else if (showFloatingMascot) {
-                                hadStartedReturn = false
-                            }
-                            prevFloatStateRef[0] = showFloatingMascot
-                        }
-                    }
+                    val morphProgressSource = remember { MorphProgressSource() }
+                    val homeLandingTickState = remember { mutableIntStateOf(0) }
 
-                    val morphTransition = updateTransition(
-                        targetState = showFloatingMascot,
-                        label = "mascotMorphTransition"
-                    )
-                    LaunchedEffect(
-                        morphTransition.currentState,
-                        morphTransition.targetState,
-                        morphTransition.isRunning,
-                        noAnim
-                    ) {
-                        if (!morphTransition.isRunning &&
-                            !morphTransition.currentState &&
-                            !morphTransition.targetState &&
-                            hadStartedReturn
-                        ) {
-                            hadStartedReturn = false
-                            if (!noAnim) {
-                                homeLandingTick += 1
-                            }
-                        }
+                    val activeScrollState = when (state.activeTab) {
+                        AppTab.TODAY -> todayListState
+                        AppTab.WORKOUT -> workoutListState
+                        AppTab.SCHEDULE -> scheduleListState
+                        AppTab.HISTORY -> historyListState
+                        AppTab.EXERCISES -> exercisesListState
+                        AppTab.SETTINGS -> settingsSubTabListStates[activeSettingsCategory?.name ?: "HUB"]
                     }
-
-                    val morphProgressState = morphTransition.animateFloat(
-                        transitionSpec = {
-                            when {
-                                noAnim -> snap()
-                                initialState && !targetState -> IronPulseMotion.ReturnMorphSpring
-                                else -> IronPulseMotion.MorphSpring
-                            }
-                        },
-                        label = "mascotMorphProgress"
-                    ) { floating ->
-                        if (floating) 1f else 0f
+                    val isActiveListScrollingState = remember(activeScrollState) {
+                        derivedStateOf { activeScrollState?.isScrollInProgress == true }
                     }
 
                     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     val topBarContentHeight = 60.dp
-                    val bottomBarContentHeight = if (state.activeTab == AppTab.SETTINGS) 0.dp else 64.dp
+                    val bottomBarContentHeight = when {
+                        state.activeTab == AppTab.SETTINGS -> 0.dp
+                        tokens.uiTheme == UiTheme.UBUNTU_YARU -> 80.dp
+                        else -> 68.dp
+                    }
                     val innerPadding = PaddingValues(
                         top = statusBarTop + topBarContentHeight,
                         bottom = navBarBottom + bottomBarContentHeight
                     )
 
-                    CompositionLocalProvider(LocalTutorialSpotlightRegistry provides spotlightRegistry) {
+                    CompositionLocalProvider(
+                        LocalTutorialSpotlightRegistry provides spotlightRegistry,
+                        LocalScrollActiveState provides isActiveListScrollingState
+                    ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // LAYER 1: Ambient gradient backdrop + cached multi-tab stage
+                        // LAYER 1: Ambient gradient backdrop + active/outgoing tab stage
                         Box(modifier = Modifier.fillMaxSize()) {
                             AmbientPhaseBackdrop()
 
@@ -316,7 +295,6 @@ fun IronPulseRoot(
                                 activeTab = state.activeTab,
                                 state = state,
                                 noAnim = noAnim,
-                                prewarmEnabled = !state.showNamePrompt && !state.tutorialOpen,
                                 saveableStateHolder = saveableStateHolder,
                                 renderTab = { tab, tabState ->
                                     when (tab) {
@@ -328,13 +306,17 @@ fun IronPulseRoot(
                                             restTimerFlow = viewModel.restTimerDisplayFlow,
                                             mascotEyeFlow = viewModel.mascotEyeFlow,
                                             homeOrbAlphaProvider = {
-                                                if (state.tutorialOpen || showFloatingMascot || morphProgressState.value > 0.02f) 0f else 1f
+                                                if (state.tutorialOpen || showFloatingMascotState.value || morphProgressSource.state.value > 0.02f) 0f else 1f
                                             },
-                                            homeOrbAnimActive = state.activeTab == AppTab.TODAY &&
-                                                !showFloatingMascot &&
-                                                !modalBlocking,
+                                            homeOrbAnimActive = state.activeTab == AppTab.TODAY && !modalBlocking,
+                                            homeOrbAnimActiveProvider = {
+                                                state.activeTab == AppTab.TODAY &&
+                                                    !showFloatingMascotState.value &&
+                                                    !modalBlocking
+                                            },
                                             homeOrbBoundsHolder = homeOrbBoundsHolder,
-                                            homeLandingTick = homeLandingTick,
+                                            homeLandingTick = 0,
+                                            homeLandingTickState = homeLandingTickState,
                                             onTapMascot = { viewModel.tapMascot() },
                                             onPetMascot = { viewModel.petMascot(true) },
                                             onReplayMascotVoice = { viewModel.replayMascotVoice() },
@@ -543,16 +525,18 @@ fun IronPulseRoot(
                                 .padding(bottom = bottomBarContentHeight + 8.dp)
                         )
 
-                        // LAYER 4: Draggable Floating Mascot Companion Orb
-                        FloatingMascotDock(
+                        // LAYER 4: Draggable Floating Mascot Companion Orb (isolated from root recomposition)
+                        MascotDockCoordinator(
                             mascot = state.mascot,
                             eyeStateFlow = viewModel.mascotEyeFlow,
                             anchorSideRight = state.appPrefs.floatingOrbSideRight,
                             anchorYRatio = state.appPrefs.floatingOrbYRatio,
-                            shouldFloat = showFloatingMascot,
-                            morphProgressState = morphProgressState,
+                            showFloatingMascotState = showFloatingMascotState,
+                            noAnim = noAnim,
+                            modalBlocking = modalBlocking,
                             homeOrbBoundsHolder = homeOrbBoundsHolder,
-                            animActive = !modalBlocking,
+                            morphProgressSource = morphProgressSource,
+                            homeLandingTickState = homeLandingTickState,
                             onTapOrb = { viewModel.tapMascot() },
                             onPetOrb = { viewModel.petMascot(true) },
                             onSaveAnchor = { sideRight, yRatio -> viewModel.setFloatingOrbAnchor(sideRight, yRatio) }
@@ -706,65 +690,127 @@ fun IronPulseRoot(
     }
 }
 
+private class MorphProgressSource {
+    var state: State<Float> = mutableFloatStateOf(0f)
+}
+
+@Composable
+private fun MascotDockCoordinator(
+    mascot: MascotUiState,
+    eyeStateFlow: StateFlow<MascotEyeState>,
+    anchorSideRight: Boolean,
+    anchorYRatio: Float,
+    showFloatingMascotState: State<Boolean>,
+    noAnim: Boolean,
+    modalBlocking: Boolean,
+    homeOrbBoundsHolder: OrbBoundsHolder,
+    morphProgressSource: MorphProgressSource,
+    homeLandingTickState: MutableIntState,
+    onTapOrb: () -> Unit,
+    onPetOrb: () -> Unit,
+    onSaveAnchor: (sideRight: Boolean, yRatio: Float) -> Unit
+) {
+    val showFloatingMascot = showFloatingMascotState.value
+    val prevFloatStateRef = remember { booleanArrayOf(showFloatingMascot) }
+    var hadStartedReturn by remember { mutableStateOf(false) }
+
+    SideEffect {
+        val prev = prevFloatStateRef[0]
+        if (prev != showFloatingMascot) {
+            if (prev && !showFloatingMascot) {
+                hadStartedReturn = true
+            } else if (showFloatingMascot) {
+                hadStartedReturn = false
+            }
+            prevFloatStateRef[0] = showFloatingMascot
+        }
+    }
+
+    val morphTransition = updateTransition(
+        targetState = showFloatingMascot,
+        label = "mascotMorphTransition"
+    )
+    LaunchedEffect(
+        morphTransition.currentState,
+        morphTransition.targetState,
+        morphTransition.isRunning,
+        noAnim
+    ) {
+        if (!morphTransition.isRunning &&
+            !morphTransition.currentState &&
+            !morphTransition.targetState &&
+            hadStartedReturn
+        ) {
+            hadStartedReturn = false
+            if (!noAnim) {
+                homeLandingTickState.intValue += 1
+            }
+        }
+    }
+
+    val morphProgressState = morphTransition.animateFloat(
+        transitionSpec = {
+            when {
+                noAnim -> snap()
+                initialState && !targetState -> IronPulseMotion.ReturnMorphSpring
+                else -> IronPulseMotion.MorphSpring
+            }
+        },
+        label = "mascotMorphProgress"
+    ) { floating ->
+        if (floating) 1f else 0f
+    }
+    morphProgressSource.state = morphProgressState
+
+    FloatingMascotDock(
+        mascot = mascot,
+        eyeStateFlow = eyeStateFlow,
+        anchorSideRight = anchorSideRight,
+        anchorYRatio = anchorYRatio,
+        shouldFloat = showFloatingMascot,
+        morphProgressState = morphProgressState,
+        homeOrbBoundsHolder = homeOrbBoundsHolder,
+        animActive = !modalBlocking,
+        onTapOrb = onTapOrb,
+        onPetOrb = onPetOrb,
+        onSaveAnchor = onSaveAnchor
+    )
+}
+
 /**
- * Keeps visited & pre-warmed tabs alive in composition & scroll state with:
- * 1) Immediate post-frame idle pre-warming (zero splash wait).
- * 2) Inactive tab render freeze gate (hidden tabs keep cached state and skip background recompositions).
- * 3) Fluid GPU spring translation & alpha transitions (`IronPulseMotion.TabSlideSpring`).
+ * Active + Outgoing-Only tab stage that keeps zero hidden inactive screens live at alpha=0f
+ * while preserving scroll & form state via hoisted [LazyListState]s and [SaveableStateHolder].
  */
 @Composable
 private fun PersistedTabStage(
     activeTab: AppTab,
     state: IronPulseUiState,
     noAnim: Boolean,
-    prewarmEnabled: Boolean,
     saveableStateHolder: SaveableStateHolder,
     renderTab: @Composable (AppTab, IronPulseUiState) -> Unit
 ) {
-    var visitedTabs by remember { mutableStateOf(setOf(activeTab)) }
-    val activeVisitedTabs = remember(visitedTabs, activeTab) {
-        if (activeTab in visitedTabs) visitedTabs else visitedTabs + activeTab
-    }
-    SideEffect {
-        if (activeTab !in visitedTabs) {
-            visitedTabs = visitedTabs + activeTab
-        }
-    }
-
-    // Pre-warm unvisited tabs smoothly in idle frames right after Frame 1 settles
-    LaunchedEffect(prewarmEnabled) {
-        if (!prewarmEnabled) return@LaunchedEffect
-        withFrameNanos { }
-        val preloadOrder = listOf(
-            AppTab.SCHEDULE,
-            AppTab.HISTORY,
-            AppTab.EXERCISES,
-            AppTab.WORKOUT,
-            AppTab.SETTINGS
-        )
-        for (tab in preloadOrder) {
-            if (tab !in visitedTabs) {
-                visitedTabs = visitedTabs + tab
-                withFrameNanos { }
-                delay(16L)
-            }
-        }
-    }
-
     val tabTransition = updateTransition(
         targetState = activeTab,
         label = "persistedTabStage"
     )
+    val transitionRunning = !noAnim && tabTransition.isRunning
     val transitionDir = remember(tabTransition.currentState, tabTransition.targetState) {
         if (tabTransition.targetState.ordinal >= tabTransition.currentState.ordinal) 1 else -1
     }
+    val visibleTabs = remember(activeTab, tabTransition.currentState, transitionRunning) {
+        if (!transitionRunning || tabTransition.currentState == activeTab) {
+            listOf(activeTab)
+        } else {
+            listOf(tabTransition.currentState, activeTab)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (activeVisitedTabs.size > 1) {
+        if (transitionRunning) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex(0.4f)
+                    .zIndex(0.85f)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
@@ -776,7 +822,7 @@ private fun PersistedTabStage(
             )
         }
 
-        activeVisitedTabs.forEach { tab ->
+        visibleTabs.forEach { tab ->
             key(tab) {
                 val isCurrent = tab == activeTab
                 val tabWeightState = tabTransition.animateFloat(
@@ -787,44 +833,45 @@ private fun PersistedTabStage(
                 ) { stateTab ->
                     if (stateTab == tab) 1f else 0f
                 }
-                val isOutgoing by remember(tab, isCurrent, noAnim) {
-                    derivedStateOf { !isCurrent && !noAnim && tabWeightState.value > 0.002f }
-                }
                 var cachedTabState by remember { mutableStateOf(state) }
                 if (isCurrent) {
                     cachedTabState = state
                 }
-                val z = when {
-                    isCurrent -> 1f
-                    isOutgoing -> 0.7f
-                    else -> 0f
-                }
+                val z = if (isCurrent) 1f else 0.7f
                 val mod = Modifier
                     .fillMaxSize()
                     .zIndex(z)
                     .graphicsLayer {
-                        val weight = tabWeightState.value
-                        if (isCurrent) {
-                            val clampedP = weight.coerceIn(0f, 1f)
-                            alpha = if (noAnim) 1f else clampedP
-                            translationX = if (noAnim) 0f else (1f - weight) * transitionDir * (size.width * 0.065f)
-                            val s = if (noAnim) 1f else lerp(0.978f, 1f, clampedP)
-                            scaleX = s
-                            scaleY = s
-                        } else if (isOutgoing) {
-                            val p = (1f - weight).coerceIn(0f, 1f)
-                            alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
-                            translationX = -p * transitionDir * (size.width * 0.045f)
-                            val s = lerp(1f, 0.97f, p)
-                            scaleX = s
-                            scaleY = s
+                        if (noAnim || !transitionRunning) {
+                            alpha = if (isCurrent) 1f else 0f
+                            translationX = 0f
+                            scaleX = 1f
+                            scaleY = 1f
                         } else {
-                            alpha = 0f
+                            val weight = tabWeightState.value
+                            if (isCurrent) {
+                                val clampedP = weight.coerceIn(0f, 1f)
+                                alpha = clampedP
+                                translationX = (1f - weight) * transitionDir * (size.width * 0.065f)
+                                val s = lerp(0.978f, 1f, clampedP)
+                                scaleX = s
+                                scaleY = s
+                            } else {
+                                val p = (1f - weight).coerceIn(0f, 1f)
+                                alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
+                                translationX = -p * transitionDir * (size.width * 0.045f)
+                                val s = lerp(1f, 0.97f, p)
+                                scaleX = s
+                                scaleY = s
+                            }
                         }
                     }
 
                 Box(modifier = mod) {
-                    CompositionLocalProvider(LocalTabActive provides isCurrent) {
+                    CompositionLocalProvider(
+                        LocalTabActive provides isCurrent,
+                        LocalTabSettled provides (!transitionRunning)
+                    ) {
                         saveableStateHolder.SaveableStateProvider(key = tab) {
                             renderTab(tab, cachedTabState)
                         }
