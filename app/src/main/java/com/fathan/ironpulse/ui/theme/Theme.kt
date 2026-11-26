@@ -493,45 +493,95 @@ fun Modifier.ironGlassSurface(
             this
                 .clip(shape)
                 .drawWithCache {
+                    val strokePx = 1.dp.toPx()
                     val topSheen = if (!subtle) {
                         Brush.verticalGradient(
-                            0.0f to tokens.palette.primary.copy(alpha = 0.055f),
+                            0.0f to tokens.palette.primary.copy(alpha = 0.085f),
+                            0.42f to Color.Transparent
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            0.0f to tokens.palette.primary.copy(alpha = 0.03f),
                             0.35f to Color.Transparent
                         )
+                    }
+                    val cornerWarmth = if (!subtle && !tokens.performance.noAmbientGlow) {
+                        Brush.radialGradient(
+                            colors = listOf(
+                                tokens.palette.tertiary.copy(alpha = 0.065f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.92f, size.height * 0.92f),
+                            radius = size.maxDimension.coerceAtLeast(160f) * 0.72f
+                        )
                     } else null
+                    val innerLip = Color.White.copy(alpha = if (subtle) 0.045f else 0.09f)
                     onDrawBehind {
                         drawRect(baseBg)
-                        if (topSheen != null) drawRect(topSheen)
+                        drawRect(topSheen)
+                        if (cornerWarmth != null) drawRect(cornerWarmth)
+                        if (size.width > 32.dp.toPx()) {
+                            drawLine(
+                                color = innerLip,
+                                start = Offset(strokePx * 2f, strokePx * 1.1f),
+                                end = Offset(size.width - strokePx * 2f, strokePx * 1.1f),
+                                strokeWidth = strokePx * 0.9f
+                            )
+                        }
                     }
                 }
                 .border(1.dp, borderColor, shape)
         }
         UiTheme.UBUNTU_YARU -> {
-            // Authentic Ubuntu GNOME Libadwaita card — clean matte slate + warm orange top-left accent on primary cards
-            val bg = if (subtle) Color(0xFF211E23) else Color(0xFF2B272D)
-            val outerBorder = borderOverride ?: if (subtle) Color(0xFF171419) else Color(0xFF121014)
+            // Authentic Ubuntu GNOME Libadwaita surface — warm aubergine-slate depth, matte stipple grain & glowing Yaru stripe
+            val outerBorder = borderOverride ?: if (subtle) Color(0xFF171419) else Color(0xFF110F13)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
-                    val headerSheen = if (!subtle) {
-                        Brush.verticalGradient(
-                            0.0f to Color(0xFF42273B).copy(alpha = 0.20f),
-                            0.24f to Color.Transparent
-                        )
-                    } else null
-                    val yaruStripe = Color(0xFFE95420).copy(alpha = 0.78f)
+                    val grainScale = density.roundToInt().coerceIn(1, 3)
+                    val yaruGrain = ThemeMaterialShaderCache.getYaruMatteGrainBrush(
+                        pixelScale = grainScale,
+                        subtle = subtle
+                    )
+                    val baseFill = Brush.verticalGradient(
+                        0.0f to if (subtle) Color(0xFF242027) else Color(0xFF312A34),
+                        0.45f to if (subtle) Color(0xFF201D22) else Color(0xFF2A262C),
+                        1.0f to if (subtle) Color(0xFF1C191E) else Color(0xFF242026)
+                    )
+                    val headerSheen = Brush.verticalGradient(
+                        0.0f to Color(0xFF562547).copy(alpha = if (subtle) 0.11f else 0.26f),
+                        0.32f to Color.Transparent
+                    )
+                    val innerRim = Color.White.copy(alpha = if (subtle) 0.045f else 0.095f)
+                    val yaruStripe = Color(0xFFE95420).copy(alpha = 0.88f)
+                    val yaruGlow = Color(0xFFE95420).copy(alpha = 0.16f)
                     val stripeStart = 14.dp.toPx()
-                    val stripeLen = (size.width * 0.14f).coerceIn(20.dp.toPx(), 48.dp.toPx())
+                    val stripeLen = (size.width * 0.15f).coerceIn(22.dp.toPx(), 52.dp.toPx())
                     onDrawBehind {
-                        drawRect(bg)
-                        if (headerSheen != null) drawRect(headerSheen)
+                        drawRect(baseFill)
+                        drawRect(yaruGrain)
+                        drawRect(headerSheen)
+                        drawLine(
+                            color = innerRim,
+                            start = Offset(strokePx * 1.5f, strokePx * 1.0f),
+                            end = Offset(size.width - strokePx * 1.5f, strokePx * 1.0f),
+                            strokeWidth = strokePx * 0.85f
+                        )
                         if (!subtle && size.width > 120.dp.toPx()) {
                             drawLine(
+                                color = yaruGlow,
+                                start = Offset(stripeStart - 2.dp.toPx(), strokePx * 2.2f),
+                                end = Offset(stripeStart + stripeLen + 2.dp.toPx(), strokePx * 2.2f),
+                                strokeWidth = strokePx * 4.5f,
+                                cap = StrokeCap.Round
+                            )
+                            drawLine(
                                 color = yaruStripe,
-                                start = Offset(stripeStart, strokePx * 1.1f),
-                                end = Offset(stripeStart + stripeLen, strokePx * 1.1f),
-                                strokeWidth = strokePx * 2.0f
+                                start = Offset(stripeStart, strokePx * 1.15f),
+                                end = Offset(stripeStart + stripeLen, strokePx * 1.15f),
+                                strokeWidth = strokePx * 2.2f,
+                                cap = StrokeCap.Round
                             )
                         }
                     }
@@ -539,35 +589,47 @@ fun Modifier.ironGlassSurface(
                 .border(1.dp, outerBorder, shape)
         }
         UiTheme.CARBON_FORGE -> {
-            // Industrial Machined Steel Plate — clean chamfer + left accent bar on primary cards (no rivets/heavy twill)
-            val baseBg = tint.copy(alpha = if (subtle) 0.94f else 1f)
+            // Forged Carbon & CNC Machined Steel Plate — GPU 2x2 twill weave, brushed metallic bevel & crisp accent bar
+            val baseBg = tint.copy(alpha = if (subtle) 0.96f else 1f)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
-                    val sheenBrush = if (!subtle) {
-                        Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = 0.06f),
-                            0.32f to Color.Transparent,
-                            1.0f to Color.Black.copy(alpha = 0.24f)
-                        )
-                    } else null
-                    val rimColor = Color(0xFFE2E8F0).copy(alpha = if (subtle) 0.08f else 0.18f)
-                    val accentBar = tokens.accentColor.copy(alpha = 0.85f)
+                    val cellPx = (2.dp.toPx()).roundToInt().coerceIn(4, 8)
+                    val carbonTwill = ThemeMaterialShaderCache.getCarbonTwillBrush(
+                        cellPx = cellPx,
+                        subtle = subtle
+                    )
+                    val sheenBrush = Brush.verticalGradient(
+                        0.0f to Color.White.copy(alpha = if (subtle) 0.04f else 0.085f),
+                        0.28f to Color.Transparent,
+                        0.72f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = if (subtle) 0.18f else 0.28f)
+                    )
+                    val rimColor = Color(0xFFE2E8F0).copy(alpha = if (subtle) 0.12f else 0.24f)
+                    val accentBar = tokens.accentColor.copy(alpha = 0.92f)
+                    val accentHalo = tokens.accentColor.copy(alpha = 0.18f)
                     onDrawBehind {
                         drawRect(baseBg)
-                        if (sheenBrush != null) drawRect(sheenBrush)
+                        drawRect(carbonTwill)
+                        drawRect(sheenBrush)
                         drawLine(
                             color = rimColor,
-                            start = Offset(0f, strokePx * 0.6f),
-                            end = Offset(size.width, strokePx * 0.6f),
+                            start = Offset(0f, strokePx * 0.7f),
+                            end = Offset(size.width, strokePx * 0.7f),
                             strokeWidth = strokePx
                         )
                         if (!subtle && size.height > 44.dp.toPx()) {
+                            val barH = (size.height - 20.dp.toPx()).coerceAtLeast(10f)
+                            drawRect(
+                                color = accentHalo,
+                                topLeft = Offset(0f, 8.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(5.dp.toPx(), barH + 4.dp.toPx())
+                            )
                             drawRect(
                                 color = accentBar,
                                 topLeft = Offset(0f, 10.dp.toPx()),
-                                size = androidx.compose.ui.geometry.Size(2.dp.toPx(), (size.height - 20.dp.toPx()).coerceAtLeast(10f))
+                                size = androidx.compose.ui.geometry.Size(2.5.dp.toPx(), barH)
                             )
                         }
                     }
@@ -575,98 +637,145 @@ fun Modifier.ironGlassSurface(
                 .border(1.dp, borderColor, shape)
         }
         UiTheme.AMOLED_STEALTH -> {
-            // Pure Black Tactical HUD Module — crisp corner brackets on primary cards only, zero matrix clutter
-            val baseBg = if (subtle) Color(0xFF030406) else Color(0xFF05070A)
+            // Pure Black Tactical HUD Module — OLED-first deep black, subtle perimeter matrix & precision corner reticles
+            val baseBg = if (subtle) Color(0xFF020304) else Color(0xFF040609)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
-                    val bracketStroke = 1.4.dp.toPx()
-                    val arm = 6.dp.toPx()
-                    val bracketColor = (borderOverride ?: tokens.accentColor).copy(alpha = 0.78f)
+                    val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
+                    val matrixBrush = if (!tokens.performance.noAmbientGlow) {
+                        ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(
+                            cellPx = matrixCellPx,
+                            subtle = true
+                        )
+                    } else null
+                    val topAura = if (!subtle && !tokens.performance.noAmbientGlow) {
+                        Brush.verticalGradient(
+                            0.0f to (borderOverride ?: tokens.accentColor).copy(alpha = 0.065f),
+                            0.28f to Color.Transparent
+                        )
+                    } else null
+                    val bracketStroke = (if (subtle) 1.0.dp else 1.45.dp).toPx()
+                    val arm = (if (subtle) 4.dp else 7.dp).toPx()
+                    val activeAccent = borderOverride ?: tokens.accentColor
+                    val bracketColor = activeAccent.copy(alpha = if (subtle) 0.45f else 0.86f)
+                    val scanLineColor = activeAccent.copy(alpha = 0.24f)
                     onDrawBehind {
                         drawRect(baseBg)
-                        if (!subtle && size.width > 96.dp.toPx() && size.height > 40.dp.toPx()) {
-                            val p = strokePx * 1.1f
-                            drawLine(bracketColor, Offset(p, p), Offset(p + arm, p), bracketStroke)
-                            drawLine(bracketColor, Offset(p, p), Offset(p, p + arm), bracketStroke)
+                        if (matrixBrush != null) drawRect(matrixBrush)
+                        if (topAura != null) drawRect(topAura)
+                        if (size.width > 80.dp.toPx() && size.height > 36.dp.toPx()) {
+                            val p = strokePx * 1.15f
+                            if (!subtle) {
+                                drawLine(bracketColor, Offset(p, p), Offset(p + arm, p), bracketStroke)
+                                drawLine(bracketColor, Offset(p, p), Offset(p, p + arm), bracketStroke)
 
-                            drawLine(bracketColor, Offset(size.width - p, p), Offset(size.width - p - arm, p), bracketStroke)
-                            drawLine(bracketColor, Offset(size.width - p, p), Offset(size.width - p, p + arm), bracketStroke)
+                                drawLine(bracketColor, Offset(size.width - p, p), Offset(size.width - p - arm, p), bracketStroke)
+                                drawLine(bracketColor, Offset(size.width - p, p), Offset(size.width - p, p + arm), bracketStroke)
 
-                            drawLine(bracketColor, Offset(p, size.height - p), Offset(p + arm, size.height - p), bracketStroke)
-                            drawLine(bracketColor, Offset(p, size.height - p), Offset(p, size.height - p - arm), bracketStroke)
+                                drawLine(bracketColor, Offset(p, size.height - p), Offset(p + arm, size.height - p), bracketStroke)
+                                drawLine(bracketColor, Offset(p, size.height - p), Offset(p, size.height - p - arm), bracketStroke)
 
-                            drawLine(bracketColor, Offset(size.width - p, size.height - p), Offset(size.width - p - arm, size.height - p), bracketStroke)
-                            drawLine(bracketColor, Offset(size.width - p, size.height - p), Offset(size.width - p, size.height - p - arm), bracketStroke)
+                                drawLine(bracketColor, Offset(size.width - p, size.height - p), Offset(size.width - p - arm, size.height - p), bracketStroke)
+                                drawLine(bracketColor, Offset(size.width - p, size.height - p), Offset(size.width - p, size.height - p - arm), bracketStroke)
+
+                                if (size.width > 160.dp.toPx()) {
+                                    drawLine(
+                                        color = scanLineColor,
+                                        start = Offset(size.width * 0.34f, p),
+                                        end = Offset(size.width * 0.66f, p),
+                                        strokeWidth = strokePx * 0.9f
+                                    )
+                                }
+                            } else {
+                                drawLine(bracketColor, Offset(p, p), Offset(p + arm, p), bracketStroke)
+                                drawLine(bracketColor, Offset(p, p), Offset(p, p + arm), bracketStroke)
+                                drawLine(bracketColor, Offset(size.width - p, size.height - p), Offset(size.width - p - arm, size.height - p), bracketStroke)
+                                drawLine(bracketColor, Offset(size.width - p, size.height - p), Offset(size.width - p, size.height - p - arm), bracketStroke)
+                            }
                         }
                     }
                 }
-                .border(0.85.dp, borderColor.copy(alpha = if (subtle) 0.40f else 0.58f), shape)
+                .border(0.9.dp, borderColor.copy(alpha = if (subtle) 0.42f else 0.64f), shape)
         }
         UiTheme.FRUTIGER_AERO -> {
             if (tokens.isAeroNight) {
-                // Soft Twilight Dark Aero Glass — 2-zone Y2K wet reflection on both primary and subtle cards
-                val twilightBorder = borderOverride ?: if (subtle) Color(0x705BC6FA) else Color(0x9E5BC6FA)
+                // Twilight Dark Aero Crystal — 2-zone wet reflection + frosted inner crystal bevel
+                val twilightBorder = borderOverride ?: if (subtle) Color(0x7A5BC6FA) else Color(0xB85BC6FA)
                 this
                     .clip(shape)
                     .drawWithCache {
                         val strokePx = 1.dp.toPx()
                         val baseFill = Brush.verticalGradient(
-                            0.0f to if (subtle) Color(0xEE1F3E6E) else Color(0xF224487D),
-                            0.47f to if (subtle) Color(0xEB173056) else Color(0xEE1A3864),
-                            0.51f to if (subtle) Color(0xEA13294A) else Color(0xEE152E54),
-                            1.0f to if (subtle) Color(0xED122C49) else Color(0xF2143652)
+                            0.0f to if (subtle) Color(0xEE214274) else Color(0xF5274E86),
+                            0.47f to if (subtle) Color(0xEB18335B) else Color(0xF01C3C6A),
+                            0.51f to if (subtle) Color(0xEA142B4D) else Color(0xEE163159),
+                            1.0f to if (subtle) Color(0xED13304F) else Color(0xF4163A59)
                         )
                         val wetGloss = Brush.verticalGradient(
-                            0.0f to Color(0xFFE0F4FF).copy(alpha = if (subtle) 0.16f else 0.25f),
-                            0.46f to Color(0xFFBAE6FD).copy(alpha = if (subtle) 0.04f else 0.08f),
+                            0.0f to Color(0xFFE0F4FF).copy(alpha = if (subtle) 0.18f else 0.29f),
+                            0.46f to Color(0xFFBAE6FD).copy(alpha = if (subtle) 0.05f else 0.09f),
                             0.48f to Color.Transparent,
                             0.78f to Color.Transparent,
-                            1.0f to Color(0xFF7DD3FC).copy(alpha = if (subtle) 0.07f else 0.12f)
+                            1.0f to Color(0xFF7DD3FC).copy(alpha = if (subtle) 0.08f else 0.14f)
                         )
-                        val crystalTopLine = Color(0xFFBAE6FD).copy(alpha = if (subtle) 0.34f else 0.56f)
+                        val crystalTopLine = Color(0xFFE0F4FF).copy(alpha = if (subtle) 0.38f else 0.64f)
+                        val crystalBottomRim = Color(0xFF5EEAD4).copy(alpha = if (subtle) 0.14f else 0.24f)
                         onDrawBehind {
                             drawRect(baseFill)
                             drawRect(wetGloss)
                             drawLine(
                                 color = crystalTopLine,
-                                start = Offset(strokePx * 1.4f, strokePx * 1.2f),
-                                end = Offset(size.width - strokePx * 1.4f, strokePx * 1.2f),
-                                strokeWidth = strokePx
+                                start = Offset(strokePx * 2.2f, strokePx * 1.25f),
+                                end = Offset(size.width - strokePx * 2.2f, strokePx * 1.25f),
+                                strokeWidth = strokePx * 1.1f
+                            )
+                            drawLine(
+                                color = crystalBottomRim,
+                                start = Offset(strokePx * 2.6f, size.height - strokePx * 1.25f),
+                                end = Offset(size.width - strokePx * 2.6f, size.height - strokePx * 1.25f),
+                                strokeWidth = strokePx * 0.85f
                             )
                         }
                     }
                     .border(1.dp, twilightBorder, shape)
             } else {
-                // Crisp Frosted Aqua Crystal Window — 2-zone Y2K wet reflection on both primary and subtle cards
-                val aeroOuterBorder = borderOverride ?: if (subtle) Color(0x780082C8) else Color(0xAE0082C8)
+                // Crisp Frosted Aqua Crystal Window — 2-zone Y2K wet reflection + radiant inner crystal bevel
+                val aeroOuterBorder = borderOverride ?: if (subtle) Color(0x880082C8) else Color(0xC20082C8)
                 this
                     .clip(shape)
                     .drawWithCache {
                         val strokePx = 1.dp.toPx()
                         val baseFill = Brush.verticalGradient(
-                            0.0f to if (subtle) Color(0xFAFFFFFF) else Color(0xFCFFFFFF),
-                            0.47f to if (subtle) Color(0xF2EEF9FF) else Color(0xF6F2FBFF),
-                            0.51f to if (subtle) Color(0xEEE1F4FF) else Color(0xF2E5F6FF),
-                            1.0f to if (subtle) Color(0xF0EAFCF4) else Color(0xF5ECFEF6)
+                            0.0f to if (subtle) Color(0xFBFFFFFF) else Color(0xFEFFFFFF),
+                            0.47f to if (subtle) Color(0xF4ECF9FF) else Color(0xF8F0FAFF),
+                            0.51f to if (subtle) Color(0xF0DFF4FF) else Color(0xF5E3F6FF),
+                            1.0f to if (subtle) Color(0xF2E9FCF3) else Color(0xF7EAFFF5)
                         )
                         val wetGloss = Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = if (subtle) 0.54f else 0.72f),
-                            0.46f to Color.White.copy(alpha = if (subtle) 0.14f else 0.22f),
+                            0.0f to Color.White.copy(alpha = if (subtle) 0.58f else 0.78f),
+                            0.46f to Color.White.copy(alpha = if (subtle) 0.16f else 0.25f),
                             0.48f to Color.Transparent,
                             0.78f to Color.Transparent,
-                            1.0f to Color.White.copy(alpha = if (subtle) 0.16f else 0.24f)
+                            1.0f to Color.White.copy(alpha = if (subtle) 0.18f else 0.28f)
                         )
-                        val crystalTopLine = Color.White.copy(alpha = if (subtle) 0.84f else 0.96f)
+                        val crystalTopLine = Color.White.copy(alpha = if (subtle) 0.88f else 0.98f)
+                        val innerAquaRim = Color(0xFF7DD3FC).copy(alpha = if (subtle) 0.22f else 0.34f)
                         onDrawBehind {
                             drawRect(baseFill)
                             drawRect(wetGloss)
                             drawLine(
                                 color = crystalTopLine,
-                                start = Offset(strokePx * 1.4f, strokePx * 1.2f),
-                                end = Offset(size.width - strokePx * 1.4f, strokePx * 1.2f),
-                                strokeWidth = strokePx
+                                start = Offset(strokePx * 2.2f, strokePx * 1.25f),
+                                end = Offset(size.width - strokePx * 2.2f, strokePx * 1.25f),
+                                strokeWidth = strokePx * 1.2f
+                            )
+                            drawLine(
+                                color = innerAquaRim,
+                                start = Offset(strokePx * 2.6f, size.height - strokePx * 1.25f),
+                                end = Offset(size.width - strokePx * 2.6f, size.height - strokePx * 1.25f),
+                                strokeWidth = strokePx * 0.9f
                             )
                         }
                     }
@@ -674,7 +783,7 @@ fun Modifier.ironGlassSurface(
             }
         }
         UiTheme.XMATERIAL_YOU -> {
-            // Clean Dark Obsidian Glass — calm vertical obsidian body, uniform top satin sheen, and fine hairline border
+            // Luxury Dark Obsidian Glass — prismatic facet refraction, deep obsidian body & brushed phase-metal rim
             val phaseMetal = tokens.phaseTokens.accent
             val phaseBright = tokens.phaseTokens.accentBright
             val obsidianRimBrush = if (borderOverride != null) {
@@ -684,8 +793,8 @@ fun Modifier.ironGlassSurface(
                 )
             } else {
                 Brush.verticalGradient(
-                    0.0f to if (subtle) phaseMetal.copy(alpha = 0.20f) else phaseBright.copy(alpha = 0.34f),
-                    0.45f to if (subtle) Color(0xFF23252F) else phaseMetal.copy(alpha = 0.20f),
+                    0.0f to if (subtle) phaseMetal.copy(alpha = 0.24f) else phaseBright.copy(alpha = 0.42f),
+                    0.45f to if (subtle) Color(0xFF272934) else phaseMetal.copy(alpha = 0.22f),
                     1.0f to Color(0xFF1E2029)
                 )
             }
@@ -693,35 +802,51 @@ fun Modifier.ironGlassSurface(
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
+                    val facetCellPx = (14.dp.toPx()).roundToInt().coerceIn(20, 44)
+                    val facetBrush = if (!subtle && !tokens.performance.noAmbientGlow) {
+                        ThemeMaterialShaderCache.getPrismaticFacetBrush(
+                            cellPx = facetCellPx,
+                            isNight = tokens.isXMaterialNight
+                        )
+                    } else null
                     val baseFill = Brush.verticalGradient(
-                        0.0f to if (subtle) Color(0xF60D0E13) else Color(0xFA121319),
+                        0.0f to if (subtle) Color(0xF60E0F14) else Color(0xFA14151D),
                         0.55f to if (subtle) Color(0xF60A0B0F) else Color(0xFA0C0D12),
                         1.0f to if (subtle) Color(0xF808090C) else Color(0xFC08090D)
                     )
                     val topSatin = Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = if (subtle) 0.016f else 0.036f),
-                        0.32f to phaseBright.copy(alpha = if (subtle) 0.008f else 0.016f),
-                        0.68f to Color.Transparent
+                        0.0f to Color.White.copy(alpha = if (subtle) 0.020f else 0.045f),
+                        0.34f to phaseBright.copy(alpha = if (subtle) 0.010f else 0.022f),
+                        0.72f to Color.Transparent
                     )
+                    val jewelCornerGlow = if (!subtle && !tokens.performance.noAmbientGlow) {
+                        Brush.radialGradient(
+                            colors = listOf(phaseBright.copy(alpha = 0.065f), Color.Transparent),
+                            center = Offset(size.width * 0.12f, 0f),
+                            radius = size.width.coerceAtLeast(180f) * 0.65f
+                        )
+                    } else null
                     val topHairline = if (subtle) {
-                        phaseBright.copy(alpha = 0.10f)
+                        phaseBright.copy(alpha = 0.14f)
                     } else {
-                        phaseBright.copy(alpha = 0.22f)
+                        phaseBright.copy(alpha = 0.30f)
                     }
                     onDrawBehind {
                         drawRect(baseFill)
+                        if (facetBrush != null) drawRect(facetBrush, alpha = 0.42f)
                         drawRect(topSatin)
+                        if (jewelCornerGlow != null) drawRect(jewelCornerGlow)
                         if (size.width > 36.dp.toPx()) {
                             drawLine(
                                 color = topHairline,
-                                start = Offset(strokePx * 2f, strokePx * 0.9f),
-                                end = Offset(size.width - strokePx * 2f, strokePx * 0.9f),
-                                strokeWidth = strokePx * 0.85f
+                                start = Offset(strokePx * 2f, strokePx * 0.95f),
+                                end = Offset(size.width - strokePx * 2f, strokePx * 0.95f),
+                                strokeWidth = strokePx * 0.9f
                             )
                         }
                     }
                 }
-                .border(if (subtle) 0.85.dp else 0.9.dp, obsidianRimBrush, shape)
+                .border(if (subtle) 0.9.dp else 1.dp, obsidianRimBrush, shape)
         }
     }
 }
@@ -740,48 +865,76 @@ fun Modifier.ironGlassBar(
         .clip(shape)
         .drawWithCache {
             val strokePx = 1.dp.toPx()
+            val cellPx = (2.dp.toPx()).roundToInt().coerceIn(4, 8)
+            val grainScale = density.roundToInt().coerceIn(1, 3)
+            val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
+            val facetCellPx = (14.dp.toPx()).roundToInt().coerceIn(20, 44)
+            val shaderBrush = when (tokens.uiTheme) {
+                UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
+                UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = true)
+                UiTheme.AMOLED_STEALTH -> if (!tokens.performance.noAmbientGlow) {
+                    ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
+                } else null
+                UiTheme.XMATERIAL_YOU -> if (!tokens.performance.noAmbientGlow) {
+                    ThemeMaterialShaderCache.getPrismaticFacetBrush(cellPx = facetCellPx, isNight = tokens.isXMaterialNight)
+                } else null
+                UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO -> null
+            }
             val primaryBrush = when (tokens.uiTheme) {
                 UiTheme.MATERIAL_YOU -> Brush.verticalGradient(
-                    0.0f to tokens.palette.primary.copy(alpha = 0.04f),
+                    0.0f to tokens.palette.primary.copy(alpha = 0.06f),
+                    0.65f to tokens.palette.tertiary.copy(alpha = 0.02f),
                     1.0f to Color.Transparent
                 )
                 UiTheme.UBUNTU_YARU -> Brush.verticalGradient(
-                    0.0f to Color(0xFF331D2D).copy(alpha = 0.85f),
-                    1.0f to Color(0xFF232025)
+                    0.0f to Color(0xFF3A1E32).copy(alpha = 0.88f),
+                    1.0f to Color(0xFF231F25)
                 )
                 UiTheme.CARBON_FORGE -> Brush.verticalGradient(
-                    0.0f to Color.White.copy(alpha = 0.04f),
-                    1.0f to Color.Black.copy(alpha = 0.16f)
+                    0.0f to Color.White.copy(alpha = 0.06f),
+                    0.5f to Color.Transparent,
+                    1.0f to Color.Black.copy(alpha = 0.22f)
                 )
-                UiTheme.AMOLED_STEALTH -> null
+                UiTheme.AMOLED_STEALTH -> if (!tokens.performance.noAmbientGlow) {
+                    Brush.verticalGradient(
+                        0.0f to tokens.accentColor.copy(alpha = 0.045f),
+                        0.45f to Color.Transparent
+                    )
+                } else null
                 UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) {
                     Brush.verticalGradient(
-                        0.0f to Color(0xF4264C82),
-                        0.47f to Color(0xF21B3966),
+                        0.0f to Color(0xF628508A),
+                        0.47f to Color(0xF41C3C6C),
                         0.51f to Color(0xF2152E54),
-                        1.0f to Color(0xF5122E4D)
+                        1.0f to Color(0xF6133252)
                     )
                 } else {
                     Brush.verticalGradient(
-                        0.0f to Color(0xFCFFFFFF),
-                        0.47f to Color(0xF5EBF8FF),
-                        0.51f to Color(0xF2DEF3FF),
-                        1.0f to Color(0xF6E9FCF3)
+                        0.0f to Color(0xFEFFFFFF),
+                        0.47f to Color(0xF6EAF8FF),
+                        0.51f to Color(0xF4DCF3FF),
+                        1.0f to Color(0xF7E8FDF3)
                     )
                 }
                 UiTheme.XMATERIAL_YOU -> Brush.verticalGradient(
-                    0.0f to Color(0xFA090A0E),
-                    0.55f to Color(0xF80B0C11),
-                    1.0f to Color(0xF60C0D12)
+                    0.0f to Color(0xFA0C0D13),
+                    0.55f to Color(0xF80A0B10),
+                    1.0f to Color(0xF80E1016)
                 )
             }
+            val xMaterialSheen = if (tokens.uiTheme == UiTheme.XMATERIAL_YOU) {
+                Brush.verticalGradient(
+                    0.0f to tokens.phaseTokens.accentBright.copy(alpha = 0.04f),
+                    0.5f to Color.Transparent
+                )
+            } else null
             val aeroGlossOverlay = if (tokens.uiTheme == UiTheme.FRUTIGER_AERO) {
                 Brush.verticalGradient(
-                    0.0f to if (tokens.isAeroNight) Color(0xFFE0F4FF).copy(alpha = 0.22f) else Color.White.copy(alpha = 0.65f),
-                    0.46f to if (tokens.isAeroNight) Color(0xFFBAE6FD).copy(alpha = 0.06f) else Color.White.copy(alpha = 0.18f),
+                    0.0f to if (tokens.isAeroNight) Color(0xFFE0F4FF).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.72f),
+                    0.46f to if (tokens.isAeroNight) Color(0xFFBAE6FD).copy(alpha = 0.07f) else Color.White.copy(alpha = 0.20f),
                     0.48f to Color.Transparent,
                     0.80f to Color.Transparent,
-                    1.0f to if (tokens.isAeroNight) Color(0xFF7DD3FC).copy(alpha = 0.10f) else Color.White.copy(alpha = 0.20f)
+                    1.0f to if (tokens.isAeroNight) Color(0xFF7DD3FC).copy(alpha = 0.12f) else Color.White.copy(alpha = 0.24f)
                 )
             } else null
             val solidBg = when (tokens.uiTheme) {
@@ -789,12 +942,17 @@ fun Modifier.ironGlassBar(
                 UiTheme.UBUNTU_YARU -> Color(0xFF221E24)
                 UiTheme.CARBON_FORGE -> tint
                 UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-                UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xF4162E52) else Color(0xF5F2FBFF)
+                UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xF4162E52) else Color(0xF6F2FBFF)
                 UiTheme.XMATERIAL_YOU -> Color(0xFA090A0E)
             }
             onDrawBehind {
                 drawRect(solidBg)
+                if (shaderBrush != null) {
+                    val alpha = if (tokens.uiTheme == UiTheme.XMATERIAL_YOU) 0.32f else 0.85f
+                    drawRect(shaderBrush, alpha = alpha)
+                }
                 if (primaryBrush != null) drawRect(primaryBrush)
+                if (xMaterialSheen != null) drawRect(xMaterialSheen)
                 if (aeroGlossOverlay != null) drawRect(aeroGlossOverlay)
                 if (topHairlineColor != null) {
                     drawLine(
@@ -1018,6 +1176,13 @@ fun IronPulseButton(
 ) {
     val tokens = LocalIronPulseTokens.current
     if (tokens.uiTheme != UiTheme.FRUTIGER_AERO) {
+        val themedBorder = border ?: when (tokens.uiTheme) {
+            UiTheme.CARBON_FORGE -> BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
+            UiTheme.AMOLED_STEALTH -> BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.58f))
+            UiTheme.XMATERIAL_YOU -> BorderStroke(0.95.dp, tokens.phaseTokens.accentBright.copy(alpha = 0.44f))
+            UiTheme.UBUNTU_YARU -> BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+            else -> null
+        }
         Button(
             onClick = onClick,
             modifier = modifier.tactilePress(
@@ -1028,7 +1193,7 @@ fun IronPulseButton(
             enabled = enabled,
             shape = shape,
             colors = colors,
-            border = border,
+            border = themedBorder,
             contentPadding = contentPadding,
             content = content
         )

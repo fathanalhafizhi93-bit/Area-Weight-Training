@@ -35,9 +35,9 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -168,17 +168,19 @@ private class StaggeredCardEntranceNode(
         if (!isAttached) return
         animJob?.cancel()
         revealedForActiveSession = true
-        val delayMs = if (index in 0..6) index * 34L else 0L
-        animJob = coroutineScope.launch {
+        animJob = coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             alphaAnim.snapTo(0f)
             offsetFractionAnim.snapTo(1f)
             scaleAnim.snapTo(0.965f)
-            if (delayMs > 0L) {
-                delay(delayMs)
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                alphaAnim.animateTo(1f, tween(210, easing = FastOutSlowInEasing))
             }
-            launch { alphaAnim.animateTo(1f, tween(210, easing = FastOutSlowInEasing)) }
-            launch { offsetFractionAnim.animateTo(0f, IronPulseMotion.StaggerCardSpring) }
-            launch { scaleAnim.animateTo(1f, IronPulseMotion.StaggerCardSpring) }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                offsetFractionAnim.animateTo(0f, IronPulseMotion.StaggerCardSpring)
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                scaleAnim.animateTo(1f, IronPulseMotion.StaggerCardSpring)
+            }
         }
     }
 
@@ -248,9 +250,13 @@ private class FluidModalEntranceNode : Modifier.Node(), LayoutModifierNode {
     private val alphaAnim = Animatable(0f)
 
     override fun onAttach() {
-        coroutineScope.launch {
-            launch { scaleAnim.animateTo(1f, IronPulseMotion.ModalEntranceSpring) }
-            launch { alphaAnim.animateTo(1f, IronPulseMotion.ShortFadeSpec) }
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                scaleAnim.animateTo(1f, IronPulseMotion.ModalEntranceSpring)
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                alphaAnim.animateTo(1f, IronPulseMotion.ShortFadeSpec)
+            }
         }
     }
 
@@ -319,7 +325,7 @@ private class TactilePressNode(
         if (!isAttached) return
         val target = if (next) pressedScale else 1f
         animJob?.cancel()
-        animJob = coroutineScope.launch {
+        animJob = coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             scaleAnim.animateTo(target, IronPulseMotion.PressSpring)
         }
     }

@@ -4,9 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -245,36 +247,55 @@ fun IronPulseRoot(
                         }
                     }
 
-                    var prevShowFloating by remember { mutableStateOf(showFloatingMascot) }
-                    var isReturningHome by remember { mutableStateOf(false) }
+                    val prevFloatStateRef = remember { booleanArrayOf(showFloatingMascot) }
+                    var hadStartedReturn by remember { mutableStateOf(false) }
                     var homeLandingTick by remember { mutableIntStateOf(0) }
-                    val resolvedReturningHome = if (prevShowFloating != showFloatingMascot) {
-                        prevShowFloating && !showFloatingMascot
-                    } else {
-                        isReturningHome
-                    }
-                    LaunchedEffect(showFloatingMascot) {
-                        isReturningHome = resolvedReturningHome
-                        prevShowFloating = showFloatingMascot
+                    SideEffect {
+                        val prev = prevFloatStateRef[0]
+                        if (prev != showFloatingMascot) {
+                            if (prev && !showFloatingMascot) {
+                                hadStartedReturn = true
+                            } else if (showFloatingMascot) {
+                                hadStartedReturn = false
+                            }
+                            prevFloatStateRef[0] = showFloatingMascot
+                        }
                     }
 
-                    val morphProgressState = animateFloatAsState(
-                        targetValue = if (showFloatingMascot) 1f else 0f,
-                        animationSpec = when {
-                            noAnim -> tween(0)
-                            resolvedReturningHome -> IronPulseMotion.ReturnMorphSpring
-                            else -> IronPulseMotion.MorphSpring
-                        },
-                        finishedListener = { finalVal ->
-                            if (!showFloatingMascot && isReturningHome && finalVal <= 0.02f) {
-                                isReturningHome = false
-                                if (!noAnim) {
-                                    homeLandingTick += 1
-                                }
+                    val morphTransition = updateTransition(
+                        targetState = showFloatingMascot,
+                        label = "mascotMorphTransition"
+                    )
+                    LaunchedEffect(
+                        morphTransition.currentState,
+                        morphTransition.targetState,
+                        morphTransition.isRunning,
+                        noAnim
+                    ) {
+                        if (!morphTransition.isRunning &&
+                            !morphTransition.currentState &&
+                            !morphTransition.targetState &&
+                            hadStartedReturn
+                        ) {
+                            hadStartedReturn = false
+                            if (!noAnim) {
+                                homeLandingTick += 1
+                            }
+                        }
+                    }
+
+                    val morphProgressState = morphTransition.animateFloat(
+                        transitionSpec = {
+                            when {
+                                noAnim -> snap()
+                                initialState && !targetState -> IronPulseMotion.ReturnMorphSpring
+                                else -> IronPulseMotion.MorphSpring
                             }
                         },
                         label = "mascotMorphProgress"
-                    )
+                    ) { floating ->
+                        if (floating) 1f else 0f
+                    }
 
                     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -701,10 +722,14 @@ private fun PersistedTabStage(
     renderTab: @Composable (AppTab, IronPulseUiState) -> Unit
 ) {
     var visitedTabs by remember { mutableStateOf(setOf(activeTab)) }
-    var previousTab by remember { mutableStateOf<AppTab?>(null) }
-    var transitionFromTab by remember { mutableStateOf<AppTab?>(null) }
-    var transitionDir by remember { mutableIntStateOf(1) }
-    val progress = remember { Animatable(1f) }
+    val activeVisitedTabs = remember(visitedTabs, activeTab) {
+        if (activeTab in visitedTabs) visitedTabs else visitedTabs + activeTab
+    }
+    SideEffect {
+        if (activeTab !in visitedTabs) {
+            visitedTabs = visitedTabs + activeTab
+        }
+    }
 
     // Pre-warm unvisited tabs smoothly in idle frames right after Frame 1 settles
     LaunchedEffect(prewarmEnabled) {
@@ -726,30 +751,16 @@ private fun PersistedTabStage(
         }
     }
 
-    LaunchedEffect(activeTab) {
-        val needsFirstBuild = activeTab !in visitedTabs
-        if (needsFirstBuild) {
-            visitedTabs = visitedTabs + activeTab
-        }
-        val prev = previousTab
-        if (prev != null && prev != activeTab && !noAnim) {
-            transitionFromTab = prev
-            transitionDir = if (activeTab.ordinal >= prev.ordinal) 1 else -1
-            progress.snapTo(0f)
-            if (needsFirstBuild) {
-                withFrameNanos { }
-            }
-            progress.animateTo(1f, IronPulseMotion.TabSlideSpring)
-            transitionFromTab = null
-        } else {
-            transitionFromTab = null
-            progress.snapTo(1f)
-        }
-        previousTab = activeTab
+    val tabTransition = updateTransition(
+        targetState = activeTab,
+        label = "persistedTabStage"
+    )
+    val transitionDir = remember(tabTransition.currentState, tabTransition.targetState) {
+        if (tabTransition.targetState.ordinal >= tabTransition.currentState.ordinal) 1 else -1
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (visitedTabs.size > 1) {
+        if (activeVisitedTabs.size > 1) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -765,10 +776,20 @@ private fun PersistedTabStage(
             )
         }
 
-        visitedTabs.forEach { tab ->
+        activeVisitedTabs.forEach { tab ->
             key(tab) {
                 val isCurrent = tab == activeTab
-                val isOutgoing = !isCurrent && tab == transitionFromTab && !noAnim
+                val tabWeightState = tabTransition.animateFloat(
+                    transitionSpec = {
+                        if (noAnim) snap() else IronPulseMotion.TabSlideSpring
+                    },
+                    label = "tabWeight_${tab.name}"
+                ) { stateTab ->
+                    if (stateTab == tab) 1f else 0f
+                }
+                val isOutgoing by remember(tab, isCurrent, noAnim) {
+                    derivedStateOf { !isCurrent && !noAnim && tabWeightState.value > 0.002f }
+                }
                 var cachedTabState by remember { mutableStateOf(state) }
                 if (isCurrent) {
                     cachedTabState = state
@@ -782,16 +803,16 @@ private fun PersistedTabStage(
                     .fillMaxSize()
                     .zIndex(z)
                     .graphicsLayer {
+                        val weight = tabWeightState.value
                         if (isCurrent) {
-                            val p = progress.value
-                            val clampedP = p.coerceIn(0f, 1f)
+                            val clampedP = weight.coerceIn(0f, 1f)
                             alpha = if (noAnim) 1f else clampedP
-                            translationX = if (noAnim) 0f else (1f - p) * transitionDir * (size.width * 0.065f)
+                            translationX = if (noAnim) 0f else (1f - weight) * transitionDir * (size.width * 0.065f)
                             val s = if (noAnim) 1f else lerp(0.978f, 1f, clampedP)
                             scaleX = s
                             scaleY = s
                         } else if (isOutgoing) {
-                            val p = progress.value.coerceIn(0f, 1f)
+                            val p = (1f - weight).coerceIn(0f, 1f)
                             alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
                             translationX = -p * transitionDir * (size.width * 0.045f)
                             val s = lerp(1f, 0.97f, p)

@@ -10,7 +10,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -102,6 +104,7 @@ import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
 import com.fathan.ironpulse.ui.theme.ironGlassBar
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
@@ -114,6 +117,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val clock24Sdf = object : ThreadLocal<SimpleDateFormat>() {
     override fun initialValue(): SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.US)
@@ -169,16 +173,31 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
             .drawWithCache {
                 val canvasColor = tokens.canvasBg
                 val strokePx = 1.dp.toPx()
+                val cellPx = (2.5.dp.toPx()).roundToInt().coerceIn(5, 10)
+                val grainScale = density.roundToInt().coerceIn(1, 3)
+                val matrixCellPx = (3.5.dp.toPx()).roundToInt().coerceIn(6, 11)
+                val facetCellPx = (18.dp.toPx()).roundToInt().coerceIn(24, 48)
+                val backdropShader = when {
+                    tokens.uiTheme == UiTheme.CARBON_FORGE ->
+                        ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
+                    tokens.uiTheme == UiTheme.UBUNTU_YARU ->
+                        ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = true)
+                    tokens.uiTheme == UiTheme.AMOLED_STEALTH && !suppressGlow ->
+                        ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
+                    tokens.uiTheme == UiTheme.XMATERIAL_YOU && !suppressGlow ->
+                        ThemeMaterialShaderCache.getPrismaticFacetBrush(cellPx = facetCellPx, isNight = tokens.isXMaterialNight)
+                    else -> null
+                }
                 val baseGradient = when (tokens.uiTheme) {
                     UiTheme.UBUNTU_YARU -> Brush.verticalGradient(
-                        0.0f to Color(0xFF47163B),
-                        0.32f to Color(0xFF2D1628),
+                        0.0f to Color(0xFF4F1841),
+                        0.32f to Color(0xFF31172C),
                         0.68f to Color(0xFF1E1B20),
                         1.0f to Color(0xFF151317)
                     )
                     UiTheme.CARBON_FORGE -> Brush.radialGradient(
-                        colors = listOf(Color(0xFF171C26), Color(0xFF0A0C10), Color(0xFF050608)),
-                        center = Offset(size.width * 0.5f, size.height * 0.18f),
+                        colors = listOf(Color(0xFF1A202C), Color(0xFF0B0D12), Color(0xFF050608)),
+                        center = Offset(size.width * 0.5f, size.height * 0.16f),
                         radius = size.height.coerceAtLeast(800f) * 0.85f
                     )
                     UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) {
@@ -206,23 +225,27 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         1.0f to tokens.palette.surfaceContainerLowest
                     )
                     UiTheme.XMATERIAL_YOU -> Brush.verticalGradient(
-                        0.0f to Color(0xFF0A0B0F),
-                        0.38f to Color(0xFF07080B),
+                        0.0f to Color(0xFF0C0D12),
+                        0.38f to Color(0xFF08090C),
                         0.76f to Color(0xFF060608),
-                        1.0f to Color(0xFF090A0D)
+                        1.0f to Color(0xFF0A0B10)
                     )
                     UiTheme.AMOLED_STEALTH -> null
                 }
                 val topGlow = when {
                     suppressGlow -> null
-                    tokens.uiTheme == UiTheme.AMOLED_STEALTH -> null
+                    tokens.uiTheme == UiTheme.AMOLED_STEALTH -> Brush.radialGradient(
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.06f), Color.Transparent),
+                        center = Offset(size.width * 0.5f, 0f),
+                        radius = size.width.coerceAtLeast(480f) * 0.72f
+                    )
                     tokens.uiTheme == UiTheme.CARBON_FORGE -> Brush.radialGradient(
-                        colors = listOf(tokens.accentColor.copy(alpha = 0.09f), Color.Transparent),
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.11f), Color.Transparent),
                         center = Offset(size.width * 0.88f, size.height * 0.12f),
                         radius = size.width.coerceAtLeast(480f) * 0.78f
                     )
                     tokens.uiTheme == UiTheme.UBUNTU_YARU -> Brush.radialGradient(
-                        colors = listOf(Color(0x3AE95420), Color(0x1A77216F), Color.Transparent),
+                        colors = listOf(Color(0x44E95420), Color(0x1E77216F), Color.Transparent),
                         center = Offset(size.width * 0.14f, size.height * 0.08f),
                         radius = size.width.coerceAtLeast(520f) * 0.96f
                     )
@@ -241,15 +264,15 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     }
                     tokens.uiTheme == UiTheme.XMATERIAL_YOU -> Brush.radialGradient(
                         colors = listOf(
-                            tokens.phaseTokens.accent.copy(alpha = 0.085f),
-                            tokens.phaseTokens.accentBright.copy(alpha = 0.03f),
+                            tokens.phaseTokens.accent.copy(alpha = 0.105f),
+                            tokens.phaseTokens.accentBright.copy(alpha = 0.036f),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.16f, size.height * 0.06f),
                         radius = size.width.coerceAtLeast(520f) * 0.88f
                     )
                     else -> Brush.radialGradient(
-                        colors = listOf(tokens.accentColor.copy(alpha = 0.12f), Color.Transparent),
+                        colors = listOf(tokens.accentColor.copy(alpha = 0.14f), Color.Transparent),
                         center = Offset(size.width * 0.20f, size.height * 0.06f),
                         radius = size.width.coerceAtLeast(560f) * 0.88f
                     )
@@ -348,6 +371,16 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                 onDrawBehind {
                     drawRect(canvasColor)
                     if (baseGradient != null) drawRect(baseGradient)
+                    if (backdropShader != null) {
+                        val shaderAlpha = when (tokens.uiTheme) {
+                            UiTheme.CARBON_FORGE -> 0.58f
+                            UiTheme.UBUNTU_YARU -> 0.72f
+                            UiTheme.AMOLED_STEALTH -> 0.45f
+                            UiTheme.XMATERIAL_YOU -> 0.36f
+                            else -> 0.5f
+                        }
+                        drawRect(backdropShader, alpha = shaderAlpha)
+                    }
                     if (topGlow != null) drawRect(topGlow)
                     if (secondaryGlow != null) drawRect(secondaryGlow)
 
@@ -626,6 +659,7 @@ fun IronPulseTopBar(
                 )
 
                 val ctaShape = tokens.buttonShape
+                val isYaru = theme == UiTheme.UBUNTU_YARU
                 Box(
                     modifier = Modifier
                         .height(38.dp)
@@ -649,24 +683,46 @@ fun IronPulseTopBar(
                                 isXMaterial -> Modifier
                                     .background(
                                         Brush.verticalGradient(
-                                            0.0f to Color(0xFF161820),
-                                            1.0f to Color(0xFF0D0E13)
+                                            0.0f to Color(0xFF1A1C26),
+                                            0.55f to Color(0xFF111319),
+                                            1.0f to Color(0xFF0C0D12)
                                         ),
                                         ctaShape
                                     )
-                                    .border(0.95.dp, tokens.phaseTokens.accent.copy(alpha = 0.62f), ctaShape)
+                                    .border(
+                                        0.95.dp,
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                tokens.phaseTokens.accentBright.copy(alpha = 0.78f),
+                                                tokens.phaseTokens.accent.copy(alpha = 0.44f)
+                                            )
+                                        ),
+                                        ctaShape
+                                    )
                                 isStealth -> Modifier
                                     .background(Color(0xFF000000), ctaShape)
-                                    .border(1.1.dp, tokens.accentColor, ctaShape)
+                                    .border(1.15.dp, tokens.accentColor.copy(alpha = 0.90f), ctaShape)
                                 isCarbon -> Modifier
                                     .background(
-                                        Brush.horizontalGradient(
-                                            listOf(tokens.accentColor, tokens.accentColor.copy(alpha = 0.84f))
+                                        Brush.verticalGradient(
+                                            0.0f to tokens.accentColor,
+                                            1.0f to tokens.accentColor.copy(alpha = 0.82f)
                                         ),
                                         ctaShape
                                     )
-                                    .border(1.dp, Color.White.copy(alpha = 0.30f), ctaShape)
-                                else -> Modifier.background(tokens.accentColor, ctaShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.36f), ctaShape)
+                                isYaru -> Modifier
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color(0xFFF06332),
+                                            1.0f to Color(0xFFD14517)
+                                        ),
+                                        ctaShape
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.24f), ctaShape)
+                                else -> Modifier
+                                    .background(tokens.accentColor, ctaShape)
+                                    .border(0.85.dp, Color.White.copy(alpha = 0.20f), ctaShape)
                             }
                         )
                         .clickable(onClick = onTestAlarm)
@@ -845,7 +901,17 @@ fun IronPulseBottomNav(
             .then(
                 if (isYaru) {
                     Modifier
-                        .background(Color(0xEC161318))
+                        .drawWithCache {
+                            val grainScale = density.roundToInt().coerceIn(1, 3)
+                            val grain = ThemeMaterialShaderCache.getYaruMatteGrainBrush(grainScale, subtle = true)
+                            val topHairline = Color.White.copy(alpha = 0.08f)
+                            val strokePx = 1.dp.toPx()
+                            onDrawBehind {
+                                drawRect(Color(0xF0171319))
+                                drawRect(grain)
+                                drawLine(topHairline, Offset(0f, strokePx * 0.5f), Offset(size.width, strokePx * 0.5f), strokePx)
+                            }
+                        }
                         .navigationBarsPadding()
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 } else {
@@ -864,8 +930,19 @@ fun IronPulseBottomNav(
                     if (isYaru) {
                         Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF2B252C))
-                            .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(16.dp))
+                            .drawWithCache {
+                                val grainScale = density.roundToInt().coerceIn(1, 3)
+                                val grain = ThemeMaterialShaderCache.getYaruMatteGrainBrush(grainScale, subtle = true)
+                                val dockGrad = Brush.verticalGradient(
+                                    0.0f to Color(0xFF332B35),
+                                    1.0f to Color(0xFF252127)
+                                )
+                                onDrawBehind {
+                                    drawRect(dockGrad)
+                                    drawRect(grain)
+                                }
+                            }
+                            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(16.dp))
                     } else {
                         Modifier
                     }
@@ -876,17 +953,24 @@ fun IronPulseBottomNav(
             val slotWidth = maxWidth / items.size
             val slotWidthPx = with(LocalDensity.current) { slotWidth.toPx() }
 
-            // Exact-aligned gliding GPU spring indicator customized per OS
+            // Exact-aligned gliding GPU spring indicator customized per OS — Frame-0 updateTransition
             if (activeIdx >= 0) {
-                val indicatorIndexState = animateFloatAsState(
-                    targetValue = activeIdx.toFloat(),
-                    animationSpec = if (tokens.performance.noAnimations) {
-                        tween(0)
-                    } else {
-                        IronPulseMotion.IndicatorFloatSpring
+                val indicatorTransition = updateTransition(
+                    targetState = activeIdx,
+                    label = "navIndicatorTransition"
+                )
+                val indicatorIndexState = indicatorTransition.animateFloat(
+                    transitionSpec = {
+                        if (tokens.performance.noAnimations) {
+                            snap()
+                        } else {
+                            IronPulseMotion.IndicatorFloatSpring
+                        }
                     },
                     label = "navIndicatorIndex"
-                )
+                ) { idxState ->
+                    idxState.toFloat()
+                }
 
                 Box(
                     modifier = Modifier
@@ -904,19 +988,24 @@ fun IronPulseBottomNav(
                 ) {
                     when {
                         isYaru -> {
-                            // Ubuntu Dock tile highlight + clean bottom orange pill dash with generous label clearance
+                            // Ubuntu Dock tile highlight + warm inner sheen + orange dock indicator pip
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(11.dp))
-                                    .background(Color.White.copy(alpha = 0.085f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(11.dp)),
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color.White.copy(alpha = 0.12f),
+                                            1.0f to Color(0xFFE95420).copy(alpha = 0.08f)
+                                        )
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(11.dp)),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .padding(bottom = 2.dp)
-                                        .width(18.dp)
+                                        .width(20.dp)
                                         .height(2.5.dp)
                                         .clip(RoundedCornerShape(999.dp))
                                         .background(Color(0xFFE95420))
@@ -938,7 +1027,7 @@ fun IronPulseBottomNav(
                                     )
                                     .border(
                                         1.dp,
-                                        if (tokens.isAeroNight) Color(0xCCE0F4FF) else Color.White.copy(alpha = 0.85f),
+                                        if (tokens.isAeroNight) Color(0xCCE0F4FF) else Color.White.copy(alpha = 0.88f),
                                         RoundedCornerShape(999.dp)
                                     )
                             )
@@ -949,27 +1038,32 @@ fun IronPulseBottomNav(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CutCornerShape(6.dp))
-                                    .background(tokens.accentColor.copy(alpha = 0.12f))
-                                    .border(1.dp, tokens.accentColor.copy(alpha = 0.42f), CutCornerShape(6.dp)),
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to tokens.accentColor.copy(alpha = 0.20f),
+                                            1.0f to tokens.accentColor.copy(alpha = 0.08f)
+                                        )
+                                    )
+                                    .border(1.dp, tokens.accentColor.copy(alpha = 0.52f), CutCornerShape(6.dp)),
                                 contentAlignment = Alignment.TopCenter
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .width(26.dp)
+                                        .width(28.dp)
                                         .height(2.5.dp)
                                         .background(tokens.accentColor)
                                 )
                             }
                         }
                         isStealth -> {
-                            // Crisp single-layer Tactical HUD corner brackets around active slot
+                            // Crisp Tactical HUD corner brackets + bottom telemetry tick around active slot
                             Canvas(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(vertical = 6.dp, horizontal = 5.dp)
                             ) {
                                 val arm = 7.dp.toPx()
-                                val sw = 1.4.dp.toPx()
+                                val sw = 1.45.dp.toPx()
                                 val c = tokens.accentColor
                                 drawLine(c, Offset(0f, 0f), Offset(arm, 0f), sw)
                                 drawLine(c, Offset(0f, 0f), Offset(0f, arm), sw)
@@ -979,6 +1073,12 @@ fun IronPulseBottomNav(
                                 drawLine(c, Offset(0f, size.height), Offset(0f, size.height - arm), sw)
                                 drawLine(c, Offset(size.width, size.height), Offset(size.width - arm, size.height), sw)
                                 drawLine(c, Offset(size.width, size.height), Offset(size.width, size.height - arm), sw)
+                                drawLine(
+                                    c.copy(alpha = 0.45f),
+                                    Offset(size.width * 0.30f, size.height),
+                                    Offset(size.width * 0.70f, size.height),
+                                    sw * 0.9f
+                                )
                             }
                         }
                         isMaterialYou -> {
@@ -989,10 +1089,15 @@ fun IronPulseBottomNav(
                                     .height(32.dp)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(tokens.palette.secondaryContainer)
+                                    .border(
+                                        0.85.dp,
+                                        tokens.palette.primary.copy(alpha = 0.28f),
+                                        RoundedCornerShape(999.dp)
+                                    )
                             )
                         }
                         isXMaterial -> {
-                            // Clean Dark Obsidian capsule nav pod with subtle metallic jewel accent
+                            // Luxury Dark Obsidian capsule nav pod with brushed phase-metal gradient rim & jewel dash
                             val obsidianPodShape = RoundedCornerShape(999.dp)
                             Box(
                                 modifier = Modifier
@@ -1002,13 +1107,18 @@ fun IronPulseBottomNav(
                                     .clip(obsidianPodShape)
                                     .background(
                                         Brush.verticalGradient(
-                                            0.0f to Color(0xFF1A1C24),
+                                            0.0f to Color(0xFF1F222C),
                                             1.0f to Color(0xFF0E1015)
                                         )
                                     )
                                     .border(
-                                        0.85.dp,
-                                        tokens.phaseTokens.accent.copy(alpha = 0.45f),
+                                        0.95.dp,
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                tokens.phaseTokens.accentBright.copy(alpha = 0.65f),
+                                                tokens.phaseTokens.accent.copy(alpha = 0.35f)
+                                            )
+                                        ),
                                         obsidianPodShape
                                     ),
                                 contentAlignment = Alignment.TopCenter
@@ -1016,10 +1126,10 @@ fun IronPulseBottomNav(
                                 Box(
                                     modifier = Modifier
                                         .padding(top = 2.dp)
-                                        .width(18.dp)
+                                        .width(20.dp)
                                         .height(2.dp)
                                         .clip(RoundedCornerShape(999.dp))
-                                        .background(tokens.phaseTokens.accentBright.copy(alpha = 0.85f))
+                                        .background(tokens.phaseTokens.accentBright.copy(alpha = 0.92f))
                                 )
                             }
                         }
@@ -1046,11 +1156,18 @@ fun IronPulseBottomNav(
                         animationSpec = tween(if (tokens.performance.noAnimations) 0 else 180),
                         label = "navTint"
                     )
-                    val iconScaleState = animateFloatAsState(
-                        targetValue = if (isActive && !tokens.performance.noAnimations) 1.07f else 1f,
-                        animationSpec = IronPulseMotion.PressSpring,
-                        label = "navIconScale"
+                    val iconActiveTransition = updateTransition(
+                        targetState = isActive,
+                        label = "navIconTransition_${tab.name}"
                     )
+                    val iconScaleState = iconActiveTransition.animateFloat(
+                        transitionSpec = {
+                            if (tokens.performance.noAnimations) snap() else IronPulseMotion.PressSpring
+                        },
+                        label = "navIconScale"
+                    ) { active ->
+                        if (active && !tokens.performance.noAnimations) 1.07f else 1f
+                    }
 
                     Box(
                         modifier = Modifier

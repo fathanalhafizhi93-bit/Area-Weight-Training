@@ -68,6 +68,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -2038,10 +2039,11 @@ private fun ThemePreviewCard(
     }
 
     val outerBaseColor = if (selected) {
-        readableAccent.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f)
+        readableAccent.copy(alpha = if (tokens.isLightTheme) 0.16f else 0.18f)
     } else {
         tokens.controlBg
     }
+    val outerBorderColor = if (selected) readableAccent else tokens.surfaceBorderColor
     IronPulseTonalSurface(
         onClick = onSelect,
         shape = cardShape,
@@ -2049,9 +2051,18 @@ private fun ThemePreviewCard(
         isAccent = selected,
         pressedScale = 0.97f,
         border = BorderStroke(
-            width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) readableAccent else tokens.surfaceBorderColor
+            width = if (selected) 1.6.dp else 1.dp,
+            color = outerBorderColor
         ),
+        visualModifier = Modifier.drawWithCache {
+            val topHighlight = Brush.verticalGradient(
+                0.0f to if (selected) readableAccent.copy(alpha = 0.14f) else Color.White.copy(alpha = if (tokens.isLightTheme) 0.18f else 0.04f),
+                0.45f to Color.Transparent
+            )
+            onDrawBehind {
+                drawRect(topHighlight)
+            }
+        },
         modifier = modifier.testTag("theme_card_${theme.wireValue}")
     ) {
         Row(
@@ -2076,52 +2087,54 @@ private fun ThemePreviewCard(
                     DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
                 }
                 Brush.verticalGradient(
-                    0.0f to metal.copy(alpha = 0.44f),
-                    0.5f to Color.White.copy(alpha = 0.12f),
+                    0.0f to metal.copy(alpha = 0.54f),
+                    0.5f to Color.White.copy(alpha = 0.14f),
                     1.0f to Color(0xFF23252F)
                 )
             }
             Column(
                 modifier = Modifier
-                    .width(98.dp)
-                    .height(64.dp)
+                    .width(102.dp)
+                    .height(66.dp)
                     .clip(previewShape)
                     .drawWithCache {
                         val cellPx = (2.dp.toPx()).roundToInt().coerceIn(4, 8)
                         val grainScale = density.roundToInt().coerceIn(1, 3)
                         val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
+                        val facetCellPx = (12.dp.toPx()).roundToInt().coerceIn(18, 36)
                         val baseBg = when (theme) {
-                            UiTheme.MATERIAL_YOU -> Color(0xFF211E28)
-                            UiTheme.CARBON_FORGE -> Color(0xFF0E1117)
-                            UiTheme.UBUNTU_YARU -> Color(0xFF2A1626)
+                            UiTheme.MATERIAL_YOU -> Color(0xFF221E2A)
+                            UiTheme.CARBON_FORGE -> Color(0xFF0E1218)
+                            UiTheme.UBUNTU_YARU -> Color(0xFF2D1729)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xFF162A52) else Color(0xFFD6F3FF)
-                            UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B0F)
+                            UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B10)
                         }
                         val shaderBrush = when (theme) {
-                            UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
-                            UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = true)
-                            UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
-                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU -> null
+                            UiTheme.CARBON_FORGE -> ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = false)
+                            UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = false)
+                            UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = false)
+                            UiTheme.XMATERIAL_YOU -> ThemeMaterialShaderCache.getPrismaticFacetBrush(cellPx = facetCellPx, isNight = isXMaterialNightPreview)
+                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO -> null
                         }
                         val finishBrush = when (theme) {
                             UiTheme.MATERIAL_YOU -> Brush.radialGradient(
-                                colors = listOf(previewAccent.copy(alpha = 0.22f), Color.Transparent),
+                                colors = listOf(previewAccent.copy(alpha = 0.28f), Color.Transparent),
                                 center = Offset(size.width * 0.85f, size.height * 0.20f),
                                 radius = (size.width * 0.85f).coerceAtLeast(1f)
                             )
                             UiTheme.CARBON_FORGE -> Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = 0.07f),
+                                0.0f to Color.White.copy(alpha = 0.09f),
                                 0.45f to Color.Transparent,
-                                1.0f to Color.Black.copy(alpha = 0.28f)
+                                1.0f to Color.Black.copy(alpha = 0.30f)
                             )
                             UiTheme.UBUNTU_YARU -> Brush.linearGradient(
-                                colors = listOf(Color(0x4AE95420), Color(0x2E77216F), Color.Transparent),
+                                colors = listOf(Color(0x52E95420), Color(0x3677216F), Color.Transparent),
                                 start = Offset(0f, 0f),
                                 end = Offset(size.width, size.height)
                             )
                             UiTheme.AMOLED_STEALTH -> Brush.verticalGradient(
-                                0.0f to previewAccent.copy(alpha = 0.12f),
+                                0.0f to previewAccent.copy(alpha = 0.14f),
                                 0.45f to Color.Transparent
                             )
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) {
@@ -2148,7 +2161,7 @@ private fun ThemePreviewCard(
                                     DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
                                 }
                                 Brush.verticalGradient(
-                                    0.0f to phaseMetal.copy(alpha = 0.08f),
+                                    0.0f to phaseMetal.copy(alpha = 0.12f),
                                     0.45f to Color.Transparent,
                                     1.0f to Color(0xFF06070A)
                                 )
@@ -2181,12 +2194,15 @@ private fun ThemePreviewCard(
                         } else null
                         val xMatSheen = if (isXMaterialPreview) {
                             Brush.verticalGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.045f), Color.Transparent)
+                                colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
                             )
                         } else null
                         onDrawBehind {
                             drawRect(baseBg)
-                            if (shaderBrush != null) drawRect(shaderBrush)
+                            if (shaderBrush != null) {
+                                val sAlpha = if (theme == UiTheme.XMATERIAL_YOU) 0.55f else 0.90f
+                                drawRect(shaderBrush, alpha = sAlpha)
+                            }
                             drawRect(finishBrush)
                             if (aeroFlareBrush != null) {
                                 drawCircle(
@@ -2216,9 +2232,9 @@ private fun ThemePreviewCard(
                                     path = aeroGlossDome,
                                     brush = Brush.verticalGradient(
                                         if (isAeroNightPreview) {
-                                            listOf(Color(0x4DE0F4FF), Color(0x14BAE6FD))
+                                            listOf(Color(0x52E0F4FF), Color(0x16BAE6FD))
                                         } else {
-                                            listOf(Color(0x8CFFFFFF), Color(0x28FFFFFF))
+                                            listOf(Color(0x92FFFFFF), Color(0x2CFFFFFF))
                                         }
                                     )
                                 )
@@ -2227,19 +2243,31 @@ private fun ThemePreviewCard(
                                 drawRect(xMatSheen)
                             }
                             if (theme == UiTheme.AMOLED_STEALTH) {
-                                val bLen = 5.dp.toPx()
+                                val bLen = 5.5.dp.toPx()
                                 val bPad = 2.dp.toPx()
-                                val bColor = previewAccent.copy(alpha = 0.85f)
-                                val bSw = 1.1.dp.toPx()
+                                val bColor = previewAccent.copy(alpha = 0.90f)
+                                val bSw = 1.15.dp.toPx()
                                 drawLine(bColor, Offset(bPad, bPad), Offset(bPad + bLen, bPad), bSw)
                                 drawLine(bColor, Offset(bPad, bPad), Offset(bPad, bPad + bLen), bSw)
+                                drawLine(bColor, Offset(size.width - bPad, bPad), Offset(size.width - bPad - bLen, bPad), bSw)
+                                drawLine(bColor, Offset(size.width - bPad, bPad), Offset(size.width - bPad, bPad + bLen), bSw)
+                                drawLine(bColor, Offset(bPad, size.height - bPad), Offset(bPad + bLen, size.height - bPad), bSw)
+                                drawLine(bColor, Offset(bPad, size.height - bPad), Offset(bPad, size.height - bPad - bLen), bSw)
                                 drawLine(bColor, Offset(size.width - bPad, size.height - bPad), Offset(size.width - bPad - bLen, size.height - bPad), bSw)
                                 drawLine(bColor, Offset(size.width - bPad, size.height - bPad), Offset(size.width - bPad, size.height - bPad - bLen), bSw)
                             } else if (theme == UiTheme.CARBON_FORGE) {
                                 drawRect(
                                     color = previewAccent,
                                     topLeft = Offset(0f, 14.dp.toPx()),
-                                    size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height - 20.dp.toPx())
+                                    size = androidx.compose.ui.geometry.Size(2.2.dp.toPx(), size.height - 20.dp.toPx())
+                                )
+                            } else if (theme == UiTheme.UBUNTU_YARU) {
+                                drawLine(
+                                    color = Color(0xFFE95420),
+                                    start = Offset(size.width * 0.34f, size.height - 2.dp.toPx()),
+                                    end = Offset(size.width * 0.66f, size.height - 2.dp.toPx()),
+                                    strokeWidth = 2.dp.toPx(),
+                                    cap = StrokeCap.Round
                                 )
                             }
                         }
@@ -2251,11 +2279,11 @@ private fun ThemePreviewCard(
                             Modifier.border(
                                 1.dp,
                                 when (theme) {
-                                    UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.22f)
+                                    UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.26f)
                                     UiTheme.UBUNTU_YARU -> Color(0xFF141414)
-                                    UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.45f)
-                                    UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xA65BC6FA) else Color(0xB80082C8)
-                                    else -> previewAccent.copy(alpha = 0.30f)
+                                    UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.52f)
+                                    UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xB45BC6FA) else Color(0xC20082C8)
+                                    else -> previewAccent.copy(alpha = 0.36f)
                                 },
                                 previewShape
                             )
@@ -2269,12 +2297,12 @@ private fun ThemePreviewCard(
                         .height(14.dp)
                         .background(
                             when (theme) {
-                                UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xCC1E3D6B) else Color.White.copy(alpha = 0.62f)
+                                UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xCC1E3D6B) else Color.White.copy(alpha = 0.66f)
                                 UiTheme.XMATERIAL_YOU -> Color(0xFF101218)
                                 UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
                                 UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
                                 UiTheme.CARBON_FORGE -> Color(0xCC181E28)
-                                UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.06f)
+                                UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.08f)
                             }
                         )
                         .padding(horizontal = 6.dp),

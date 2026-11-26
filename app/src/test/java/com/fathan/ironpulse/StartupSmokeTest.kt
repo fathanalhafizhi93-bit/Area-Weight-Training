@@ -1,7 +1,10 @@
 package com.fathan.ironpulse
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -3278,6 +3281,240 @@ class StartupSmokeTest {
         composeRule.onNodeWithTag("tactile_secondary_btn").performClick()
         assertEquals(2, primaryClicks)
         assertEquals(2, secondaryClicks)
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun frameZeroMotion_staggeredRevealAndTransitions_startAtFrameZeroWithoutDispatchLag() {
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+        var activeTabSetter: ((AppTab) -> Unit)? = null
+        var shouldFloatSetter: ((Boolean) -> Unit)? = null
+        var scheduleWeightRef: androidx.compose.runtime.State<Float>? = null
+        var morphStateRef: androidx.compose.runtime.State<Float>? = null
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                var activeTab by remember { mutableStateOf(AppTab.TODAY) }
+                var shouldFloat by remember { mutableStateOf(false) }
+                activeTabSetter = { activeTab = it }
+                shouldFloatSetter = { shouldFloat = it }
+
+                val tabTransition = updateTransition(
+                    targetState = activeTab,
+                    label = "testTabTransition"
+                )
+                val scheduleWeight = tabTransition.animateFloat(
+                    transitionSpec = { IronPulseMotion.TabSlideSpring },
+                    label = "testScheduleWeight"
+                ) { tab -> if (tab == AppTab.SCHEDULE) 1f else 0f }
+                scheduleWeightRef = scheduleWeight
+
+                val morphTransition = updateTransition(
+                    targetState = shouldFloat,
+                    label = "testMorphTransition"
+                )
+                val morphProgress = morphTransition.animateFloat(
+                    transitionSpec = {
+                        if (initialState && !targetState) IronPulseMotion.ReturnMorphSpring else IronPulseMotion.MorphSpring
+                    },
+                    label = "testMorphProgress"
+                ) { floating -> if (floating) 1f else 0f }
+                morphStateRef = morphProgress
+
+                IronPulseTheme(
+                    prefs = AppPreferences(
+                        uiTheme = UiTheme.CARBON_FORGE,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .staggeredCardEntrance(index = 4, active = true, disabledByPerf = false)
+                                .testTag("frame0_stagger_card_4")
+                        ) {
+                            Text("Stagger Card 4")
+                        }
+                        IronPulseBottomNav(
+                            activeTab = activeTab,
+                            restTimerFlow = restFlow,
+                            onSelectTab = {}
+                        )
+                    }
+                }
+            }
+
+            composeRule.mainClock.advanceTimeBy(32)
+            composeRule.onNodeWithTag("frame0_stagger_card_4").assertIsDisplayed()
+
+            // Trigger tab switch and mascot float-out synchronously
+            composeRule.runOnUiThread {
+                activeTabSetter?.invoke(AppTab.SCHEDULE)
+                shouldFloatSetter?.invoke(true)
+                androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            }
+            composeRule.mainClock.advanceTimeBy(48)
+            val earlyTabWeight = scheduleWeightRef!!.value
+            val earlyMorphOut = morphStateRef!!.value
+            assertTrue("Expected Frame-0 tab transition progress > 0.01f within 48ms, got $earlyTabWeight", earlyTabWeight > 0.01f)
+            assertTrue("Expected Frame-0 mascot morph-out > 0.01f within 48ms, got $earlyMorphOut", earlyMorphOut > 0.01f)
+
+            // Let float settle near 1f, then trigger return flight and confirm immediate departure
+            composeRule.mainClock.advanceTimeBy(960)
+            composeRule.waitForIdle()
+            assertTrue("Expected mascot morph settled near 1f, got ${morphStateRef!!.value}", morphStateRef!!.value > 0.95f)
+
+            composeRule.runOnUiThread {
+                shouldFloatSetter?.invoke(false)
+                androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            }
+            composeRule.mainClock.advanceTimeBy(64)
+            val earlyReturnMorph = morphStateRef!!.value
+            assertTrue("Expected mascot return flight to begin immediately (< 0.99f within 64ms), got $earlyReturnMorph", earlyReturnMorph < 0.99f)
+
+            composeRule.mainClock.advanceTimeBy(1200)
+            assertTrue("Expected mascot return flight to settle near 0f, got ${morphStateRef!!.value}", morphStateRef!!.value <= 0.02f)
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun allSixThemes_withShadersAndSettingsPreviewCards_renderCleanlyAcrossPhasesAndGlowToggles() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            val restFlow = MutableStateFlow(RestTimerDisplayState())
+            var themeSetter: ((UiTheme) -> Unit)? = null
+            var phaseSetter: ((DayTimePhase) -> Unit)? = null
+            var glowOffSetter: ((Boolean) -> Unit)? = null
+
+            composeRule.setContent {
+                var activeTheme by remember { mutableStateOf(UiTheme.MATERIAL_YOU) }
+                var activePhase by remember { mutableStateOf(DayTimePhase.MORNING) }
+                var noAmbientGlow by remember { mutableStateOf(false) }
+                themeSetter = { activeTheme = it }
+                phaseSetter = { activePhase = it }
+                glowOffSetter = { noAmbientGlow = it }
+
+                val prefs = AppPreferences(
+                    uiTheme = activeTheme,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(
+                        noAnimations = true,
+                        noAmbientGlow = noAmbientGlow,
+                        staticMascot = true
+                    )
+                )
+                val uiState = IronPulseUiState(
+                    authReady = true,
+                    userUid = "u_theme_craft",
+                    appPrefs = prefs
+                )
+
+                IronPulseTheme(prefs = prefs, timePhase = activePhase) {
+                    val tokens = LocalIronPulseTokens.current
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AmbientPhaseBackdrop()
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                IronPulseTopBar(
+                                    activeTab = AppTab.SETTINGS,
+                                    onLogoClick = {},
+                                    onOpenSettings = {},
+                                    onTestAlarm = {}
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .ironGlassSurface(tokens)
+                                            .padding(10.dp)
+                                            .testTag("theme_primary_surface")
+                                    ) {
+                                        Text("Primary Card", color = tokens.palette.onSurface)
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .ironGlassSurface(tokens, subtle = true)
+                                            .padding(10.dp)
+                                            .testTag("theme_subtle_surface")
+                                    ) {
+                                        Text("Subtle Card", color = tokens.palette.onSurface)
+                                    }
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    SettingsScreen(
+                                        state = uiState,
+                                        viewModel = viewModel,
+                                        contentPadding = PaddingValues(0.dp),
+                                        onBack = {},
+                                        onRequestNotificationPermission = {},
+                                        onOpenExactAlarmSettings = {},
+                                        onPickCustomRingtone = {},
+                                        activeCategory = SettingsCategory.THEME
+                                    )
+                                }
+                                IronPulseBottomNav(
+                                    activeTab = AppTab.TODAY,
+                                    restTimerFlow = restFlow,
+                                    onSelectTab = {}
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            listOf(
+                Triple(UiTheme.MATERIAL_YOU, DayTimePhase.MORNING, false),
+                Triple(UiTheme.UBUNTU_YARU, DayTimePhase.AFTERNOON, false),
+                Triple(UiTheme.CARBON_FORGE, DayTimePhase.MORNING, false),
+                Triple(UiTheme.AMOLED_STEALTH, DayTimePhase.NIGHT, false),
+                Triple(UiTheme.FRUTIGER_AERO, DayTimePhase.MORNING, false),
+                Triple(UiTheme.FRUTIGER_AERO, DayTimePhase.NIGHT, false),
+                Triple(UiTheme.XMATERIAL_YOU, DayTimePhase.NIGHT, false),
+                Triple(UiTheme.XMATERIAL_YOU, DayTimePhase.MORNING, true),
+                Triple(UiTheme.AMOLED_STEALTH, DayTimePhase.NIGHT, true)
+            ).forEach { (theme, phase, noGlow) ->
+                composeRule.runOnUiThread {
+                    themeSetter?.invoke(theme)
+                    phaseSetter?.invoke(phase)
+                    glowOffSetter?.invoke(noGlow)
+                }
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag("os_backdrop_${theme.wireValue}").assertIsDisplayed()
+                composeRule.onNodeWithTag("os_top_bar_${theme.wireValue}").assertIsDisplayed()
+                composeRule.onNodeWithTag("os_bottom_nav_${theme.wireValue}").assertIsDisplayed()
+                composeRule.onNodeWithTag("theme_primary_surface").assertIsDisplayed()
+                composeRule.onNodeWithTag("theme_subtle_surface").assertIsDisplayed()
+                UiTheme.entries.forEach { cardTheme ->
+                    composeRule.onNodeWithTag("theme_card_${cardTheme.wireValue}").performScrollTo().assertIsDisplayed()
+                }
+            }
+        } finally {
+            vmStore.clear()
+        }
     }
 }
 

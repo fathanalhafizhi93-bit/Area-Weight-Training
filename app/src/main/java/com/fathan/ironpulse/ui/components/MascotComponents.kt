@@ -1692,8 +1692,10 @@ fun FloatingMascotDock(
     var bubbleOpen by remember { mutableStateOf(false) }
     val dockOriginHolder = remember { DockOriginHolder() }
 
-    LaunchedEffect(shouldFloat) {
-        if (!shouldFloat) bubbleOpen = false
+    androidx.compose.runtime.SideEffect {
+        if (!shouldFloat && bubbleOpen) {
+            bubbleOpen = false
+        }
     }
 
     BoxWithConstraints(
