@@ -132,7 +132,9 @@ private val secSdf = object : ThreadLocal<SimpleDateFormat>() {
 @Composable
 fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
     val tokens = LocalIronPulseTokens.current
+    val motionSpec = LocalThemeMotionSpec.current
     val suppressGlow = tokens.performance.noAmbientGlow
+    val runAnim = !tokens.performance.noAnimations && LocalTabActive.current
 
     Box(modifier = modifier.fillMaxSize()) {
         // Static cached OS backdrop: shaders, base gradient, ambient glows, and nocturnal stars draw ONCE
@@ -340,7 +342,45 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
         if (tokens.uiTheme == UiTheme.FRUTIGER_AERO && !suppressGlow) {
             AeroAnimatedOverlay(
                 isAeroNight = tokens.isAeroNight,
-                runAnim = !tokens.performance.noAnimations && LocalTabActive.current
+                runAnim = runAnim,
+                cadenceScale = motionSpec.backdropCadenceScale
+            )
+        } else if (!suppressGlow && runAnim && motionSpec.backdropBreathAlpha > 0.005f) {
+            // Pure GPU-alpha ambient veil (Canvas drawn once via drawWithCache, zero redraws per frame)
+            val breathInf = rememberInfiniteTransition(label = "backdropBreathInfinite")
+            val breathAlpha = breathInf.animateFloat(
+                initialValue = 0.25f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = (motionSpec.heroBreathMs * 1.25f).roundToInt().coerceIn(2800, 8000),
+                        easing = FastOutSlowInEasing
+                    ),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "backdropBreathAlpha"
+            )
+            val veilTint = when (tokens.uiTheme) {
+                UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.accentBright
+                UiTheme.UBUNTU_YARU -> Color(0xFFE95420)
+                else -> tokens.accentColor
+            }
+            Spacer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = breathAlpha.value * motionSpec.backdropBreathAlpha
+                    }
+                    .drawWithCache {
+                        val veil = Brush.radialGradient(
+                            colors = listOf(veilTint, Color.Transparent),
+                            center = Offset(size.width * 0.78f, size.height * 0.14f),
+                            radius = size.maxDimension.coerceAtLeast(480f) * 0.65f
+                        )
+                        onDrawBehind {
+                            drawRect(veil)
+                        }
+                    }
             )
         }
     }
@@ -349,18 +389,21 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
 @Composable
 private fun AeroAnimatedOverlay(
     isAeroNight: Boolean,
-    runAnim: Boolean
+    runAnim: Boolean,
+    cadenceScale: Float = 1.0f
 ) {
     val staticMid = remember { mutableFloatStateOf(0.5f) }
     val aeroFlarePulseState: State<Float>
     val aeroBubbleDriftState: State<Float>
     if (runAnim) {
         val aeroInfinite = rememberInfiniteTransition(label = "aeroBackdropInfinite")
+        val flareDuration = (4400f * cadenceScale).roundToInt().coerceIn(2600, 7200)
+        val driftDuration = (6800f * cadenceScale).roundToInt().coerceIn(3800, 9800)
         aeroFlarePulseState = aeroInfinite.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 4400, easing = FastOutSlowInEasing),
+                animation = tween(durationMillis = flareDuration, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "aeroFlarePulse"
@@ -369,7 +412,7 @@ private fun AeroAnimatedOverlay(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 6800, easing = FastOutSlowInEasing),
+                animation = tween(durationMillis = driftDuration, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "aeroBubbleDrift"
@@ -603,6 +646,7 @@ fun IronPulseTopBar(
 
                 val ctaShape = tokens.buttonShape
                 val isYaru = theme == UiTheme.UBUNTU_YARU
+                val motionSpec = LocalThemeMotionSpec.current
                 Box(
                     modifier = Modifier
                         .height(38.dp)
@@ -668,8 +712,7 @@ fun IronPulseTopBar(
                                     .border(0.85.dp, Color.White.copy(alpha = 0.20f), ctaShape)
                             }
                         )
-                        .clickable(onClick = onTestAlarm)
-                        .padding(horizontal = 12.dp),
+                        .clickable(onClick = onTestAlarm),
                     contentAlignment = Alignment.Center
                 ) {
                     val ctaContentTint = when {
@@ -677,7 +720,15 @@ fun IronPulseTopBar(
                         isXMaterial -> tokens.accentTextColor
                         else -> tokens.onAccentColor
                     }
+                    GpuSheenOverlay(
+                        active = !tokens.performance.noAnimations && !tokens.performance.noAmbientGlow && LocalTabActive.current,
+                        tint = if (isStealth || isXMaterial) ctaContentTint else Color.White,
+                        peakAlpha = motionSpec.sheenPeakAlpha * 0.85f,
+                        durationMs = motionSpec.sheenDurationMs,
+                        modifier = Modifier.matchParentSize()
+                    )
                     Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -896,6 +947,7 @@ fun IronPulseBottomNav(
             val slotWidth = maxWidth / items.size
             val slotWidthPx = with(LocalDensity.current) { slotWidth.toPx() }
 
+            val motionSpec = LocalThemeMotionSpec.current
             // Exact-aligned gliding GPU spring indicator customized per OS — Frame-0 updateTransition
             if (activeIdx >= 0) {
                 val indicatorTransition = updateTransition(
@@ -907,7 +959,7 @@ fun IronPulseBottomNav(
                         if (tokens.performance.noAnimations) {
                             snap()
                         } else {
-                            IronPulseMotion.IndicatorFloatSpring
+                            motionSpec.navIndicatorSpring
                         }
                     },
                     label = "navIndicatorIndex"
@@ -1105,11 +1157,11 @@ fun IronPulseBottomNav(
                     )
                     val iconScaleState = iconActiveTransition.animateFloat(
                         transitionSpec = {
-                            if (tokens.performance.noAnimations) snap() else IronPulseMotion.PressSpring
+                            if (tokens.performance.noAnimations) snap() else motionSpec.navIconSpring
                         },
                         label = "navIconScale"
                     ) { active ->
-                        if (active && !tokens.performance.noAnimations) 1.07f else 1f
+                        if (active && !tokens.performance.noAnimations) motionSpec.navActiveScale else 1f
                     }
 
                     Box(

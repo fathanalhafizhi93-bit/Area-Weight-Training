@@ -121,6 +121,116 @@ enum class UiTheme(
     }
 }
 
+enum class ThemeAnimationStyle(
+    val wireValue: String,
+    val titleId: String,
+    val titleEn: String,
+    val subtitleId: String,
+    val subtitleEn: String,
+    val tagId: String,
+    val tagEn: String
+) {
+    FLUID_SILK(
+        wireValue = "fluid-silk",
+        titleId = "Fluid Silk",
+        titleEn = "Fluid Silk",
+        subtitleId = "Pegas seimbang dan geseran halus yang nyaman di semua tema.",
+        subtitleEn = "Balanced damped spring with silky glides across every theme.",
+        tagId = "Standar",
+        tagEn = "Default"
+    ),
+    AERO_CRYSTAL_GLIDE(
+        wireValue = "aero-crystal",
+        titleId = "Aero Crystal Glide",
+        titleEn = "Aero Crystal Glide",
+        subtitleId = "Meluncur ringan ala kaca Y2K dengan kilau tombol lembut.",
+        subtitleEn = "Buoyant Y2K crystal slide with luminous button sheen sweep.",
+        tagId = "Kilau Kaca",
+        tagEn = "Crystal"
+    ),
+    HYPER_SNAP(
+        wireValue = "hyper-snap",
+        titleId = "Hyper Snap",
+        titleEn = "Hyper Snap",
+        subtitleId = "Respon instan berkecepatan tinggi dengan jeda antarlayar minimal.",
+        subtitleEn = "High-stiffness instant snap with ultra-short settle time.",
+        tagId = "Instan",
+        tagEn = "Instant"
+    ),
+    ELASTIC_BOUNCE(
+        wireValue = "elastic-bounce",
+        titleId = "Elastic Bounce",
+        titleEn = "Elastic Bounce",
+        subtitleId = "Pantulan pegas kenyal pada kartu, navigasi, dan maskot Pulse.",
+        subtitleEn = "Playful elastic overshoot on cards, nav bar, and Pulse mascot.",
+        tagId = "Kenyal",
+        tagEn = "Bouncy"
+    ),
+    CARBON_MECH(
+        wireValue = "carbon-mech",
+        titleId = "Carbon Mech",
+        titleEn = "Carbon Mech",
+        subtitleId = "Gerak mekanik presisi dengan hentakan solid tanpa ayunan berlebih.",
+        subtitleEn = "Tight mechanical detent with solid tactile press and zero wobble.",
+        tagId = "Presisi",
+        tagEn = "Mechanical"
+    ),
+    TACTICAL_RADAR(
+        wireValue = "tactical-radar",
+        titleId = "Tactical Radar",
+        titleEn = "Tactical Radar",
+        subtitleId = "Kunci HUD tajam dengan kedalaman fokus dan sapuan radar halus.",
+        subtitleEn = "Sharp HUD lock-in with crisp focus depth and radar sweep.",
+        tagId = "HUD Taktis",
+        tagEn = "Tactical"
+    ),
+    PRISMATIC_BLOOM(
+        wireValue = "prismatic-bloom",
+        titleId = "Prismatic Bloom",
+        titleEn = "Prismatic Bloom",
+        subtitleId = "Mekar lembut nan mewah dengan sorot tepi dan aura tenang.",
+        subtitleEn = "Calm luxury scale bloom highlighting rim sheen and ambient aura.",
+        tagId = "Mekar Halus",
+        tagEn = "Bloom"
+    ),
+    UBUNTU_DOCK_SPRING(
+        wireValue = "ubuntu-dock",
+        titleId = "Ubuntu Dock Spring",
+        titleEn = "Ubuntu Dock Spring",
+        subtitleId = "Geseran hangat bergaya desktop dengan pantulan ikon dok aktif.",
+        subtitleEn = "Warm desktop workspace slide with buoyant active dock pop.",
+        tagId = "Pegas Dock",
+        tagEn = "Dock Pop"
+    ),
+    ZEN_BREATH(
+        wireValue = "zen-breath",
+        titleId = "Zen Breath",
+        titleEn = "Zen Breath",
+        subtitleId = "Ritme tenang mengalir berjarak pendek untuk fokus minim distraksi.",
+        subtitleEn = "Gentle low-jolt cadence with calm ambient motion throughout.",
+        tagId = "Tenang",
+        tagEn = "Calm"
+    ),
+    VELOCITY_FLIP(
+        wireValue = "velocity-flip",
+        titleId = "Velocity Flip",
+        titleEn = "Velocity Flip",
+        subtitleId = "Paralaks geser dinamis dengan kemiringan perspektif 3D ringan.",
+        subtitleEn = "Brisk lateral parallax with subtle GPU 3D perspective bank.",
+        tagId = "3D Dinamis",
+        tagEn = "3D Parallax"
+    );
+
+    fun title(lang: AppLanguage): String = lang.t(titleId, titleEn)
+    fun subtitle(lang: AppLanguage): String = lang.t(subtitleId, subtitleEn)
+    fun tag(lang: AppLanguage): String = lang.t(tagId, tagEn)
+
+    companion object {
+        fun fromWire(raw: String?): ThemeAnimationStyle =
+            entries.firstOrNull { it.wireValue == raw } ?: FLUID_SILK
+    }
+}
+
 @Immutable
 data class ColorPresetOption(
     val id: String,

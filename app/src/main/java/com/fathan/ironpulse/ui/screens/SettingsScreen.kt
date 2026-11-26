@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -55,6 +56,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -92,12 +95,15 @@ import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
+import com.fathan.ironpulse.model.ThemeAnimationStyle
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.AboutContentCards
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
+import com.fathan.ironpulse.ui.components.GpuSheenOverlay
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.MascotOrbFace
+import com.fathan.ironpulse.ui.components.MotionStyleCatalog
 import com.fathan.ironpulse.ui.components.ThemeBrandEmblem
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
@@ -275,6 +281,15 @@ fun SettingsScreen(
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
+                        item(key = "theme_animation_styles", contentType = "theme_animation_styles") {
+                            ThemeAnimationStyleCard(
+                                selectedStyle = state.appPrefs.themeAnimationStyle,
+                                onSelectStyle = { viewModel.setThemeAnimationStyle(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                         item(key = "accent_tint", contentType = "accent_tint") {
                             AccentAndTintSettingsCard(
                                 accentColorHex = state.appPrefs.accentColorHex,
@@ -286,7 +301,7 @@ fun SettingsScreen(
                                 selectedDayTimeMode = state.appPrefs.todayThemeMode,
                                 onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -295,7 +310,7 @@ fun SettingsScreen(
                                 selectedMode = state.appPrefs.todayThemeMode,
                                 onSelectMode = { viewModel.setTodayThemeMode(it) },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -1109,6 +1124,394 @@ private fun ThemesGridCard(
                     onSelect = { onSelectTheme(theme) },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeAnimationStyleCard(
+    selectedStyle: ThemeAnimationStyle,
+    onSelectStyle: (ThemeAnimationStyle) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+    val noAnim = tokens.performance.noAnimations
+    val previewSpec = remember(selectedStyle) { MotionStyleCatalog.resolve(selectedStyle) }
+    var replayTick by remember { mutableIntStateOf(0) }
+    val demoProgress = remember { Animatable(1f) }
+    val navStepIndex = remember(replayTick, selectedStyle) {
+        (selectedStyle.ordinal + replayTick) % 3
+    }
+    val navDemoProgress = remember { Animatable(navStepIndex.toFloat()) }
+
+    LaunchedEffect(selectedStyle, replayTick, noAnim) {
+        if (noAnim) {
+            demoProgress.snapTo(1f)
+            navDemoProgress.snapTo(navStepIndex.toFloat())
+        } else {
+            demoProgress.snapTo(0f)
+            demoProgress.animateTo(1f, previewSpec.cardRevealSpring)
+        }
+    }
+    LaunchedEffect(navStepIndex, noAnim) {
+        if (noAnim) {
+            navDemoProgress.snapTo(navStepIndex.toFloat())
+        } else {
+            navDemoProgress.animateTo(navStepIndex.toFloat(), previewSpec.navIndicatorSpring)
+        }
+    }
+
+    val stylePairs = remember { ThemeAnimationStyle.entries.chunked(2) }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .ironGlassSurface(tokens)
+            .padding(16.dp)
+            .testTag("theme_animation_style_card"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = lang.t(
+                        "Gaya Animasi Tema (10 Pilihan)",
+                        "Theme Animation Style (10 Presets)"
+                    ),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+                Text(
+                    text = lang.t(
+                        "Pilih 1 gaya gerak untuk 10 elemen UI di seluruh 6 tema.",
+                        "Pick 1 motion preset for all 10 animated UI elements across 6 themes."
+                    ),
+                    fontSize = 11.5.sp,
+                    color = tokens.palette.onSurfaceVariant
+                )
+            }
+            if (selectedStyle != ThemeAnimationStyle.FLUID_SILK) {
+                TextButton(
+                    onClick = {
+                        onSelectStyle(ThemeAnimationStyle.FLUID_SILK)
+                        replayTick += 1
+                    }
+                ) {
+                    ThemedIcon(IronPulseIcon.REFRESH, contentDescription = null, tint = tokens.accentTextColor, size = 15.dp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(lang.t("Default", "Default"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tokens.accentTextColor)
+                }
+            }
+        }
+
+        if (noAnim) {
+            IronPulseTonalSurface(
+                shape = tokens.subtleCardShape,
+                baseColor = tokens.warningColor.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, tokens.warningColor.copy(alpha = 0.42f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("anim_style_paused_notice")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ThemedIcon(IronPulseIcon.INFO, contentDescription = null, tint = tokens.warningColor, size = 16.dp)
+                    Text(
+                        text = lang.t(
+                            "Mode Tanpa Animasi aktif — gaya tetap disimpan dan langsung aktif saat animasi dinyalakan.",
+                            "Disable Animations is active — your preset is saved and takes effect when re-enabled."
+                        ),
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        color = tokens.palette.onSurface
+                    )
+                }
+            }
+        }
+
+        // Interactive GPU Live Motion Sandbox
+        IronPulseTonalSurface(
+            onClick = { replayTick += 1 },
+            shape = tokens.subtleCardShape,
+            baseColor = tokens.wellBg,
+            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.32f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("anim_style_live_preview")
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(tokens.accentColor)
+                        )
+                        Text(
+                            text = selectedStyle.title(lang),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.palette.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IronPulseTonalSurface(
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = tokens.accentColor.copy(alpha = 0.16f),
+                        border = BorderStroke(0.85.dp, tokens.accentColor.copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = lang.t("Ketuk Uji Gerak", "Tap to Replay"),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.accentTextColor,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                // Animated demo row: sliding mini card + gliding indicator rail + shimmering mini CTA
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // 1. Mini card demonstrating card reveal, tilt & bounce physics
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .graphicsLayer {
+                                val p = demoProgress.value
+                                val inv = 1f - p
+                                translationX = inv * previewSpec.cardSlideXDp.dp.toPx()
+                                translationY = inv * (previewSpec.cardSlideYDp * 0.45f).dp.toPx()
+                                val s = previewSpec.cardStartScale + (1f - previewSpec.cardStartScale) * p.coerceIn(0f, 1.08f)
+                                scaleX = s
+                                scaleY = s
+                                if (previewSpec.tabPerspectiveDeg > 0.01f) {
+                                    cameraDistance = 12f * density
+                                    rotationY = inv * previewSpec.tabPerspectiveDeg * 1.4f
+                                } else {
+                                    rotationY = 0f
+                                }
+                            }
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(tokens.controlBg)
+                            .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(tokens.accentColor.copy(alpha = 0.22f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(tokens.accentColor)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = selectedStyle.tag(lang),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = "10 UI Elements",
+                                    fontSize = 9.5.sp,
+                                    color = tokens.mutedTextColor,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    // 2. Mini 3-slot gliding nav indicator preview
+                    Box(
+                        modifier = Modifier
+                            .width(84.dp)
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(tokens.controlBg)
+                            .border(0.9.dp, tokens.subtleBorderColor, RoundedCornerShape(999.dp))
+                            .padding(3.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    val slotPx = (84.dp - 6.dp).toPx() / 3f
+                                    translationX = navDemoProgress.value * slotPx
+                                }
+                                .width(26.dp)
+                                .height(28.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(tokens.accentColor)
+                        )
+                    }
+
+                    // 3. Mini shimmering CTA pill preview
+                    Box(
+                        modifier = Modifier
+                            .height(34.dp)
+                            .clip(tokens.buttonShape)
+                            .background(tokens.accentColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        GpuSheenOverlay(
+                            active = !noAnim && !tokens.performance.noAmbientGlow,
+                            tint = Color.White,
+                            peakAlpha = previewSpec.sheenPeakAlpha,
+                            durationMs = previewSpec.sheenDurationMs,
+                            modifier = Modifier.matchParentSize()
+                        )
+                        Text(
+                            text = "CTA",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = tokens.onAccentColor,
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 10 Selectable Animation Style Cards (5 rows x 2 columns)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("anim_styles_grid"),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            stylePairs.forEach { pair ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    pair.forEach { style ->
+                        val isSelected = style == selectedStyle
+                        val cardColor = if (isSelected) {
+                            lerp(tokens.controlBg, tokens.accentColor, if (tokens.isLightTheme) 0.16f else 0.14f)
+                        } else {
+                            tokens.controlBg
+                        }
+                        val cardBorder = if (isSelected) tokens.accentColor else tokens.subtleBorderColor
+                        IronPulseTonalSurface(
+                            onClick = {
+                                onSelectStyle(style)
+                                replayTick += 1
+                            },
+                            shape = tokens.subtleCardShape,
+                            baseColor = cardColor,
+                            pressedScale = 0.96f,
+                            border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, cardBorder),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("anim_style_card_${style.wireValue}")
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 11.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = style.tag(lang),
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) tokens.accentTextColor else tokens.mutedTextColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (isSelected) tokens.accentColor else tokens.wellBg
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (isSelected) tokens.accentColor else tokens.subtleBorderColor,
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            ThemedIcon(
+                                                icon = IronPulseIcon.CHECK,
+                                                contentDescription = null,
+                                                tint = tokens.onAccentColor,
+                                                size = 10.dp
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = style.title(lang),
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tokens.palette.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = style.subtitle(lang),
+                                    fontSize = 10.5.sp,
+                                    lineHeight = 14.sp,
+                                    color = tokens.mutedTextColor,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                    if (pair.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }

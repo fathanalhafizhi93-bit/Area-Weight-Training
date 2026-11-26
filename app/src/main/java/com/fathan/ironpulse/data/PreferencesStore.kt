@@ -9,6 +9,7 @@ import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
+import com.fathan.ironpulse.model.ThemeAnimationStyle
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ data class AppPreferences(
     val clockFormat: ClockFormat = ClockFormat.H24,
     val todayThemeMode: DayTimeMode = DayTimeMode.AUTO,
     val uiTheme: UiTheme = UiTheme.MATERIAL_YOU,
+    val themeAnimationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLUID_SILK,
     val accentColorHex: String = MaterialYouColorEngine.DEFAULT_ACCENT_COLOR,
     val materialTintColorHex: String? = null,
     val hapticsEnabled: Boolean = true,
@@ -46,6 +48,9 @@ class PreferencesStore(context: Context) {
             clockFormat = ClockFormat.fromWire(prefs.getString(KEY_CLOCK_FORMAT, "24h")),
             todayThemeMode = DayTimeMode.fromWire(prefs.getString(KEY_TODAY_THEME_MODE, "auto")),
             uiTheme = UiTheme.fromWire(prefs.getString(KEY_UI_THEME, "material-you")),
+            themeAnimationStyle = ThemeAnimationStyle.fromWire(
+                prefs.getString(KEY_THEME_ANIMATION_STYLE, ThemeAnimationStyle.FLUID_SILK.wireValue)
+            ),
             accentColorHex = MaterialYouColorEngine.normalizeHexColor(
                 prefs.getString(KEY_ACCENT_COLOR, MaterialYouColorEngine.DEFAULT_ACCENT_COLOR)
             ),
@@ -113,6 +118,15 @@ class PreferencesStore(context: Context) {
             .apply()
 
         _state.value = current.copy(uiTheme = next)
+    }
+
+    fun setThemeAnimationStyle(style: ThemeAnimationStyle) {
+        val current = _state.value
+        if (style == current.themeAnimationStyle) return
+        prefs.edit()
+            .putString(KEY_THEME_ANIMATION_STYLE, style.wireValue)
+            .apply()
+        _state.value = current.copy(themeAnimationStyle = style)
     }
 
     fun resetThemeCustomization() {
@@ -264,6 +278,7 @@ class PreferencesStore(context: Context) {
         private const val KEY_CLOCK_FORMAT = "clock_format"
         private const val KEY_TODAY_THEME_MODE = "today_theme_mode"
         private const val KEY_UI_THEME = "ui_theme"
+        private const val KEY_THEME_ANIMATION_STYLE = "theme_animation_style"
         private const val KEY_ACCENT_COLOR = "accent_color"
         private const val KEY_MATERIAL_TINT = "material_tint"
         private const val KEY_HAPTICS = "haptics_enabled"

@@ -84,6 +84,7 @@ import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
+import com.fathan.ironpulse.ui.components.LocalThemeMotionSpec
 import com.fathan.ironpulse.ui.components.LocalTutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
 import com.fathan.ironpulse.ui.components.NamePromptModal
@@ -543,21 +544,22 @@ fun IronPulseRoot(
                         )
 
                         // LAYER 5: Full-Screen Routes & In-Window Modals
+                        val rootMotionSpec = LocalThemeMotionSpec.current
                         AnimatedVisibility(
                             visible = showExerciseLibraryScreen,
                             enter = if (noAnim) {
                                 EnterTransition.None
                             } else {
-                                slideInVertically(tween(280)) { it / 7 } +
-                                    scaleIn(initialScale = 0.975f, animationSpec = IronPulseMotion.ModalEntranceSpring) +
-                                    fadeIn(tween(220))
+                                slideInVertically(tween(rootMotionSpec.modalFadeMs + 80)) { it / 7 } +
+                                    scaleIn(initialScale = rootMotionSpec.modalStartScale.coerceAtLeast(0.955f), animationSpec = rootMotionSpec.modalSpring) +
+                                    fadeIn(tween(rootMotionSpec.modalFadeMs))
                             },
                             exit = if (noAnim) {
                                 ExitTransition.None
                             } else {
-                                slideOutVertically(tween(210)) { it / 9 } +
-                                    scaleOut(targetScale = 0.975f, animationSpec = tween(210)) +
-                                    fadeOut(tween(180))
+                                slideOutVertically(tween(rootMotionSpec.modalFadeMs + 10)) { it / 9 } +
+                                    scaleOut(targetScale = 0.975f, animationSpec = tween(rootMotionSpec.modalFadeMs)) +
+                                    fadeOut(tween((rootMotionSpec.modalFadeMs - 20).coerceAtLeast(100)))
                             }
                         ) {
                             val selectedDay = state.selectedExerciseDayKey
@@ -748,12 +750,13 @@ private fun MascotDockCoordinator(
         }
     }
 
+    val motionSpec = LocalThemeMotionSpec.current
     val morphProgressState = morphTransition.animateFloat(
         transitionSpec = {
             when {
                 noAnim -> snap()
-                initialState && !targetState -> IronPulseMotion.ReturnMorphSpring
-                else -> IronPulseMotion.MorphSpring
+                initialState && !targetState -> motionSpec.mascotReturnSpring
+                else -> motionSpec.mascotMorphSpring
             }
         },
         label = "mascotMorphProgress"
@@ -789,6 +792,7 @@ private fun PersistedTabStage(
     saveableStateHolder: SaveableStateHolder,
     renderTab: @Composable (AppTab, IronPulseUiState) -> Unit
 ) {
+    val motionSpec = LocalThemeMotionSpec.current
     val tabTransition = updateTransition(
         targetState = activeTab,
         label = "persistedTabStage"
@@ -827,7 +831,7 @@ private fun PersistedTabStage(
                 val isCurrent = tab == activeTab
                 val tabWeightState = tabTransition.animateFloat(
                     transitionSpec = {
-                        if (noAnim) snap() else IronPulseMotion.TabSlideSpring
+                        if (noAnim) snap() else motionSpec.tabSlideSpring
                     },
                     label = "tabWeight_${tab.name}"
                 ) { stateTab ->
@@ -847,22 +851,29 @@ private fun PersistedTabStage(
                             translationX = 0f
                             scaleX = 1f
                             scaleY = 1f
+                            rotationY = 0f
                         } else {
                             val weight = tabWeightState.value
+                            val persp = motionSpec.tabPerspectiveDeg
+                            if (persp > 0.01f) {
+                                cameraDistance = 14f * density
+                            }
                             if (isCurrent) {
                                 val clampedP = weight.coerceIn(0f, 1f)
                                 alpha = clampedP
-                                translationX = (1f - weight) * transitionDir * (size.width * 0.065f)
-                                val s = lerp(0.978f, 1f, clampedP)
+                                translationX = (1f - weight) * transitionDir * (size.width * motionSpec.tabSlideFraction)
+                                val s = lerp(motionSpec.tabEnterScale, 1f, clampedP)
                                 scaleX = s
                                 scaleY = s
+                                rotationY = if (persp > 0.01f) (1f - clampedP) * transitionDir * persp else 0f
                             } else {
                                 val p = (1f - weight).coerceIn(0f, 1f)
                                 alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
-                                translationX = -p * transitionDir * (size.width * 0.045f)
-                                val s = lerp(1f, 0.97f, p)
+                                translationX = -p * transitionDir * (size.width * (motionSpec.tabSlideFraction * 0.72f))
+                                val s = lerp(1f, motionSpec.tabExitScale, p)
                                 scaleX = s
                                 scaleY = s
+                                rotationY = if (persp > 0.01f) -p * transitionDir * (persp * 0.75f) else 0f
                             }
                         }
                     }

@@ -50,6 +50,7 @@ import com.fathan.ironpulse.model.SavedCustomSchedule
 import com.fathan.ironpulse.model.ScheduleLibraryState
 import com.fathan.ironpulse.model.ScheduleProgramMerger
 import com.fathan.ironpulse.model.SessionVerificationResult
+import com.fathan.ironpulse.model.ThemeAnimationStyle
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.model.UiTheme
@@ -1243,6 +1244,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     fun setUiTheme(theme: UiTheme) {
         haptics.toggle()
         prefsStore.setUiTheme(theme)
+    }
+
+    fun setThemeAnimationStyle(style: ThemeAnimationStyle) {
+        haptics.toggle()
+        prefsStore.setThemeAnimationStyle(style)
     }
 
     fun setAccentColor(hex: String) {

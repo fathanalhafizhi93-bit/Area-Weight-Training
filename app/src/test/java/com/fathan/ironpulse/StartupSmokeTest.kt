@@ -89,6 +89,7 @@ import com.fathan.ironpulse.model.RingtoneStorageMode
 import com.fathan.ironpulse.model.SavedCustomSchedule
 import com.fathan.ironpulse.model.ScheduleLibraryState
 import com.fathan.ironpulse.model.ScheduleProgramMerger
+import com.fathan.ironpulse.model.ThemeAnimationStyle
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.model.UserProfile
 import com.fathan.ironpulse.model.VerificationRejectReason
@@ -110,7 +111,9 @@ import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
+import com.fathan.ironpulse.ui.components.LocalThemeMotionSpec
 import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
+import com.fathan.ironpulse.ui.components.MotionStyleCatalog
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.MascotOrbFace
@@ -3516,8 +3519,97 @@ class StartupSmokeTest {
             vmStore.clear()
         }
     }
+
+    @Test
+    fun allTenThemeAnimationStyles_resolveDistinctMotionSpecsAndPersistAcrossRestarts() {
+        assertEquals(10, ThemeAnimationStyle.entries.size)
+        assertEquals(10, ThemeAnimationStyle.entries.map { it.wireValue }.toSet().size)
+
+        val resolvedSpecs = ThemeAnimationStyle.entries.map { MotionStyleCatalog.resolve(it) }
+        assertEquals(10, resolvedSpecs.map { it.style }.toSet().size)
+        assertEquals(IronPulseMotion.ReturnMorphSpring, MotionStyleCatalog.resolve(ThemeAnimationStyle.FLUID_SILK).mascotReturnSpring)
+
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val store = PreferencesStore(ctx)
+        ThemeAnimationStyle.entries.forEach { style ->
+            store.setThemeAnimationStyle(style)
+            assertEquals(style, store.state.value.themeAnimationStyle)
+            val freshStore = PreferencesStore(ctx)
+            assertEquals(style, freshStore.state.value.themeAnimationStyle)
+        }
+        store.setThemeAnimationStyle(ThemeAnimationStyle.FLUID_SILK)
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun settingsThemeSubpage_displaysAllTenAnimationStyleCardsAndUpdatesSelection() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(ctx)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            viewModel.setThemeAnimationStyle(ThemeAnimationStyle.FLUID_SILK)
+
+            composeRule.setContent {
+                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
+                val uiState = remember(vmState.appPrefs) {
+                    vmState.copy(
+                        authReady = true,
+                        userUid = "u_anim_styles",
+                        appPrefs = vmState.appPrefs.copy(
+                            performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                        )
+                    )
+                }
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    val spec = LocalThemeMotionSpec.current
+                    assertEquals(vmState.appPrefs.themeAnimationStyle, spec.style)
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        SettingsScreen(
+                            state = uiState,
+                            viewModel = viewModel,
+                            contentPadding = PaddingValues(0.dp),
+                            onBack = {},
+                            onRequestNotificationPermission = {},
+                            onOpenExactAlarmSettings = {},
+                            onPickCustomRingtone = {},
+                            activeCategory = SettingsCategory.THEME
+                        )
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("theme_animation_style_card").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("anim_style_live_preview").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("anim_styles_grid").performScrollTo().assertIsDisplayed()
+
+            ThemeAnimationStyle.entries.forEach { style ->
+                composeRule.onNodeWithTag("anim_style_card_${style.wireValue}")
+                    .performScrollTo()
+                    .assertIsDisplayed()
+            }
+
+            composeRule.onNodeWithTag("anim_style_card_velocity-flip")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+            assertEquals(ThemeAnimationStyle.VELOCITY_FLIP, viewModel.uiState.value.appPrefs.themeAnimationStyle)
+
+            composeRule.onNodeWithTag("anim_style_card_aero-crystal")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+            assertEquals(ThemeAnimationStyle.AERO_CRYSTAL_GLIDE, viewModel.uiState.value.appPrefs.themeAnimationStyle)
+
+            viewModel.setThemeAnimationStyle(ThemeAnimationStyle.FLUID_SILK)
+        } finally {
+            vmStore.clear()
+        }
+    }
 }
-
-
-
-

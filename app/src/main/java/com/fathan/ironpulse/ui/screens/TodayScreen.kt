@@ -77,8 +77,10 @@ import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.UiTheme
+import com.fathan.ironpulse.ui.components.GpuSheenOverlay
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.LiveFluidClockSlot
+import com.fathan.ironpulse.ui.components.LocalThemeMotionSpec
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.ThemedIcon
@@ -228,6 +230,15 @@ fun TodayScreen(
                     noAnim = noAnim
                 )
 
+                val todayMotionSpec = LocalThemeMotionSpec.current
+                GpuSheenOverlay(
+                    active = tabActive && !noAnim && !tokens.performance.noAmbientGlow,
+                    tint = tokens.phaseTokens.accentBright,
+                    peakAlpha = todayMotionSpec.surfaceRimAlpha * 0.36f,
+                    durationMs = (todayMotionSpec.sheenDurationMs * 1.55f).toInt(),
+                    modifier = Modifier.matchParentSize()
+                )
+
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -309,9 +320,10 @@ fun TodayScreen(
 
                     // Daily Progress Metrics + Animated Bar
                     if (activeSchedule?.isGymDay == true && activeSchedule.exercises.isNotEmpty()) {
+                        val barMotionSpec = LocalThemeMotionSpec.current
                         val animatedBarState = animateFloatAsState(
                             targetValue = (summary.progressPct / 100f).coerceIn(0f, 1f),
-                            animationSpec = if (noAnim) tween(0) else tween(320),
+                            animationSpec = if (noAnim) tween(0) else tween(barMotionSpec.progressFillMs, easing = FastOutSlowInEasing),
                             label = "todayProgressBar"
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -432,6 +444,14 @@ fun TodayScreen(
                         .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                         .testTag("start_workout_cta")
                 ) {
+                    val ctaMotionSpec = LocalThemeMotionSpec.current
+                    GpuSheenOverlay(
+                        active = tabActive && !noAnim && !tokens.performance.noAmbientGlow,
+                        tint = if (tokens.uiTheme == UiTheme.AMOLED_STEALTH) tokens.accentColor else Color.White,
+                        peakAlpha = ctaMotionSpec.sheenPeakAlpha,
+                        durationMs = ctaMotionSpec.sheenDurationMs,
+                        modifier = Modifier.matchParentSize()
+                    )
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1230,6 +1250,7 @@ internal fun HeroAnimatedAtmosphereLayer(
     noAnim: Boolean
 ) {
     val tokens = LocalIronPulseTokens.current
+    val motionSpec = LocalThemeMotionSpec.current
     val tabActive = LocalTabActive.current
     val animate = !noAnim && tabActive
     val noAmbientGlow = tokens.performance.noAmbientGlow
@@ -1242,7 +1263,7 @@ internal fun HeroAnimatedAtmosphereLayer(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 4200, easing = FastOutSlowInEasing),
+                animation = tween(durationMillis = motionSpec.heroBreathMs, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "breathe"
@@ -1251,7 +1272,7 @@ internal fun HeroAnimatedAtmosphereLayer(
             initialValue = 0f,
             targetValue = 360f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 14000, easing = LinearEasing),
+                animation = tween(durationMillis = motionSpec.heroOrbitMs, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
             label = "clockCornerRingRotate"
@@ -1317,7 +1338,8 @@ internal fun HeroAnimatedAtmosphereLayer(
                 modifier = Modifier
                     .matchParentSize()
                     .graphicsLayer {
-                        val pulseScale = 0.96f + 0.07f * breatheState.value
+                        val swing = motionSpec.heroAuraSwing
+                        val pulseScale = (1f - swing * 0.45f) + swing * breatheState.value
                         scaleX = pulseScale
                         scaleY = pulseScale
                         transformOrigin = TransformOrigin(1f, 0f)

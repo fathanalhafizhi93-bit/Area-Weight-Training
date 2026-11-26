@@ -70,7 +70,10 @@ import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.ClockFormat
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.PerformancePreferences
+import com.fathan.ironpulse.model.ThemeAnimationStyle
 import com.fathan.ironpulse.model.UiTheme
+import com.fathan.ironpulse.ui.components.LocalThemeMotionSpec
+import com.fathan.ironpulse.ui.components.MotionStyleCatalog
 import com.fathan.ironpulse.ui.components.tactilePress
 
 @Immutable
@@ -260,7 +263,8 @@ data class IronPulseThemeTokens(
     val phaseTokens: PhaseThemeTokens,
     val performance: PerformancePreferences,
     val lang: AppLanguage,
-    val clockFormat: ClockFormat
+    val clockFormat: ClockFormat,
+    val animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLUID_SILK
 )
 
 private val DefaultPalette = MaterialYouColorEngine.generateMaterialYouPalette(
@@ -527,7 +531,8 @@ fun Modifier.ironGlassSurface(
                             radius = size.maxDimension.coerceAtLeast(160f) * 0.72f
                         )
                     } else null
-                    val innerLip = Color.White.copy(alpha = if (subtle) 0.045f else 0.09f)
+                    val innerLip = Color.White.copy(alpha = if (subtle) 0.05f else 0.105f)
+                    val bottomEdge = tokens.palette.secondary.copy(alpha = if (subtle) 0.03f else 0.075f)
                     onDrawBehind {
                         drawRect(baseBg)
                         drawRect(topSheen)
@@ -539,6 +544,14 @@ fun Modifier.ironGlassSurface(
                                 end = Offset(size.width - strokePx * 2f, strokePx * 1.1f),
                                 strokeWidth = strokePx * 0.9f
                             )
+                            if (!subtle) {
+                                drawLine(
+                                    color = bottomEdge,
+                                    start = Offset(strokePx * 3f, size.height - strokePx * 1.1f),
+                                    end = Offset(size.width - strokePx * 3f, size.height - strokePx * 1.1f),
+                                    strokeWidth = strokePx * 0.8f
+                                )
+                            }
                         }
                     }
                 }
@@ -557,19 +570,20 @@ fun Modifier.ironGlassSurface(
                         subtle = subtle
                     )
                     val baseFill = Brush.verticalGradient(
-                        0.0f to if (subtle) Color(0xFF242027) else Color(0xFF312A34),
-                        0.45f to if (subtle) Color(0xFF201D22) else Color(0xFF2A262C),
-                        1.0f to if (subtle) Color(0xFF1C191E) else Color(0xFF242026)
+                        0.0f to if (subtle) Color(0xFF252128) else Color(0xFF332B36),
+                        0.45f to if (subtle) Color(0xFF201D22) else Color(0xFF2A262D),
+                        1.0f to if (subtle) Color(0xFF1B181E) else Color(0xFF231F26)
                     )
                     val headerSheen = Brush.verticalGradient(
-                        0.0f to Color(0xFF562547).copy(alpha = if (subtle) 0.11f else 0.26f),
-                        0.32f to Color.Transparent
+                        0.0f to Color(0xFF5D274D).copy(alpha = if (subtle) 0.12f else 0.28f),
+                        0.34f to Color.Transparent
                     )
-                    val innerRim = Color.White.copy(alpha = if (subtle) 0.045f else 0.095f)
-                    val yaruStripe = Color(0xFFE95420).copy(alpha = 0.88f)
-                    val yaruGlow = Color(0xFFE95420).copy(alpha = 0.16f)
+                    val innerRim = Color.White.copy(alpha = if (subtle) 0.05f else 0.11f)
+                    val bottomAubergineRim = Color(0xFFE95420).copy(alpha = if (subtle) 0.04f else 0.10f)
+                    val yaruStripe = Color(0xFFE95420).copy(alpha = 0.90f)
+                    val yaruGlow = Color(0xFFE95420).copy(alpha = 0.18f)
                     val stripeStart = 14.dp.toPx()
-                    val stripeLen = (size.width * 0.15f).coerceIn(22.dp.toPx(), 52.dp.toPx())
+                    val stripeLen = (size.width * 0.16f).coerceIn(22.dp.toPx(), 54.dp.toPx())
                     onDrawBehind {
                         drawRect(baseFill)
                         drawRect(yaruGrain)
@@ -595,6 +609,12 @@ fun Modifier.ironGlassSurface(
                                 strokeWidth = strokePx * 2.2f,
                                 cap = StrokeCap.Round
                             )
+                            drawLine(
+                                color = bottomAubergineRim,
+                                start = Offset(stripeStart, size.height - strokePx * 1.1f),
+                                end = Offset(size.width - stripeStart, size.height - strokePx * 1.1f),
+                                strokeWidth = strokePx * 0.8f
+                            )
                         }
                     }
                 }
@@ -613,14 +633,15 @@ fun Modifier.ironGlassSurface(
                         subtle = subtle
                     )
                     val sheenBrush = Brush.verticalGradient(
-                        0.0f to Color.White.copy(alpha = if (subtle) 0.04f else 0.085f),
-                        0.28f to Color.Transparent,
+                        0.0f to Color.White.copy(alpha = if (subtle) 0.045f else 0.095f),
+                        0.26f to Color.Transparent,
                         0.72f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = if (subtle) 0.18f else 0.28f)
+                        1.0f to Color.Black.copy(alpha = if (subtle) 0.20f else 0.32f)
                     )
-                    val rimColor = Color(0xFFE2E8F0).copy(alpha = if (subtle) 0.12f else 0.24f)
-                    val accentBar = tokens.accentColor.copy(alpha = 0.92f)
-                    val accentHalo = tokens.accentColor.copy(alpha = 0.18f)
+                    val rimColor = Color(0xFFE2E8F0).copy(alpha = if (subtle) 0.14f else 0.28f)
+                    val chamferShadow = Color.Black.copy(alpha = 0.42f)
+                    val accentBar = tokens.accentColor.copy(alpha = 0.94f)
+                    val accentHalo = tokens.accentColor.copy(alpha = 0.20f)
                     onDrawBehind {
                         drawRect(baseBg)
                         drawRect(carbonTwill)
@@ -631,17 +652,23 @@ fun Modifier.ironGlassSurface(
                             end = Offset(size.width, strokePx * 0.7f),
                             strokeWidth = strokePx
                         )
+                        drawLine(
+                            color = chamferShadow,
+                            start = Offset(0f, strokePx * 1.8f),
+                            end = Offset(size.width, strokePx * 1.8f),
+                            strokeWidth = strokePx * 0.7f
+                        )
                         if (!subtle && size.height > 44.dp.toPx()) {
                             val barH = (size.height - 20.dp.toPx()).coerceAtLeast(10f)
                             drawRect(
                                 color = accentHalo,
                                 topLeft = Offset(0f, 8.dp.toPx()),
-                                size = androidx.compose.ui.geometry.Size(5.dp.toPx(), barH + 4.dp.toPx())
+                                size = androidx.compose.ui.geometry.Size(5.5.dp.toPx(), barH + 4.dp.toPx())
                             )
                             drawRect(
                                 color = accentBar,
                                 topLeft = Offset(0f, 10.dp.toPx()),
-                                size = androidx.compose.ui.geometry.Size(2.5.dp.toPx(), barH)
+                                size = androidx.compose.ui.geometry.Size(2.6.dp.toPx(), barH)
                             )
                         }
                     }
@@ -664,15 +691,15 @@ fun Modifier.ironGlassSurface(
                     } else null
                     val topAura = if (!subtle && !tokens.performance.noAmbientGlow) {
                         Brush.verticalGradient(
-                            0.0f to (borderOverride ?: tokens.accentColor).copy(alpha = 0.065f),
+                            0.0f to (borderOverride ?: tokens.accentColor).copy(alpha = 0.075f),
                             0.28f to Color.Transparent
                         )
                     } else null
-                    val bracketStroke = (if (subtle) 1.0.dp else 1.45.dp).toPx()
-                    val arm = (if (subtle) 4.dp else 7.dp).toPx()
+                    val bracketStroke = (if (subtle) 1.0.dp else 1.5.dp).toPx()
+                    val arm = (if (subtle) 4.dp else 7.5.dp).toPx()
                     val activeAccent = borderOverride ?: tokens.accentColor
-                    val bracketColor = activeAccent.copy(alpha = if (subtle) 0.45f else 0.86f)
-                    val scanLineColor = activeAccent.copy(alpha = 0.24f)
+                    val bracketColor = activeAccent.copy(alpha = if (subtle) 0.48f else 0.88f)
+                    val scanLineColor = activeAccent.copy(alpha = 0.28f)
                     onDrawBehind {
                         drawRect(baseBg)
                         if (matrixBrush != null) drawRect(matrixBrush)
@@ -698,6 +725,12 @@ fun Modifier.ironGlassSurface(
                                         start = Offset(size.width * 0.34f, p),
                                         end = Offset(size.width * 0.66f, p),
                                         strokeWidth = strokePx * 0.9f
+                                    )
+                                    drawLine(
+                                        color = scanLineColor.copy(alpha = 0.18f),
+                                        start = Offset(size.width * 0.40f, size.height - p),
+                                        end = Offset(size.width * 0.60f, size.height - p),
+                                        strokeWidth = strokePx * 0.8f
                                     )
                                 }
                             } else {
@@ -1690,8 +1723,13 @@ fun IronPulseTheme(
             phaseTokens = phaseTokens,
             performance = prefs.performance,
             lang = prefs.lang,
-            clockFormat = prefs.clockFormat
+            clockFormat = prefs.clockFormat,
+            animationStyle = prefs.themeAnimationStyle
         )
+    }
+
+    val motionSpec = remember(prefs.themeAnimationStyle) {
+        MotionStyleCatalog.resolve(prefs.themeAnimationStyle)
     }
 
     val colorScheme = remember(tokens) {
@@ -1758,7 +1796,10 @@ fun IronPulseTheme(
         }
     }
 
-    CompositionLocalProvider(LocalIronPulseTokens provides tokens) {
+    CompositionLocalProvider(
+        LocalIronPulseTokens provides tokens,
+        LocalThemeMotionSpec provides motionSpec
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = themeTypography,
