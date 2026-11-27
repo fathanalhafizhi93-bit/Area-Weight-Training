@@ -105,6 +105,14 @@ enum class UiTheme(
         subtitleId = "Obsidian gelap tenang dengan aksen logam pagi, siang, dan malam",
         subtitleEn = "Calm dark obsidian glass with dawn, day, and night metal accents",
         isExclusive = true
+    ),
+    TERMINAL_CLI(
+        wireValue = "terminal-cli",
+        titleId = "Terminal CLI",
+        titleEn = "Terminal CLI",
+        subtitleId = "Konsol terminal gelap dengan huruf monospace dan pendar fosfor hijau",
+        subtitleEn = "Dark terminal console with crisp monospace type and green phosphor glow",
+        isExclusive = true
     );
 
     companion object {
@@ -115,6 +123,7 @@ enum class UiTheme(
             AMOLED_STEALTH.wireValue -> AMOLED_STEALTH
             FRUTIGER_AERO.wireValue -> FRUTIGER_AERO
             XMATERIAL_YOU.wireValue -> XMATERIAL_YOU
+            TERMINAL_CLI.wireValue -> TERMINAL_CLI
             // Legacy removed heavy glass themes map seamlessly to lightweight Material You
             else -> MATERIAL_YOU
         }

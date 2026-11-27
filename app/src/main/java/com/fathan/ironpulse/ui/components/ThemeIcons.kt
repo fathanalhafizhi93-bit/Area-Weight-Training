@@ -205,6 +205,16 @@ private fun resolveThemeIconStyle(
         join = StrokeJoin.Round,
         cornerScale = 0.20f
     )
+    UiTheme.TERMINAL_CLI -> ThemeIconStyle(
+        primary = tint,
+        secondary = Color(0xFF00FF66),
+        fillWash = tint.copy(alpha = 0.12f),
+        highlight = Color(0xFFD8FFE6),
+        strokeWidth = widthPx * 0.082f,
+        cap = StrokeCap.Square,
+        join = StrokeJoin.Miter,
+        cornerScale = 0.04f
+    )
 }
 
 private fun DrawScope.drawThemeIconUnderlay(
@@ -319,6 +329,23 @@ private fun DrawScope.drawThemeIconUnderlay(
                 )
             }
         }
+        UiTheme.TERMINAL_CLI -> {
+            if (filledBadge) {
+                drawRoundRect(
+                    color = Color(0xFF060B08),
+                    topLeft = Offset(w * 0.05f, h * 0.05f),
+                    size = Size(w * 0.90f, h * 0.90f),
+                    cornerRadius = CornerRadius(w * 0.12f, w * 0.12f)
+                )
+                drawRoundRect(
+                    color = style.secondary.copy(alpha = 0.62f),
+                    topLeft = Offset(w * 0.05f, h * 0.05f),
+                    size = Size(w * 0.90f, h * 0.90f),
+                    cornerRadius = CornerRadius(w * 0.12f, w * 0.12f),
+                    style = Stroke(w * 0.045f)
+                )
+            }
+        }
     }
 }
 
@@ -372,6 +399,13 @@ private fun DrawScope.drawThemeIconOverlay(
                 center = Offset(w * 0.78f, h * 0.20f)
             )
         }
+        UiTheme.TERMINAL_CLI -> {
+            drawRect(
+                color = style.secondary.copy(alpha = 0.88f),
+                topLeft = Offset(w * 0.82f, h * 0.10f),
+                size = Size(w * 0.08f, h * 0.08f)
+            )
+        }
     }
 }
 
@@ -414,6 +448,22 @@ private fun DrawScope.drawSemanticGlyph(
                         close()
                     }
                     drawPath(dia, style.primary, style = thinStroke)
+                }
+                UiTheme.TERMINAL_CLI -> {
+                    // Terminal TUI crisp box around prompt play glyph
+                    drawRoundRect(
+                        color = style.fillWash,
+                        topLeft = Offset(w * 0.13f, h * 0.13f),
+                        size = Size(w * 0.74f, h * 0.74f),
+                        cornerRadius = CornerRadius(w * 0.08f, w * 0.08f)
+                    )
+                    drawRoundRect(
+                        color = style.primary,
+                        topLeft = Offset(w * 0.13f, h * 0.13f),
+                        size = Size(w * 0.74f, h * 0.74f),
+                        cornerRadius = CornerRadius(w * 0.08f, w * 0.08f),
+                        style = stroke
+                    )
                 }
                 else -> {
                     drawCircle(style.fillWash, w * 0.38f, Offset(cx, cy))

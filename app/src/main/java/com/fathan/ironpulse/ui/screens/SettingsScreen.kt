@@ -226,19 +226,48 @@ fun SettingsScreen(
             ) {
                 when (category) {
                     null -> {
-                        itemsIndexed(
-                            items = SettingsCategory.entries,
-                            key = { _, it -> "settings_hub_${it.name}" },
-                            contentType = { _, _ -> "settings_hub_row" }
-                        ) { idx, cat ->
-                            SettingsCategoryRow(
-                                category = cat,
-                                state = state,
-                                onClick = { selectCategory(cat) },
-                                modifier = Modifier
-                                    .staggeredCardEntrance(idx, active = tabActive, disabledByPerf = noAnim)
-                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                        val hubSections = listOf(
+                            Triple(
+                                "account_appearance",
+                                lang.t("AKUN & TAMPILAN", "ACCOUNT & LOOK"),
+                                listOf(SettingsCategory.PROFILE, SettingsCategory.THEME)
+                            ),
+                            Triple(
+                                "training_experience",
+                                lang.t("LATIHAN & PENGALAMAN", "TRAINING & EXPERIENCE"),
+                                listOf(SettingsCategory.CONFIGURATION, SettingsCategory.ALARM)
+                            ),
+                            Triple(
+                                "system_info",
+                                lang.t("SISTEM & INFO", "SYSTEM & INFO"),
+                                listOf(SettingsCategory.SYSTEM, SettingsCategory.ABOUT)
                             )
+                        )
+                        var staggerIdx = 0
+                        hubSections.forEach { (sectionKey, sectionTitle, cats) ->
+                            item(key = "hub_section_$sectionKey", contentType = "settings_hub_section") {
+                                SettingsHubSectionHeader(
+                                    title = sectionTitle,
+                                    modifier = Modifier
+                                        .padding(top = if (sectionKey == "account_appearance") 0.dp else 6.dp)
+                                        .testTag("settings_section_$sectionKey")
+                                )
+                            }
+                            itemsIndexed(
+                                items = cats,
+                                key = { _, it -> "settings_hub_${it.name}" },
+                                contentType = { _, _ -> "settings_hub_row" }
+                            ) { _, cat ->
+                                val itemIdx = staggerIdx++
+                                SettingsCategoryRow(
+                                    category = cat,
+                                    state = state,
+                                    onClick = { selectCategory(cat) },
+                                    modifier = Modifier
+                                        .staggeredCardEntrance(itemIdx, active = tabActive, disabledByPerf = noAnim)
+                                        .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                                )
+                            }
                         }
                     }
 
@@ -451,39 +480,25 @@ fun SettingsScreen(
                     }
 
                     SettingsCategory.SYSTEM -> {
-                        item(key = "system_language", contentType = "system_language") {
-                            SystemLanguageCard(
+                        item(key = "system_localization_clock", contentType = "system_localization_clock") {
+                            SystemLocalizationAndClockCard(
                                 selectedLang = state.appPrefs.lang,
                                 onSelectLang = { viewModel.setLang(it) },
+                                clockFormat = state.appPrefs.clockFormat,
+                                clockSecondsFlow = viewModel.clockSecondsFlow,
+                                onSelectFormat = { viewModel.setClockFormat(it) },
                                 modifier = Modifier
                                     .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
-                        item(key = "system_clock", contentType = "system_clock") {
-                            SystemClockFormatCard(
-                                clockFormat = state.appPrefs.clockFormat,
-                                clockSecondsFlow = viewModel.clockSecondsFlow,
-                                onSelectFormat = { viewModel.setClockFormat(it) },
-                                modifier = Modifier
-                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
-                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
-                            )
-                        }
-                        item(key = "system_workout_display", contentType = "system_workout_display") {
-                            SystemWorkoutDisplayCard(
+                        item(key = "system_display_guide", contentType = "system_display_guide") {
+                            SystemDisplayAndGuideCard(
                                 keepScreenOnWorkout = state.appPrefs.keepScreenOnWorkout,
                                 onToggleKeepScreenOn = { viewModel.setKeepScreenOnWorkout(it) },
-                                modifier = Modifier
-                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
-                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
-                            )
-                        }
-                        item(key = "system_guide", contentType = "system_guide") {
-                            SystemGuideCard(
                                 onOpenTutorial = { viewModel.openTutorial(startWithLang = false) },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -600,8 +615,44 @@ private fun settingsCategoryTitle(category: SettingsCategory, lang: AppLanguage)
         SettingsCategory.CONFIGURATION -> lang.t("Konfigurasi", "Configuration")
         SettingsCategory.ALARM -> lang.t("Alarm", "Alarm")
         SettingsCategory.SYSTEM -> lang.t("Sistem", "System")
-        SettingsCategory.ABOUT -> "About"
+        SettingsCategory.ABOUT -> lang.t("Tentang", "About")
     }
+
+@Composable
+private fun SettingsHubSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(tokens.buttonShape)
+                .background(tokens.accentColor)
+        )
+        Text(
+            text = title,
+            fontFamily = tokens.fontPack.monoFont,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.8.sp,
+            color = tokens.accentTextColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = tokens.subtleBorderColor
+        )
+    }
+}
 
 private fun settingsCategoryIcon(category: SettingsCategory): IronPulseIcon =
     when (category) {
@@ -786,9 +837,9 @@ private fun SettingsPinnedHeader(
         )
 
         IronPulseTonalSurface(
-            shape = RoundedCornerShape(999.dp),
+            shape = tokens.buttonShape,
             baseColor = tokens.accentColor.copy(alpha = 0.14f),
-            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.26f))
+            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.28f))
         ) {
             Text(
                 text = if (activeCategory == null) tokens.fontPack.osBadgeLabel else lang.t("Pengaturan", "Settings"),
@@ -864,7 +915,7 @@ private fun ProfileHeroCard(
                 )
             }
 
-            val syncBadgeShape = RoundedCornerShape(999.dp)
+            val syncBadgeShape = tokens.buttonShape
             IronPulseTonalSurface(
                 shape = syncBadgeShape,
                 baseColor = if (state.isOffline) Color(0x26FBBF24) else Color(0x1E34D399),
@@ -1081,13 +1132,26 @@ private fun ThemesGridCard(
                 .testTag("themes_group_standard"),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = lang.t("Tema Standar", "Standard Themes"),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.4.sp,
-                color = tokens.mutedTextColor
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = lang.t("Tema Standar", "Standard Themes"),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.4.sp,
+                    color = tokens.mutedTextColor
+                )
+                Text(
+                    text = "${standardThemes.size}",
+                    fontFamily = tokens.fontPack.monoFont,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.mutedTextColor
+                )
+            }
             standardThemes.forEach { theme ->
                 ThemePreviewCard(
                     theme = theme,
@@ -1108,13 +1172,26 @@ private fun ThemesGridCard(
                 .testTag("themes_group_exclusive"),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = lang.t("Tema Eksklusif", "Exclusive Themes"),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.4.sp,
-                color = tokens.accentTextColor
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = lang.t("Tema Eksklusif", "Exclusive Themes"),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.4.sp,
+                    color = tokens.accentTextColor
+                )
+                Text(
+                    text = "${exclusiveThemes.size}",
+                    fontFamily = tokens.fontPack.monoFont,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.accentTextColor
+                )
+            }
             exclusiveThemes.forEach { theme ->
                 ThemePreviewCard(
                     theme = theme,
@@ -1281,7 +1358,7 @@ private fun ThemeAnimationStyleCard(
                         )
                     }
                     IronPulseTonalSurface(
-                        shape = RoundedCornerShape(999.dp),
+                        shape = tokens.buttonShape,
                         baseColor = tokens.accentColor.copy(alpha = 0.16f),
                         border = BorderStroke(0.85.dp, tokens.accentColor.copy(alpha = 0.35f))
                     ) {
@@ -1305,7 +1382,7 @@ private fun ThemeAnimationStyleCard(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(tokens.subtleCardShape)
                             .graphicsLayer {
                                 val p = demoProgress.value
                                 val inv = 1f - p
@@ -1352,7 +1429,7 @@ private fun ThemeAnimationStyleCard(
                                 }
                             }
                             .background(tokens.controlBg)
-                            .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(10.dp))
+                            .border(1.dp, tokens.surfaceBorderColor, tokens.subtleCardShape)
                             .padding(horizontal = 10.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -1363,7 +1440,7 @@ private fun ThemeAnimationStyleCard(
                             Box(
                                 modifier = Modifier
                                     .size(20.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(tokens.buttonShape)
                                     .background(tokens.accentColor.copy(alpha = 0.22f)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1573,7 +1650,7 @@ fun AccentAndTintSettingsCard(
                 color = tokens.palette.onSurface
             )
             IronPulseTonalSurface(
-                shape = RoundedCornerShape(999.dp),
+                shape = tokens.buttonShape,
                 baseColor = tokens.accentColor.copy(alpha = 0.16f),
                 border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.35f)),
                 modifier = Modifier.testTag("accent_active_visual_badge")
@@ -1602,9 +1679,11 @@ fun AccentAndTintSettingsCard(
         if (tokens.accentLocked) {
             val isXMaterialLocked = tokens.uiTheme == UiTheme.XMATERIAL_YOU
             val isYaruLocked = tokens.uiTheme == UiTheme.UBUNTU_YARU
+            val isCliLocked = tokens.uiTheme == UiTheme.TERMINAL_CLI
             val lockBadgeShape = when {
                 isXMaterialLocked -> CircleShape
                 isYaruLocked -> RoundedCornerShape(10.dp)
+                isCliLocked -> RoundedCornerShape(4.dp)
                 else -> CircleShape
             }
             val lockBadgeBrush = when {
@@ -1622,6 +1701,9 @@ fun AccentAndTintSettingsCard(
                 isYaruLocked -> Brush.linearGradient(
                     listOf(Color(0xFFE95420), Color(0xFF77216F))
                 )
+                isCliLocked -> Brush.linearGradient(
+                    listOf(Color(0xFF00FF66), Color(0xFF0B4F28))
+                )
                 else -> Brush.verticalGradient(
                     0.0f to Color(0xFF66DAFF),
                     0.5f to Color(0xFF0099E5),
@@ -1631,6 +1713,7 @@ fun AccentAndTintSettingsCard(
             val lockedTitle = when {
                 isXMaterialLocked -> lang.t("Palet Obsidian XMaterial You Terkunci", "XMaterial You Obsidian Palette Locked")
                 isYaruLocked -> lang.t("Jingga Yaru & Aubergine Terkunci", "Yaru Orange & Aubergine Locked")
+                isCliLocked -> lang.t("Palet Phosphor Terminal CLI Terkunci", "Terminal CLI Phosphor Palette Locked")
                 else -> lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked")
             }
             val lockedDesc = when {
@@ -1642,6 +1725,10 @@ fun AccentAndTintSettingsCard(
                     "Ubuntu Yaru mengunci aksen jingga Yaru dan permukaan aubergine matte agar karakter visualnya tetap utuh. Warna kustommu tetap aman untuk tema standar.",
                     "Ubuntu Yaru locks Yaru orange and warm aubergine matte surfaces to preserve its signature visual character. Your custom color stays saved for standard themes."
                 )
+                isCliLocked -> lang.t(
+                    "Terminal CLI mengunci aksen hijau fosfor CRT (#00FF66) dan latar konsol gelap (#050806) agar nuansa terminal tetap autentik. Warna kustommu tetap aman untuk tema standar.",
+                    "Terminal CLI locks classic CRT phosphor green (#00FF66) and dark console obsidian (#050806) to preserve its authentic terminal look. Your custom color stays saved for standard themes."
+                )
                 else -> lang.t(
                     "Tema Frutiger Aero mengunci warna aksen biru langit khas Y2K agar nuansa kaca glossy tetap serasi. Pilihan warna kustommu tetap aman untuk tema lainnya.",
                     "Frutiger Aero locks its signature Y2K sky-blue accent to keep the glossy glass look cohesive. Your custom color stays saved for other themes."
@@ -1651,11 +1738,13 @@ fun AccentAndTintSettingsCard(
             val lockedBannerShape = when {
                 isXMaterialLocked -> tokens.subtleCardShape
                 isYaruLocked -> RoundedCornerShape(12.dp)
+                isCliLocked -> RoundedCornerShape(4.dp)
                 else -> RoundedCornerShape(14.dp)
             }
             val lockedBannerBg = when {
                 isXMaterialLocked -> Color(0xFF101218)
                 isYaruLocked -> Color(0xFF2B2029)
+                isCliLocked -> Color(0xFF09100C)
                 else -> tokens.accentColor.copy(alpha = 0.14f)
             }
             IronPulseTonalSurface(
@@ -1681,7 +1770,7 @@ fun AccentAndTintSettingsCard(
                             .background(lockBadgeBrush)
                             .border(
                                 1.dp,
-                                Color.White.copy(alpha = if (isXMaterialLocked || isYaruLocked) 0.35f else 0.80f),
+                                Color.White.copy(alpha = if (isXMaterialLocked || isYaruLocked || isCliLocked) 0.35f else 0.80f),
                                 lockBadgeShape
                             ),
                         contentAlignment = Alignment.Center
@@ -1689,7 +1778,7 @@ fun AccentAndTintSettingsCard(
                         ThemedIcon(
                             icon = IronPulseIcon.LOCK,
                             contentDescription = lang.t("Warna aksen terkunci", "Accent color locked"),
-                            tint = if (isXMaterialLocked) tokens.onAccentColor else Color.White,
+                            tint = if (isXMaterialLocked || isCliLocked) tokens.onAccentColor else Color.White,
                             size = 18.dp
                         )
                     }
@@ -2057,9 +2146,9 @@ fun AccentAndTintSettingsCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(28.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(tokens.buttonShape)
                             .background(swatchColor)
-                            .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(8.dp))
+                            .border(1.dp, tokens.surfaceBorderColor, tokens.buttonShape)
                     )
                     Text(
                         text = label,
@@ -2108,7 +2197,7 @@ private fun TodayPhaseMoodCard(
                 Triple(DayTimeMode.NIGHT, lang.t("Malam", "Night"), nightDot)
             ).forEach { (mode, label, dot) ->
                 val active = selectedMode == mode
-                val moodShape = RoundedCornerShape(12.dp)
+                val moodShape = tokens.subtleCardShape
                 val moodBg = if (active) {
                     lerp(tokens.controlBg, dot, if (tokens.isLightTheme) 0.16f else 0.18f)
                 } else {
@@ -2167,13 +2256,19 @@ private fun MascotPersonalitySettingsCard(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                text = lang.t("Kepribadian Maskot Pulse", "Pulse Mascot Personality"),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = tokens.palette.onSurface
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
+                Text(
+                    text = lang.t("Kepribadian Maskot Pulse", "Pulse Mascot Personality"),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+            }
             Text(
                 text = lang.t(
                     "Pilih karakter suara, ekspresi mata, dan gaya dialog pendamping latihanmu.",
@@ -2330,15 +2425,22 @@ private fun PerformanceSettingsCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = lang.t("Profil Performa Cepat", "Quick Performance Profiles"),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = tokens.palette.onSurface
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                ThemedIcon(IronPulseIcon.SPEED, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
+                Text(
+                    text = lang.t("Profil Performa Cepat", "Quick Performance Profiles"),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+            }
             if (activePreset == null) {
                 IronPulseTonalSurface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = tokens.buttonShape,
                     baseColor = tokens.subtleChipBg,
                     border = BorderStroke(1.dp, tokens.subtleBorderColor)
                 ) {
@@ -2450,6 +2552,7 @@ private fun ThemePreviewCard(
         UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
+        UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
         UiTheme.FRUTIGER_AERO -> RoundedCornerShape(18.dp)
         UiTheme.XMATERIAL_YOU -> RoundedCornerShape(28.dp)
         UiTheme.MATERIAL_YOU -> RoundedCornerShape(18.dp)
@@ -2503,6 +2606,7 @@ private fun ThemePreviewCard(
                 UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
                 UiTheme.UBUNTU_YARU -> RoundedCornerShape(8.dp)
                 UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
+                UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
                 UiTheme.FRUTIGER_AERO -> RoundedCornerShape(14.dp)
                 UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
             }
@@ -2528,11 +2632,13 @@ private fun ThemePreviewCard(
                         val grainScale = density.roundToInt().coerceIn(1, 3)
                         val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
                         val facetCellPx = (12.dp.toPx()).roundToInt().coerceIn(18, 36)
+                        val cliLinePx = (1.5.dp.toPx()).roundToInt().coerceIn(3, 6)
                         val baseBg = when (theme) {
                             UiTheme.MATERIAL_YOU -> Color(0xFF221E2A)
                             UiTheme.CARBON_FORGE -> Color(0xFF0E1218)
                             UiTheme.UBUNTU_YARU -> Color(0xFF2D1729)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
+                            UiTheme.TERMINAL_CLI -> Color(0xFF050806)
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xFF162A52) else Color(0xFFD6F3FF)
                             UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B10)
                         }
@@ -2541,6 +2647,7 @@ private fun ThemePreviewCard(
                             UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = false)
                             UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = false)
                             UiTheme.XMATERIAL_YOU -> ThemeMaterialShaderCache.getPrismaticFacetBrush(cellPx = facetCellPx, isNight = isXMaterialNightPreview)
+                            UiTheme.TERMINAL_CLI -> ThemeMaterialShaderCache.getCliScanlineBrush(linePx = cliLinePx, subtle = false)
                             UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO -> null
                         }
                         val finishBrush = when (theme) {
@@ -2562,6 +2669,11 @@ private fun ThemePreviewCard(
                             UiTheme.AMOLED_STEALTH -> Brush.verticalGradient(
                                 0.0f to previewAccent.copy(alpha = 0.14f),
                                 0.45f to Color.Transparent
+                            )
+                            UiTheme.TERMINAL_CLI -> Brush.verticalGradient(
+                                0.0f to Color(0xFF00FF66).copy(alpha = 0.12f),
+                                0.50f to Color.Transparent,
+                                1.0f to Color(0xFF00FF66).copy(alpha = 0.05f)
                             )
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) {
                                 Brush.linearGradient(
@@ -2708,6 +2820,7 @@ private fun ThemePreviewCard(
                                     UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.26f)
                                     UiTheme.UBUNTU_YARU -> Color(0xFF141414)
                                     UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.52f)
+                                    UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.62f)
                                     UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xB45BC6FA) else Color(0xC20082C8)
                                     else -> previewAccent.copy(alpha = 0.36f)
                                 },
@@ -2727,6 +2840,7 @@ private fun ThemePreviewCard(
                                 UiTheme.XMATERIAL_YOU -> Color(0xFF101218)
                                 UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
                                 UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
+                                UiTheme.TERMINAL_CLI -> Color(0xFF0A120D)
                                 UiTheme.CARBON_FORGE -> Color(0xCC181E28)
                                 UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.08f)
                             }
@@ -2769,7 +2883,7 @@ private fun ThemePreviewCard(
                             }
                             Box(Modifier.size(4.dp).clip(CircleShape).background(dotMetal))
                         }
-                        UiTheme.AMOLED_STEALTH -> Box(Modifier.size(4.dp).background(previewAccent))
+                        UiTheme.AMOLED_STEALTH, UiTheme.TERMINAL_CLI -> Box(Modifier.size(4.dp).background(previewAccent))
                         else -> Box(Modifier.size(4.dp).clip(CircleShape).background(previewAccent.copy(alpha = 0.75f)))
                     }
                 }
@@ -2877,7 +2991,7 @@ private fun ThemePreviewCard(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     IronPulseTonalSurface(
-                        shape = RoundedCornerShape(999.dp),
+                        shape = tokens.buttonShape,
                         baseColor = readableAccent.copy(alpha = if (tokens.isLightTheme) 0.14f else 0.16f),
                         border = BorderStroke(1.dp, readableAccent.copy(alpha = if (tokens.isLightTheme) 0.42f else 0.36f))
                     ) {
@@ -2981,7 +3095,7 @@ private fun AlarmAudioSettingsCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemedIcon(IronPulseIcon.VOLUME, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
+                ThemedIcon(IronPulseIcon.VOLUME, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
                 Text(
                     text = lang.t("Volume & Pengatur Waktu", "Volume & Timing"),
                     fontSize = 15.5.sp,
@@ -2991,9 +3105,9 @@ private fun AlarmAudioSettingsCard(
             }
             Text(
                 text = "${(volumeFloat * 100).toInt()}%",
-                fontFamily = FontFamily.Monospace,
+                fontFamily = tokens.fontPack.monoFont,
                 fontWeight = FontWeight.Bold,
-                color = tokens.accentColor
+                color = tokens.accentTextColor
             )
         }
 
@@ -3074,7 +3188,7 @@ private fun AlarmFeedbackSettingsCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
+            ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
             Text(
                 text = lang.t("Umpan Balik & Suara", "Feedback & Voice"),
                 fontSize = 15.5.sp,
@@ -3107,7 +3221,7 @@ private fun AlarmFeedbackSettingsCard(
             ) {
                 IronPulseTonalSurface(
                     onClick = { viewModel.testHapticPattern() },
-                    shape = RoundedCornerShape(999.dp),
+                    shape = tokens.buttonShape,
                     baseColor = tokens.controlBg,
                     pressedScale = 0.92f,
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor)
@@ -3165,7 +3279,7 @@ private fun AlarmDiagnosticsCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ThemedIcon(IronPulseIcon.NOTIFICATIONS, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
+            ThemedIcon(IronPulseIcon.NOTIFICATIONS, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
             Text(
                 text = lang.t("Diagnostik Alarm Android", "Android Alarm Diagnostics"),
                 fontSize = 15.5.sp,
@@ -3294,7 +3408,7 @@ private fun RingtoneManagerHeaderCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ThemedIcon(IronPulseIcon.MUSIC, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
+            ThemedIcon(IronPulseIcon.MUSIC, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
             Text(
                 text = lang.t("Pengelola Nada Dering", "Ringtone Manager"),
                 fontSize = 16.sp,
@@ -3480,7 +3594,7 @@ private fun BuiltinRingtoneItemCard(
                         text = lang.t(spec.patternLabelId, spec.patternLabelEn),
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = tokens.accentColor
+                        color = tokens.accentTextColor
                     )
                 }
                 Text(
@@ -3519,7 +3633,7 @@ private fun RingtoneAssignChip(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val chipShape = RoundedCornerShape(10.dp)
+    val chipShape = tokens.buttonShape
     IronPulseTonalSurface(
         onClick = onClick,
         shape = chipShape,
@@ -3582,59 +3696,128 @@ private fun LiveClockPreviewBadge(
 }
 
 @Composable
-private fun SystemLanguageCard(
+private fun SystemLocalizationAndClockCard(
     selectedLang: AppLanguage,
     onSelectLang: (AppLanguage) -> Unit,
+    clockFormat: ClockFormat,
+    clockSecondsFlow: StateFlow<Long>,
+    onSelectFormat: (ClockFormat) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    val noAnim = tokens.performance.noAnimations
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .testTag("system_localization_clock_card")
             .ironGlassSurface(tokens)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = lang.t("Bahasa Aplikasi", "Application Language"),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = tokens.palette.onSurface
-        )
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AppLanguage.entries.forEach { option ->
-                val active = selectedLang == option
-                val langShape = RoundedCornerShape(12.dp)
-                IronPulseTonalSurface(
-                    onClick = { onSelectLang(option) },
-                    shape = langShape,
-                    baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
-                    isAccent = active,
-                    pressedScale = 0.95f,
-                    border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+            ThemedIcon(IronPulseIcon.SETTINGS, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
+            Text(
+                text = lang.t("Bahasa & Format Jam", "Language & Clock Format"),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.palette.onSurface
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = lang.t("Bahasa Aplikasi", "Application Language"),
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = tokens.palette.onSurface
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AppLanguage.entries.forEach { option ->
+                    val active = selectedLang == option
+                    IronPulseTonalSurface(
+                        onClick = { onSelectLang(option) },
+                        shape = tokens.subtleCardShape,
+                        baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                        isAccent = active,
+                        pressedScale = 0.95f,
+                        border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = option.displayName,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (active) tokens.accentTextColor else tokens.palette.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (active) {
+                                ThemedIcon(IronPulseIcon.CHECK_CIRCLE, contentDescription = null, tint = tokens.accentTextColor, size = 16.dp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider(color = tokens.dividerColor)
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = lang.t("Format Jam", "Clock Format"),
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tokens.palette.onSurface
+                )
+                LiveClockPreviewBadge(
+                    clockSecondsFlow = clockSecondsFlow,
+                    clockFormat = clockFormat,
+                    lang = lang,
+                    accentColor = tokens.accentTextColor
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    ClockFormat.H24 to lang.t("24 Jam (18:30)", "24-Hour (18:30)"),
+                    ClockFormat.H12 to lang.t("12 Jam (6:30 Sore)", "12-Hour (6:30 PM)")
+                ).forEach { (fmt, label) ->
+                    val active = clockFormat == fmt
+                    IronPulseTonalSurface(
+                        onClick = { onSelectFormat(fmt) },
+                        shape = tokens.subtleCardShape,
+                        baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
+                        isAccent = active,
+                        pressedScale = 0.95f,
+                        border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = option.displayName,
-                            fontSize = 13.sp,
+                            text = label,
+                            fontSize = 12.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (active) tokens.accentTextColor else tokens.palette.onSurface,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.padding(12.dp)
                         )
-                        if (active) {
-                            ThemedIcon(IronPulseIcon.CHECK_CIRCLE, contentDescription = null, tint = tokens.accentTextColor, size = 16.dp)
-                        }
                     }
                 }
             }
@@ -3643,96 +3826,36 @@ private fun SystemLanguageCard(
 }
 
 @Composable
-private fun SystemClockFormatCard(
-    clockFormat: ClockFormat,
-    clockSecondsFlow: StateFlow<Long>,
-    onSelectFormat: (ClockFormat) -> Unit,
+private fun SystemDisplayAndGuideCard(
+    keepScreenOnWorkout: Boolean,
+    onToggleKeepScreenOn: (Boolean) -> Unit,
+    onOpenTutorial: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    val noAnim = tokens.performance.noAnimations
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .testTag("system_display_guide_card")
             .ironGlassSurface(tokens)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            ThemedIcon(IronPulseIcon.SCHOOL, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
             Text(
-                text = lang.t("Format Jam", "Clock Format"),
+                text = lang.t("Layar & Panduan", "Display & Guide"),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = tokens.palette.onSurface
             )
-            LiveClockPreviewBadge(
-                clockSecondsFlow = clockSecondsFlow,
-                clockFormat = clockFormat,
-                lang = lang,
-                accentColor = tokens.accentColor
-            )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(
-                ClockFormat.H24 to lang.t("24 Jam (18:30)", "24-Hour (18:30)"),
-                ClockFormat.H12 to lang.t("12 Jam (6:30 Sore)", "12-Hour (6:30 PM)")
-            ).forEach { (fmt, label) ->
-                val active = clockFormat == fmt
-                val fmtShape = RoundedCornerShape(12.dp)
-                IronPulseTonalSurface(
-                    onClick = { onSelectFormat(fmt) },
-                    shape = fmtShape,
-                    baseColor = if (active) tokens.accentColor.copy(alpha = 0.18f) else tokens.palette.surfaceContainerLow,
-                    isAccent = active,
-                    pressedScale = 0.95f,
-                    border = BorderStroke(1.dp, if (active) tokens.accentColor else tokens.surfaceBorderColor),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = label,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (active) tokens.accentTextColor else tokens.palette.onSurface,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SystemWorkoutDisplayCard(
-    keepScreenOnWorkout: Boolean,
-    onToggleKeepScreenOn: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val tokens = LocalIronPulseTokens.current
-    val lang = tokens.lang
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .ironGlassSurface(tokens)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = lang.t("Layar Saat Latihan", "Workout Screen"),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = tokens.palette.onSurface
-        )
         PerformanceSwitchRow(
             title = lang.t("Layar Tetap Menyala di Tab Latihan", "Keep Screen On in Workout"),
             subtitle = lang.t(
@@ -3743,30 +3866,8 @@ private fun SystemWorkoutDisplayCard(
             onCheckedChange = onToggleKeepScreenOn,
             switchModifier = Modifier.testTag("settings_keep_screen_on_switch")
         )
-    }
-}
 
-@Composable
-private fun SystemGuideCard(
-    onOpenTutorial: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val tokens = LocalIronPulseTokens.current
-    val lang = tokens.lang
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .ironGlassSurface(tokens)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = lang.t("Panduan Aplikasi", "App Guide"),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = tokens.palette.onSurface
-        )
+        HorizontalDivider(color = tokens.dividerColor)
 
         SystemActionRow(
             icon = IronPulseIcon.SCHOOL,
@@ -3785,7 +3886,7 @@ private fun SystemActionRow(
     onClick: () -> Unit
 ) {
     val tokens = LocalIronPulseTokens.current
-    val rowShape = RoundedCornerShape(12.dp)
+    val rowShape = tokens.subtleCardShape
     IronPulseTonalSurface(
         onClick = onClick,
         shape = rowShape,
@@ -3806,7 +3907,7 @@ private fun SystemActionRow(
                     .size(36.dp)
                     .ironTonalControl(
                         tokens = tokens,
-                        shape = RoundedCornerShape(10.dp),
+                        shape = tokens.buttonShape,
                         baseColor = tokens.accentColor.copy(alpha = 0.16f),
                         isAccent = false
                     ),
@@ -3815,7 +3916,7 @@ private fun SystemActionRow(
                 ThemedIcon(
                     icon = icon,
                     contentDescription = null,
-                    tint = tokens.accentColor,
+                    tint = tokens.accentTextColor,
                     size = 18.dp
                 )
             }

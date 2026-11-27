@@ -68,6 +68,7 @@ object MaterialYouColorEngine {
     const val XMATERIAL_MORNING_ACCENT = "#DFBE84"
     const val XMATERIAL_AFTERNOON_ACCENT = "#8CC5C2"
     const val XMATERIAL_NIGHT_ACCENT = "#B0A4E3"
+    const val CLI_PHOSPHOR_ACCENT = "#00FF66"
 
     fun xmaterialAccentForPhase(phase: com.fathan.ironpulse.model.DayTimePhase): String = when (phase) {
         com.fathan.ironpulse.model.DayTimePhase.MORNING -> XMATERIAL_MORNING_ACCENT
@@ -82,6 +83,7 @@ object MaterialYouColorEngine {
         UiTheme.AMOLED_STEALTH -> "#07080B"
         UiTheme.FRUTIGER_AERO -> "#DDF5FF"
         UiTheme.XMATERIAL_YOU -> "#0E0F13"
+        UiTheme.TERMINAL_CLI -> "#050806"
     }
 
     fun normalizeHexColor(hex: String?, fallback: String = DEFAULT_ACCENT_COLOR): String {
@@ -268,8 +270,12 @@ object MaterialYouColorEngine {
         surfaceTintOverrideHex: String? = null,
         isLight: Boolean = false,
         isAeroNight: Boolean = false,
-        xMaterialPhase: com.fathan.ironpulse.model.DayTimePhase? = null
+        xMaterialPhase: com.fathan.ironpulse.model.DayTimePhase? = null,
+        isCli: Boolean = false
     ): MaterialYouPalette {
+        if (isCli) {
+            return buildTerminalCliPalette()
+        }
         if (xMaterialPhase != null) {
             return buildXMaterialYouPhasePalette(xMaterialPhase)
         }
@@ -642,6 +648,32 @@ object MaterialYouColorEngine {
             outlineVariantHex = "#242530"
         )
     }
+
+    private fun buildTerminalCliPalette(): MaterialYouPalette = buildFixedPalette(
+        seed = CLI_PHOSPHOR_ACCENT,
+        primaryHex = CLI_PHOSPHOR_ACCENT,
+        onPrimaryHex = "#031A0A",
+        primaryContainerHex = "#0E2917",
+        onPrimaryContainerHex = "#9BFFBE",
+        secondaryHex = "#4ADE80",
+        onSecondaryHex = "#041C0B",
+        secondaryContainerHex = "#0B2113",
+        onSecondaryContainerHex = "#7FFFA9",
+        tertiaryHex = "#FFB000",
+        onTertiaryHex = "#1E1400",
+        tertiaryContainerHex = "#241B06",
+        onTertiaryContainerHex = "#FFE08A",
+        surfaceHex = "#050806",
+        surfaceContainerLowestHex = "#030504",
+        surfaceContainerLowHex = "#070C09",
+        surfaceContainerHex = "#0A100C",
+        surfaceContainerHighHex = "#0F1812",
+        surfaceContainerHighestHex = "#152119",
+        onSurfaceHex = "#E6F9EC",
+        onSurfaceVariantHex = "#7CA88B",
+        outlineHex = "#00FF66",
+        outlineVariantHex = "#1D3B27"
+    )
 
     private fun buildFixedPalette(
         seed: String,

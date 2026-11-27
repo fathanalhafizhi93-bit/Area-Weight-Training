@@ -148,6 +148,7 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                     val grainScale = density.roundToInt().coerceIn(1, 3)
                     val matrixCellPx = (3.5.dp.toPx()).roundToInt().coerceIn(6, 11)
                     val facetCellPx = (18.dp.toPx()).roundToInt().coerceIn(24, 48)
+                    val cliLinePx = (1.5.dp.toPx()).roundToInt().coerceIn(3, 6)
                     val backdropShader = when {
                         tokens.uiTheme == UiTheme.CARBON_FORGE ->
                             ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = cellPx, subtle = true)
@@ -157,6 +158,8 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = true)
                         tokens.uiTheme == UiTheme.XMATERIAL_YOU && !suppressGlow ->
                             ThemeMaterialShaderCache.getPrismaticFacetBrush(cellPx = facetCellPx, isNight = tokens.isXMaterialNight)
+                        tokens.uiTheme == UiTheme.TERMINAL_CLI && !suppressGlow ->
+                            ThemeMaterialShaderCache.getCliScanlineBrush(linePx = cliLinePx, subtle = true)
                         else -> null
                     }
                     val shaderAlpha = when (tokens.uiTheme) {
@@ -164,6 +167,7 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                         UiTheme.UBUNTU_YARU -> 0.72f
                         UiTheme.AMOLED_STEALTH -> 0.45f
                         UiTheme.XMATERIAL_YOU -> 0.36f
+                        UiTheme.TERMINAL_CLI -> 0.62f
                         else -> 0.5f
                     }
                     val baseGradient = when (tokens.uiTheme) {
@@ -208,6 +212,11 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             0.76f to Color(0xFF060608),
                             1.0f to Color(0xFF0A0B10)
                         )
+                        UiTheme.TERMINAL_CLI -> Brush.verticalGradient(
+                            0.0f to Color(0xFF09120D),
+                            0.42f to Color(0xFF050806),
+                            1.0f to Color(0xFF040705)
+                        )
                         UiTheme.AMOLED_STEALTH -> null
                     }
                     val topGlow = when {
@@ -216,6 +225,11 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             colors = listOf(tokens.accentColor.copy(alpha = 0.06f), Color.Transparent),
                             center = Offset(size.width * 0.5f, 0f),
                             radius = size.width.coerceAtLeast(480f) * 0.72f
+                        )
+                        tokens.uiTheme == UiTheme.TERMINAL_CLI -> Brush.radialGradient(
+                            colors = listOf(Color(0xFF00FF66).copy(alpha = 0.09f), Color.Transparent),
+                            center = Offset(size.width * 0.25f, size.height * 0.06f),
+                            radius = size.width.coerceAtLeast(480f) * 0.80f
                         )
                         tokens.uiTheme == UiTheme.CARBON_FORGE -> Brush.radialGradient(
                             colors = listOf(tokens.accentColor.copy(alpha = 0.11f), Color.Transparent),
@@ -287,6 +301,11 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
                             ),
                             center = Offset(size.width * 0.86f, size.height * 0.88f),
                             radius = size.width.coerceAtLeast(480f) * 0.82f
+                        )
+                        tokens.uiTheme == UiTheme.TERMINAL_CLI -> Brush.radialGradient(
+                            colors = listOf(Color(0x1600FF66), Color.Transparent),
+                            center = Offset(size.width * 0.82f, size.height * 0.85f),
+                            radius = size.width.coerceAtLeast(460f) * 0.75f
                         )
                         else -> null
                     }
@@ -363,6 +382,7 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
             val veilTint = when (tokens.uiTheme) {
                 UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.accentBright
                 UiTheme.UBUNTU_YARU -> Color(0xFFE95420)
+                UiTheme.TERMINAL_CLI -> Color(0xFF00FF66)
                 else -> tokens.accentColor
             }
             Spacer(
@@ -579,6 +599,7 @@ fun IronPulseTopBar(
     val isXMaterial = theme == UiTheme.XMATERIAL_YOU
     val isCarbon = theme == UiTheme.CARBON_FORGE
     val isStealth = theme == UiTheme.AMOLED_STEALTH
+    val isCli = theme == UiTheme.TERMINAL_CLI
 
     val iconShape = remember(theme) {
         when (theme) {
@@ -586,6 +607,7 @@ fun IronPulseTopBar(
             UiTheme.UBUNTU_YARU -> RoundedCornerShape(9.dp)
             UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
             UiTheme.XMATERIAL_YOU -> CircleShape
         }
@@ -595,6 +617,7 @@ fun IronPulseTopBar(
         UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.42f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141216)
         UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.42f)
+        UiTheme.TERMINAL_CLI -> tokens.accentColor.copy(alpha = 0.55f)
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0x885BC6FA) else Color(0x990099E5)
         UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.headerBorder
     }
@@ -689,6 +712,9 @@ fun IronPulseTopBar(
                                 isStealth -> Modifier
                                     .background(Color(0xFF000000), ctaShape)
                                     .border(1.15.dp, tokens.accentColor.copy(alpha = 0.90f), ctaShape)
+                                isCli -> Modifier
+                                    .background(Color(0xFF08120C), ctaShape)
+                                    .border(1.15.dp, tokens.accentColor.copy(alpha = 0.85f), ctaShape)
                                 isCarbon -> Modifier
                                     .background(
                                         Brush.verticalGradient(
@@ -717,6 +743,7 @@ fun IronPulseTopBar(
                 ) {
                     val ctaContentTint = when {
                         isStealth -> tokens.accentColor
+                        isCli -> tokens.accentColor
                         isXMaterial -> tokens.accentTextColor
                         else -> tokens.onAccentColor
                     }
@@ -761,14 +788,17 @@ private fun TopBarIconButton(
     val isAeroNight = tokens.isAeroNight
     val isStealth = tokens.uiTheme == UiTheme.AMOLED_STEALTH
     val isXMaterial = tokens.uiTheme == UiTheme.XMATERIAL_YOU
+    val isCli = tokens.uiTheme == UiTheme.TERMINAL_CLI
     val containerColor = when {
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active && isAero -> if (isAeroNight) Color(0xFF0099E5) else Color(0xFF0084CE)
         active && isStealth -> tokens.accentColor.copy(alpha = 0.16f)
+        active && isCli -> Color(0xFF0B1C12)
         active && isXMaterial -> tokens.phaseTokens.accent.copy(alpha = 0.14f)
         active -> tokens.accentColor.copy(alpha = 0.22f)
         isAero -> if (isAeroNight) Color(0xD91E3D6B) else Color(0xF5FFFFFF)
         isStealth -> Color(0xFF05070A)
+        isCli -> Color(0xFF070D0A)
         isXMaterial -> Color(0xFF13151C)
         isMaterialYou -> tokens.palette.surfaceContainerHigh
         else -> tokens.controlBg
@@ -780,6 +810,7 @@ private fun TopBarIconButton(
         active -> tokens.accentColor
         isAero -> if (isAeroNight) Color(0x885BC6FA) else Color(0x990082C8)
         isStealth -> tokens.accentColor.copy(alpha = 0.42f)
+        isCli -> tokens.accentColor.copy(alpha = 0.46f)
         isXMaterial -> Color(0xFF282A34)
         isMaterialYou -> tokens.palette.outlineVariant
         tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141216)
@@ -852,6 +883,7 @@ fun IronPulseBottomNav(
     val isStealth = theme == UiTheme.AMOLED_STEALTH
     val isAero = theme == UiTheme.FRUTIGER_AERO
     val isXMaterial = theme == UiTheme.XMATERIAL_YOU
+    val isCli = theme == UiTheme.TERMINAL_CLI
 
     val items = remember(lang) {
         listOf(
@@ -877,6 +909,7 @@ fun IronPulseBottomNav(
         UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.48f)
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0x885BC6FA) else Color(0xAA0099E5)
         UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.headerBorder
+        UiTheme.TERMINAL_CLI -> tokens.accentColor.copy(alpha = 0.55f)
     }
 
     // Outer wrapper differs per OS: Ubuntu Dock floats subtly, Aero has glossy taskbar rail,
@@ -1121,6 +1154,26 @@ fun IronPulseBottomNav(
                                 )
                             }
                         }
+                        isCli -> {
+                            // Crisp 4.dp TUI terminal selection box with bright phosphor top bar
+                            val cliBoxShape = RoundedCornerShape(4.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 4.dp)
+                                    .clip(cliBoxShape)
+                                    .background(Color(0xFF0A1910))
+                                    .border(1.dp, tokens.accentColor.copy(alpha = 0.72f), cliBoxShape),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(28.dp)
+                                        .height(2.dp)
+                                        .background(tokens.accentColor)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1208,11 +1261,11 @@ fun IronPulseBottomNav(
                                 )
                             } else {
                                 Text(
-                                    text = if (isStealth) label.uppercase() else label,
-                                    fontSize = if (isStealth) 9.5.sp else 11.sp,
+                                    text = if (isStealth || isCli) label.uppercase() else label,
+                                    fontSize = if (isStealth || isCli) 9.5.sp else 11.sp,
                                     fontFamily = tokens.fontPack.displayFont,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                                    letterSpacing = if (isStealth || isCarbon) 0.4.sp else 0.sp,
+                                    letterSpacing = if (isStealth || isCarbon || isCli) 0.4.sp else 0.sp,
                                     color = itemContentColor,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -1236,6 +1289,7 @@ private fun BottomNavTodayLabel(
 ) {
     val tokens = LocalIronPulseTokens.current
     val isStealth = tokens.uiTheme == UiTheme.AMOLED_STEALTH
+    val isCli = tokens.uiTheme == UiTheme.TERMINAL_CLI
     val labelFlow = remember(restTimerFlow) {
         restTimerFlow
             .map { if (it.isActive) GymModelHelpers.formatRestDuration(it.remainingSeconds) else null }
@@ -1243,13 +1297,13 @@ private fun BottomNavTodayLabel(
     }
     val compactRestText by labelFlow.collectAsStateWithLifecycle(initialValue = null)
     val showCompactRest = compactRestText != null
-    val renderedText = compactRestText ?: if (isStealth) defaultLabel.uppercase() else defaultLabel
+    val renderedText = compactRestText ?: if (isStealth || isCli) defaultLabel.uppercase() else defaultLabel
     Text(
         text = renderedText,
-        fontSize = if (isStealth) 10.sp else 11.sp,
+        fontSize = if (isStealth || isCli) 9.5.sp else 11.sp,
         fontFamily = if (showCompactRest) tokens.fontPack.monoFont else tokens.fontPack.displayFont,
         fontWeight = if (showCompactRest || isActive) FontWeight.Bold else FontWeight.Medium,
-        letterSpacing = if (isStealth || tokens.uiTheme == UiTheme.CARBON_FORGE) 0.5.sp else 0.sp,
+        letterSpacing = if (isStealth || isCli || tokens.uiTheme == UiTheme.CARBON_FORGE) 0.5.sp else 0.sp,
         color = if (showCompactRest) accentColor else defaultColor,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis

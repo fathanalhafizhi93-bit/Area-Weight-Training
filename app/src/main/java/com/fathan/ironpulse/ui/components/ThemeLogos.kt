@@ -59,6 +59,7 @@ fun resolvePreviewAccentForTheme(
         activeAccent
     }
     UiTheme.MATERIAL_YOU, UiTheme.CARBON_FORGE -> activeAccent
+    UiTheme.TERMINAL_CLI -> MaterialYouColorEngine.parseColor(MaterialYouColorEngine.CLI_PHOSPHOR_ACCENT)
 }
 
 @Composable
@@ -84,6 +85,7 @@ fun ThemeBrandEmblem(
             UiTheme.AMOLED_STEALTH -> drawAmoledStealthEmblem(accent)
             UiTheme.FRUTIGER_AERO -> drawFrutigerAeroEmblem()
             UiTheme.XMATERIAL_YOU -> drawXMaterialYouEmblem(accent, timePhase)
+            UiTheme.TERMINAL_CLI -> drawTerminalCliEmblem(accent)
         }
     }
 }
@@ -437,6 +439,63 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
     )
 }
 
+private fun DrawScope.drawTerminalCliEmblem(accent: Color) {
+    val w = size.width
+    val h = size.height
+    val corner = CornerRadius(w * 0.14f, w * 0.14f)
+
+    // CRT Obsidian terminal chassis with faint phosphor glow
+    drawRoundRect(
+        color = Color(0xFF050806),
+        topLeft = Offset(w * 0.04f, h * 0.04f),
+        size = Size(w * 0.92f, h * 0.92f),
+        cornerRadius = corner
+    )
+    drawRoundRect(
+        brush = Brush.radialGradient(
+            colors = listOf(accent.copy(alpha = 0.22f), Color.Transparent),
+            center = Offset(w * 0.50f, h * 0.50f),
+            radius = w * 0.54f
+        ),
+        topLeft = Offset(w * 0.04f, h * 0.04f),
+        size = Size(w * 0.92f, h * 0.92f),
+        cornerRadius = corner
+    )
+    drawRoundRect(
+        color = accent.copy(alpha = 0.88f),
+        topLeft = Offset(w * 0.04f, h * 0.04f),
+        size = Size(w * 0.92f, h * 0.92f),
+        cornerRadius = corner,
+        style = Stroke(width = w * 0.062f)
+    )
+
+    // Top tiny terminal header bar line
+    drawLine(
+        color = accent.copy(alpha = 0.45f),
+        start = Offset(w * 0.08f, h * 0.26f),
+        end = Offset(w * 0.92f, h * 0.26f),
+        strokeWidth = w * 0.042f
+    )
+
+    // Classic ">_" shell prompt glyph
+    val chevron = Path().apply {
+        moveTo(w * 0.24f, h * 0.42f)
+        lineTo(w * 0.47f, h * 0.57f)
+        lineTo(w * 0.24f, h * 0.72f)
+    }
+    drawPath(
+        path = chevron,
+        color = accent,
+        style = Stroke(width = w * 0.095f, cap = StrokeCap.Square, join = StrokeJoin.Miter)
+    )
+    // Solid phosphor block underscore cursor
+    drawRect(
+        color = Color(0xFFD8FFE6),
+        topLeft = Offset(w * 0.54f, h * 0.65f),
+        size = Size(w * 0.24f, h * 0.10f)
+    )
+}
+
 @Composable
 fun ThemeBrandWordmark(
     theme: UiTheme,
@@ -550,11 +609,20 @@ fun ThemeBrandWordmark(
                 append("Pulse")
             }
         }
+        UiTheme.TERMINAL_CLI -> buildAnnotatedString {
+            withStyle(SpanStyle(color = Color(0xFF8FBFA0), fontFamily = fontPack.displayFont, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp)) {
+                append("~/iron")
+            }
+            withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.2.sp)) {
+                append("pulse_")
+            }
+        }
     }
 
     val effectiveSize = when (theme) {
         UiTheme.CARBON_FORGE -> (fontSize.value * 0.90f).sp
         UiTheme.AMOLED_STEALTH -> (fontSize.value * 0.84f).sp
+        UiTheme.TERMINAL_CLI -> (fontSize.value * 0.82f).sp
         else -> fontSize
     }
 
@@ -619,6 +687,7 @@ fun ThemedPhaseLogoEmblem(
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(12.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
+            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
         }
     }
 
@@ -629,6 +698,7 @@ fun ThemedPhaseLogoEmblem(
         UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
         UiTheme.FRUTIGER_AERO -> Color.Transparent
         UiTheme.XMATERIAL_YOU -> Color(0xFF0E0F13)
+        UiTheme.TERMINAL_CLI -> Color(0xFF060B08)
     }
     val containerBorder = when (theme) {
         UiTheme.MATERIAL_YOU -> softAccent.copy(alpha = 0.25f)
@@ -641,6 +711,7 @@ fun ThemedPhaseLogoEmblem(
             DayTimePhase.AFTERNOON -> Color(0x668CC5C2)
             DayTimePhase.NIGHT -> Color(0x66B0A4E3)
         }
+        UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.72f)
     }
 
     Box(
@@ -660,7 +731,54 @@ fun ThemedPhaseLogoEmblem(
                 UiTheme.AMOLED_STEALTH -> drawAmoledStealthPhase(timePhase, accent)
                 UiTheme.FRUTIGER_AERO -> drawFrutigerAeroPhase(timePhase)
                 UiTheme.XMATERIAL_YOU -> drawXMaterialYouPhase(timePhase)
+                UiTheme.TERMINAL_CLI -> drawTerminalCliPhase(timePhase, accent)
             }
+        }
+    }
+}
+
+private fun DrawScope.drawTerminalCliPhase(phase: DayTimePhase, accent: Color) {
+    val w = size.width
+    val h = size.height
+    val wire = Stroke(width = 1.9.dp.toPx(), cap = StrokeCap.Square, join = StrokeJoin.Miter)
+    when (phase) {
+        DayTimePhase.MORNING -> {
+            // Sharp ASCII-like rising horizon line + angular phosphor sun
+            val cx = w * 0.5f
+            val hy = h * 0.70f
+            val r = w * 0.24f
+            drawArc(
+                color = Color(0xFFFFD166),
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(cx - r, hy - r),
+                size = Size(r * 2f, r * 2f),
+                style = wire
+            )
+            drawLine(accent, Offset(w * 0.14f, hy), Offset(w * 0.86f, hy), 2.dp.toPx(), cap = StrokeCap.Square)
+            drawRect(accent, Offset(cx - 2.dp.toPx(), h * 0.16f), Size(4.dp.toPx(), 6.dp.toPx()))
+        }
+        DayTimePhase.AFTERNOON -> {
+            // Crisp TUI terminal core grid/solar reticle
+            val cx = w * 0.5f
+            val cy = h * 0.5f
+            drawRect(
+                color = accent,
+                topLeft = Offset(cx - w * 0.22f, cy - h * 0.22f),
+                size = Size(w * 0.44f, h * 0.44f),
+                style = wire
+            )
+            drawRect(
+                color = Color(0xFFD8FFE6),
+                topLeft = Offset(cx - w * 0.08f, cy - h * 0.08f),
+                size = Size(w * 0.16f, h * 0.16f)
+            )
+        }
+        DayTimePhase.NIGHT -> {
+            // Terminal crescent + crisp pixel star
+            drawPath(buildCrescentPath(), color = Color(0xFF5EEAD4), style = wire)
+            drawRect(accent, Offset(w * 0.72f, h * 0.24f), Size(4.dp.toPx(), 4.dp.toPx()))
         }
     }
 }

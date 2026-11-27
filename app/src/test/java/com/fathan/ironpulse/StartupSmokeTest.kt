@@ -148,6 +148,7 @@ import com.fathan.ironpulse.ui.screens.resolveClockCornerOrbPalette
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
+import com.fathan.ironpulse.ui.theme.JetBrainsMonoFamily
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
@@ -390,7 +391,7 @@ class StartupSmokeTest {
 
     @Test
     fun uiTheme_hasSixThemesIncludingXMaterialYouAndLegacyFallback() {
-        assertEquals(6, UiTheme.entries.size)
+        assertEquals(7, UiTheme.entries.size)
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("midnight-frosted"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("aeroglass"))
         assertEquals(UiTheme.MATERIAL_YOU, UiTheme.fromWire("obsidian"))
@@ -400,6 +401,7 @@ class StartupSmokeTest {
         assertEquals(UiTheme.AMOLED_STEALTH, UiTheme.fromWire("amoled-stealth"))
         assertEquals(UiTheme.FRUTIGER_AERO, UiTheme.fromWire("frutiger-aero"))
         assertEquals(UiTheme.XMATERIAL_YOU, UiTheme.fromWire("xmaterial-you"))
+        assertEquals(UiTheme.TERMINAL_CLI, UiTheme.fromWire("terminal-cli"))
     }
 
     @Test
@@ -1402,20 +1404,20 @@ class StartupSmokeTest {
     @Test
     fun allSixOsThemes_provideUniqueBundledFontPacksAndBadges() {
         val packs = UiTheme.entries.map { resolveThemeFontPack(it) }
-        assertEquals(6, packs.size)
+        assertEquals(7, packs.size)
         assertEquals(
-            "Every theme must have a unique bundled display font",
-            6,
-            packs.map { it.displayFont }.distinct().size
+            "Every theme must have a unique bundled display/body font pair",
+            7,
+            packs.map { it.displayFont to it.bodyFont }.distinct().size
         )
         assertEquals(
             "Every theme must have a unique font display name",
-            6,
+            7,
             packs.map { it.fontDisplayName }.distinct().size
         )
         assertEquals(
             "Every theme must have a unique OS badge label",
-            6,
+            7,
             packs.map { it.osBadgeLabel }.distinct().size
         )
     }
@@ -2325,7 +2327,7 @@ class StartupSmokeTest {
             standard
         )
         assertEquals(
-            listOf(UiTheme.UBUNTU_YARU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU),
+            listOf(UiTheme.UBUNTU_YARU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU, UiTheme.TERMINAL_CLI),
             exclusive
         )
 
@@ -3503,7 +3505,9 @@ class StartupSmokeTest {
                 Triple(UiTheme.FRUTIGER_AERO, DayTimePhase.NIGHT, false),
                 Triple(UiTheme.XMATERIAL_YOU, DayTimePhase.NIGHT, false),
                 Triple(UiTheme.XMATERIAL_YOU, DayTimePhase.MORNING, true),
-                Triple(UiTheme.AMOLED_STEALTH, DayTimePhase.NIGHT, true)
+                Triple(UiTheme.AMOLED_STEALTH, DayTimePhase.NIGHT, true),
+                Triple(UiTheme.TERMINAL_CLI, DayTimePhase.AFTERNOON, false),
+                Triple(UiTheme.TERMINAL_CLI, DayTimePhase.NIGHT, true)
             ).forEach { (theme, phase, noGlow) ->
                 composeRule.runOnUiThread {
                     themeSetter?.invoke(theme)
@@ -3608,6 +3612,7 @@ class StartupSmokeTest {
             }
 
             composeRule.waitForIdle()
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("theme_animation_style_card"))
             composeRule.onNodeWithTag("theme_animation_style_card").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithTag("anim_style_live_preview").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithTag("anim_styles_grid").performScrollTo().assertIsDisplayed()
@@ -3819,4 +3824,129 @@ class StartupSmokeTest {
             composeRule.mainClock.autoAdvance = true
         }
     }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun terminalCliTheme_locksPhosphorPaletteUsesMonoFontSharpRadiiAndSettingsBanner() {
+        assertTrue(UiTheme.TERMINAL_CLI.isExclusive)
+        var resolvedAccentLocked = false
+        var resolvedAccent: Color? = null
+        var resolvedTint: Color? = null
+        var resolvedCardRadius: androidx.compose.ui.unit.Dp? = null
+        val fontPack = resolveThemeFontPack(UiTheme.TERMINAL_CLI)
+
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.TERMINAL_CLI,
+                    accentColorHex = "#FF4D8D",
+                    materialTintColorHex = "#112922",
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true)
+                )
+            ) {
+                val t = LocalIronPulseTokens.current
+                resolvedAccentLocked = t.accentLocked
+                resolvedAccent = t.accentColor
+                resolvedTint = t.effectiveTintColor
+                resolvedCardRadius = t.cardRadius
+
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    AccentAndTintSettingsCard(
+                        accentColorHex = "#FF4D8D",
+                        materialTintColorHex = "#112922",
+                        onSelectAccent = {},
+                        onOpenAccentPicker = {},
+                        onOpenTintPicker = {},
+                        onSelectMaterialTint = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        assertTrue("Terminal CLI must lock phosphor palette", resolvedAccentLocked)
+        assertEquals(Color(0xFF00FF66), resolvedAccent)
+        assertEquals(Color(0xFF050806), resolvedTint)
+        assertEquals(4.dp, resolvedCardRadius)
+        assertEquals(JetBrainsMonoFamily, fontPack.displayFont)
+        assertEquals(JetBrainsMonoFamily, fontPack.bodyFont)
+        assertEquals("CLI", fontPack.osBadgeLabel)
+
+        composeRule.onNodeWithTag("accent_locked_banner").assertIsDisplayed()
+        composeRule.onNodeWithText("Palet Phosphor Terminal CLI Terkunci").assertIsDisplayed()
+        composeRule.onNodeWithTag("accent_pick_color_button").assertDoesNotExist()
+        composeRule.onNodeWithTag("tint_pick_color_button").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun settingsHubAndSystem_renderGroupedSectionsAndConsolidatedSystemCards() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(context)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(context)
+            )[GymViewModel::class.java]
+            val uiState = IronPulseUiState(
+                authReady = true,
+                userUid = "u_settings_sections",
+                userDisplayName = "Fathan",
+                userEmail = "fathan@ironpulse.app",
+                appPrefs = AppPreferences(
+                    uiTheme = UiTheme.TERMINAL_CLI,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            )
+
+            composeRule.setContent {
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        SettingsScreen(
+                            state = uiState,
+                            viewModel = viewModel,
+                            contentPadding = PaddingValues(0.dp),
+                            onBack = {},
+                            onRequestNotificationPermission = {},
+                            onOpenExactAlarmSettings = {},
+                            onPickCustomRingtone = {}
+                        )
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            listOf(
+                "settings_section_account_appearance",
+                "settings_section_training_experience",
+                "settings_section_system_info"
+            ).forEach { sectionTag ->
+                composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(sectionTag))
+                composeRule.onNodeWithTag(sectionTag).assertIsDisplayed()
+            }
+
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.ABOUT.testTag))
+            composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).assertIsDisplayed()
+            composeRule.onNodeWithText("Tentang").assertIsDisplayed()
+
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.SYSTEM.testTag))
+            composeRule.onNodeWithTag(SettingsCategory.SYSTEM.testTag).performClick()
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("system_localization_clock_card"))
+            composeRule.onNodeWithTag("system_localization_clock_card").assertIsDisplayed()
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("system_display_guide_card"))
+            composeRule.onNodeWithTag("system_display_guide_card").assertIsDisplayed()
+            composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("settings_keep_screen_on_switch"))
+            composeRule.onNodeWithTag("settings_keep_screen_on_switch").assertIsDisplayed()
+        } finally {
+            vmStore.clear()
+        }
+    }
 }
+

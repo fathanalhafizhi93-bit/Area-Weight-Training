@@ -374,6 +374,42 @@ fun resolveMascotOrbPalette(
             cardAccent = Color(0xFFC5BBE9)
         )
     }
+
+    UiTheme.TERMINAL_CLI -> when (phase) {
+        DayTimePhase.MORNING -> MascotOrbPalette(
+            coreStart = Color(0xFF0D1E13),
+            coreMid = Color(0xFF07110B),
+            coreEnd = Color(0xFF040805),
+            lowerBounce = Color(0x42FFD166),
+            haloPrimary = Color(0xFF00FF66),
+            haloSecondary = Color(0xFFFFD166),
+            borderColor = Color(0xFF00FF66),
+            expressionAccent = Color(0xFFFFD166),
+            cardAccent = Color(0xFF5CFF94)
+        )
+        DayTimePhase.AFTERNOON -> MascotOrbPalette(
+            coreStart = Color(0xFF0D2115),
+            coreMid = Color(0xFF061009),
+            coreEnd = Color(0xFF030704),
+            lowerBounce = Color(0x4400FF66),
+            haloPrimary = Color(0xFF00FF66),
+            haloSecondary = Color(0xFF5CFF94),
+            borderColor = Color(0xFF00FF66),
+            expressionAccent = Color(0xFF70FF9D),
+            cardAccent = Color(0xFF5CFF94)
+        )
+        DayTimePhase.NIGHT -> MascotOrbPalette(
+            coreStart = Color(0xFF091B18),
+            coreMid = Color(0xFF050F0B),
+            coreEnd = Color(0xFF030705),
+            lowerBounce = Color(0x405EEAD4),
+            haloPrimary = Color(0xFF00FF66),
+            haloSecondary = Color(0xFF5EEAD4),
+            borderColor = Color(0xFF5CFF94),
+            expressionAccent = Color(0xFF5EEAD4),
+            cardAccent = Color(0xFF5CFF94)
+        )
+    }
 }
 
 @Composable
@@ -728,6 +764,31 @@ fun MascotOrbFace(
                         style = Stroke(sw * 0.85f)
                     )
                 }
+                UiTheme.TERMINAL_CLI -> {
+                    // CRT phosphor segmented bezel ring with 4 pixel bracket ticks
+                    val cliRingColor = orbPalette.haloPrimary.copy(alpha = 0.80f)
+                    for (start in listOf(-30f, 60f, 150f, 240f)) {
+                        drawArc(
+                            color = cliRingColor,
+                            startAngle = start,
+                            sweepAngle = 58f,
+                            useCenter = false,
+                            topLeft = Offset(cx - r * 0.96f, cy - r * 0.96f),
+                            size = Size(r * 1.92f, r * 1.92f),
+                            style = Stroke(sw * 0.85f, cap = StrokeCap.Square)
+                        )
+                    }
+                    for (deg in listOf(45.0, 135.0, 225.0, 315.0)) {
+                        val rad = Math.toRadians(deg)
+                        val px = cx + (r * 0.96f * kotlin.math.cos(rad)).toFloat()
+                        val py = cy + (r * 0.96f * kotlin.math.sin(rad)).toFloat()
+                        drawRect(
+                            color = orbPalette.haloSecondary,
+                            topLeft = Offset(px - sw * 0.55f, py - sw * 0.55f),
+                            size = Size(sw * 1.1f, sw * 1.1f)
+                        )
+                    }
+                }
             }
             val auraP = switchAuraProgress.value
             if (auraP > 0.005f && auraP < 0.995f) {
@@ -931,12 +992,41 @@ fun MascotOrbFace(
                                 size = Size(r * 1.24f, r * 0.44f)
                             )
                         }
+                        UiTheme.TERMINAL_CLI -> {
+                            // CRT phosphor terminal visor with emerald under-glow
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(orbPalette.coreStart, orbPalette.coreMid, orbPalette.coreEnd),
+                                    center = Offset(cx * 0.85f, cy * 0.78f),
+                                    radius = r * 1.10f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(orbPalette.lowerBounce, Color.Transparent),
+                                    center = Offset(cx, cy * 1.50f),
+                                    radius = r * 0.85f
+                                ),
+                                radius = r,
+                                center = Offset(cx, cy)
+                            )
+                            drawOval(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color(0x1E00FF66), Color.Transparent)
+                                ),
+                                topLeft = Offset(cx - r * 0.58f, cy - r * 0.82f),
+                                size = Size(r * 1.16f, r * 0.36f)
+                            )
+                        }
                     }
                 }
                 .border(
                     width = when (theme) {
                         UiTheme.FRUTIGER_AERO -> 2.2.dp
                         UiTheme.XMATERIAL_YOU -> 1.5.dp
+                        UiTheme.TERMINAL_CLI -> 1.8.dp
                         else -> 2.dp
                     },
                     color = orbPalette.borderColor,

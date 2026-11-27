@@ -575,6 +575,7 @@ fun ScheduleProgramPreviewSheet(
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         UiTheme.XMATERIAL_YOU -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        UiTheme.TERMINAL_CLI -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
         UiTheme.FRUTIGER_AERO, UiTheme.MATERIAL_YOU -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     }
     val sheetBg = when (tokens.uiTheme) {
@@ -583,6 +584,7 @@ fun ScheduleProgramPreviewSheet(
         UiTheme.CARBON_FORGE -> tokens.effectiveTintColor
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xFF14274E) else Color(0xFFF2FAFF)
         UiTheme.XMATERIAL_YOU -> Color(0xFF0D0E13)
+        UiTheme.TERMINAL_CLI -> Color(0xFF070C09)
         UiTheme.MATERIAL_YOU -> tokens.palette.surfaceContainerHigh
     }
 
