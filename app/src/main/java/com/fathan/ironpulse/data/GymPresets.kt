@@ -40,7 +40,7 @@ data class PresetExerciseTemplate(
 
 object GymPresets {
 
-    val EXERCISE_LIBRARY: List<PresetExerciseTemplate> = listOf(
+    private val BASE_EXERCISE_LIBRARY: List<PresetExerciseTemplate> = listOf(
         // Dada (24)
         PresetExerciseTemplate(
             name = "Barbell Bench Press",
@@ -1829,6 +1829,9 @@ object GymPresets {
             targetDurationSeconds = 45
         )
     )
+
+    val EXERCISE_LIBRARY: List<PresetExerciseTemplate> =
+        BASE_EXERCISE_LIBRARY + ExerciseLibraryExtended.EXTRA_EXERCISES
 
     private fun makeEx(name: String, prefix: String, idx: Int): ExerciseItem {
         val tmpl = EXERCISE_LIBRARY.firstOrNull { it.name == name } ?: EXERCISE_LIBRARY.first()

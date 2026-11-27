@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -42,6 +44,7 @@ import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
+import com.fathan.ironpulse.ui.viewmodel.AppTab
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -442,55 +445,62 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
 private fun DrawScope.drawTerminalCliEmblem(accent: Color) {
     val w = size.width
     val h = size.height
-    val corner = CornerRadius(w * 0.14f, w * 0.14f)
 
-    // CRT Obsidian terminal chassis with faint phosphor glow
-    drawRoundRect(
-        color = Color(0xFF050806),
+    // Razor-sharp CRT Phosphor terminal TUI chassis (0dp corners)
+    drawRect(
+        color = Color(0xFF030604),
         topLeft = Offset(w * 0.04f, h * 0.04f),
-        size = Size(w * 0.92f, h * 0.92f),
-        cornerRadius = corner
+        size = Size(w * 0.92f, h * 0.92f)
     )
-    drawRoundRect(
+    drawRect(
         brush = Brush.radialGradient(
-            colors = listOf(accent.copy(alpha = 0.22f), Color.Transparent),
-            center = Offset(w * 0.50f, h * 0.50f),
+            colors = listOf(accent.copy(alpha = 0.24f), Color.Transparent),
+            center = Offset(w * 0.50f, h * 0.54f),
             radius = w * 0.54f
         ),
         topLeft = Offset(w * 0.04f, h * 0.04f),
-        size = Size(w * 0.92f, h * 0.92f),
-        cornerRadius = corner
+        size = Size(w * 0.92f, h * 0.92f)
     )
-    drawRoundRect(
-        color = accent.copy(alpha = 0.88f),
+    // Header tint strip
+    drawRect(
+        color = Color(0xFF0D1C14),
+        topLeft = Offset(w * 0.04f, h * 0.04f),
+        size = Size(w * 0.92f, h * 0.22f)
+    )
+    drawRect(
+        color = accent.copy(alpha = 0.90f),
         topLeft = Offset(w * 0.04f, h * 0.04f),
         size = Size(w * 0.92f, h * 0.92f),
-        cornerRadius = corner,
-        style = Stroke(width = w * 0.062f)
+        style = Stroke(width = w * 0.062f, join = StrokeJoin.Miter)
     )
 
-    // Top tiny terminal header bar line
+    // Top tiny terminal header separator + amber tty status square
     drawLine(
-        color = accent.copy(alpha = 0.45f),
-        start = Offset(w * 0.08f, h * 0.26f),
-        end = Offset(w * 0.92f, h * 0.26f),
-        strokeWidth = w * 0.042f
+        color = Color(0xFF1F8A4C),
+        start = Offset(w * 0.06f, h * 0.26f),
+        end = Offset(w * 0.94f, h * 0.26f),
+        strokeWidth = w * 0.045f
+    )
+    drawRect(
+        color = Color(0xFFFFB000),
+        topLeft = Offset(w * 0.75f, h * 0.11f),
+        size = Size(w * 0.12f, h * 0.09f)
     )
 
     // Classic ">_" shell prompt glyph
     val chevron = Path().apply {
-        moveTo(w * 0.24f, h * 0.42f)
-        lineTo(w * 0.47f, h * 0.57f)
-        lineTo(w * 0.24f, h * 0.72f)
+        moveTo(w * 0.23f, h * 0.42f)
+        lineTo(w * 0.46f, h * 0.57f)
+        lineTo(w * 0.23f, h * 0.72f)
     }
     drawPath(
         path = chevron,
         color = accent,
         style = Stroke(width = w * 0.095f, cap = StrokeCap.Square, join = StrokeJoin.Miter)
     )
-    // Solid phosphor block underscore cursor
+    // Solid high-beam phosphor block cursor
     drawRect(
-        color = Color(0xFFD8FFE6),
+        color = Color(0xFFD9FFE6),
         topLeft = Offset(w * 0.54f, h * 0.65f),
         size = Size(w * 0.24f, h * 0.10f)
     )
@@ -642,11 +652,14 @@ fun ThemeBrandLockup(
     emblemSize: Dp = 30.dp,
     fontSize: TextUnit = 21.sp,
     onClick: (() -> Unit)? = null,
+    activeTab: AppTab? = null,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
+    val isCli = theme == UiTheme.TERMINAL_CLI
+    val lockupShape = if (isCli) RectangleShape else RoundedCornerShape(10.dp)
     val baseMod = modifier
-        .clip(RoundedCornerShape(10.dp))
+        .clip(lockupShape)
         .then(
             if (onClick != null) {
                 Modifier
@@ -656,7 +669,7 @@ fun ThemeBrandLockup(
                 Modifier
             }
         )
-        .padding(vertical = 3.dp, horizontal = 2.dp)
+        .padding(vertical = if (isCli) 1.dp else 3.dp, horizontal = 2.dp)
         .testTag("theme_brand_lockup_${theme.wireValue}")
 
     Row(
@@ -665,7 +678,49 @@ fun ThemeBrandLockup(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ThemeBrandEmblem(theme = theme, accentOverride = accentColor, size = emblemSize)
-        ThemeBrandWordmark(theme = theme, accentColor = accentColor, fontSize = fontSize)
+        if (isCli) {
+            val slug = when (activeTab) {
+                AppTab.SCHEDULE -> "schedule"
+                AppTab.HISTORY -> "history"
+                AppTab.EXERCISES -> "moves"
+                AppTab.WORKOUT -> "workout"
+                AppTab.SETTINGS -> "config"
+                AppTab.TODAY, null -> "today"
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "root@ironpulse:~/$slug$",
+                        fontSize = 8.5.sp,
+                        lineHeight = 10.sp,
+                        fontFamily = tokens.fontPack.monoFont,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFFFB000),
+                        maxLines = 1,
+                        modifier = Modifier.testTag("cli_header_prompt")
+                    )
+                    Text(
+                        text = "[TTY0]",
+                        fontSize = 8.sp,
+                        lineHeight = 10.sp,
+                        fontFamily = tokens.fontPack.monoFont,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2EE6B8),
+                        maxLines = 1
+                    )
+                }
+                ThemeBrandWordmark(
+                    theme = theme,
+                    accentColor = accentColor,
+                    fontSize = (fontSize.value * 0.90f).sp
+                )
+            }
+        } else {
+            ThemeBrandWordmark(theme = theme, accentColor = accentColor, fontSize = fontSize)
+        }
     }
 }
 
@@ -687,7 +742,7 @@ fun ThemedPhaseLogoEmblem(
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(12.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RectangleShape
         }
     }
 
@@ -698,7 +753,7 @@ fun ThemedPhaseLogoEmblem(
         UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
         UiTheme.FRUTIGER_AERO -> Color.Transparent
         UiTheme.XMATERIAL_YOU -> Color(0xFF0E0F13)
-        UiTheme.TERMINAL_CLI -> Color(0xFF060B08)
+        UiTheme.TERMINAL_CLI -> Color(0xFF050A07)
     }
     val containerBorder = when (theme) {
         UiTheme.MATERIAL_YOU -> softAccent.copy(alpha = 0.25f)
@@ -711,7 +766,7 @@ fun ThemedPhaseLogoEmblem(
             DayTimePhase.AFTERNOON -> Color(0x668CC5C2)
             DayTimePhase.NIGHT -> Color(0x66B0A4E3)
         }
-        UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.72f)
+        UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.78f)
     }
 
     Box(

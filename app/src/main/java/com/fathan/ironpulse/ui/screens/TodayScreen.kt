@@ -123,6 +123,8 @@ fun TodayScreen(
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     homeLandingTick: Int = 0,
     homeLandingTickState: State<Int>? = null,
+    isMascotVoiceSpeaking: Boolean = false,
+    onMascotSpeechRevealFinished: (Int) -> Unit = {},
     onTapMascot: () -> Unit,
     onPetMascot: () -> Unit = {},
     onReplayMascotVoice: () -> Unit,
@@ -394,6 +396,7 @@ fun TodayScreen(
                 mascot = state.mascot,
                 eyeStateFlow = mascotEyeFlow,
                 voiceEnabled = state.appPrefs.mascotVoiceEnabled,
+                isVoiceSpeaking = isMascotVoiceSpeaking,
                 orbVisibleAlpha = homeOrbAlphaProvider,
                 orbAnimActive = homeOrbAnimActive,
                 orbAnimActiveProvider = homeOrbAnimActiveProvider,
@@ -401,6 +404,7 @@ fun TodayScreen(
                 homeOrbBoundsHolder = homeOrbBoundsHolder,
                 landingPulseTick = homeLandingTick,
                 landingPulseTickState = homeLandingTickState,
+                onSpeechRevealFinished = onMascotSpeechRevealFinished,
                 onTapMascot = onTapMascot,
                 onPetMascot = onPetMascot,
                 onReplayVoice = onReplayMascotVoice,
@@ -411,11 +415,12 @@ fun TodayScreen(
         // 3. ELEVATED PRIMARY START WORKOUT CTA
         if (activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()) {
             item(key = "start_workout_cta", contentType = "cta") {
+                val isCli = tokens.uiTheme == UiTheme.TERMINAL_CLI
                 val ctaRadius = (tokens.cardRadius * 0.78f).coerceAtLeast(10.dp)
-                val ctaShape = if (tokens.isXMaterial) {
-                    RoundedCornerShape(24.dp)
-                } else {
-                    RoundedCornerShape(ctaRadius)
+                val ctaShape = when {
+                    isCli -> androidx.compose.ui.graphics.RectangleShape
+                    tokens.isXMaterial -> RoundedCornerShape(24.dp)
+                    else -> RoundedCornerShape(ctaRadius)
                 }
                 val isAero = tokens.uiTheme == UiTheme.FRUTIGER_AERO
                 IronPulseTonalSurface(
@@ -424,12 +429,14 @@ fun TodayScreen(
                     baseColor = tokens.accentColor,
                     isAccent = true,
                     contentColor = tokens.onAccentColor,
-                    border = if (isAero) {
-                        BorderStroke(
+                    border = when {
+                        isCli -> BorderStroke(1.25.dp, Color(0xFF9BFFBE))
+                        isAero -> BorderStroke(
                             1.dp,
                             if (tokens.isAeroNight) Color(0x99BAE6FD) else Color.White.copy(alpha = 0.80f)
                         )
-                    } else null,
+                        else -> null
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
@@ -453,7 +460,7 @@ fun TodayScreen(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(if (isCli) androidx.compose.ui.graphics.RectangleShape else RoundedCornerShape(10.dp))
                                 .background(Color.Black.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {

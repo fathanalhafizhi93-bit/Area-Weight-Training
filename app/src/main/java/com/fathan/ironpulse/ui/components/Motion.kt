@@ -64,81 +64,81 @@ import kotlin.math.abs
 @Immutable
 object IronPulseMotion {
     val PressSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.58f,
-        stiffness = 420f
+        dampingRatio = 0.68f,
+        stiffness = 780f
     )
 
     val MorphSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.62f,
-        stiffness = 300f
+        dampingRatio = 0.72f,
+        stiffness = 560f
     )
 
     val ReturnMorphSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.72f,
-        stiffness = 260f
+        dampingRatio = 0.78f,
+        stiffness = 500f
     )
 
     val OrbSnapSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.60f,
-        stiffness = 290f
+        dampingRatio = 0.72f,
+        stiffness = 580f
     )
 
     val BubbleSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.64f,
-        stiffness = 360f
+        dampingRatio = 0.72f,
+        stiffness = 640f
     )
 
     val BubbleSizeSpring: SpringSpec<IntSize> = spring(
-        dampingRatio = 0.72f,
-        stiffness = 380f
+        dampingRatio = 0.78f,
+        stiffness = 660f
     )
 
     val FluidCardSpring: SpringSpec<IntSize> = spring(
-        dampingRatio = 0.72f,
-        stiffness = 360f
+        dampingRatio = 0.78f,
+        stiffness = 640f
     )
 
     val TabSlideSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.78f,
-        stiffness = 430f
+        dampingRatio = 0.86f,
+        stiffness = 780f
     )
 
     val ModalEntranceSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.68f,
-        stiffness = 400f
+        dampingRatio = 0.78f,
+        stiffness = 720f
     )
 
     val StaggerCardSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.72f,
-        stiffness = 360f
+        dampingRatio = 0.80f,
+        stiffness = 680f
     )
 
     val MascotBlinkSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.60f,
-        stiffness = 520f
+        dampingRatio = 0.66f,
+        stiffness = 740f
     )
 
     val MascotGazeSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.58f,
-        stiffness = 185f
+        dampingRatio = 0.66f,
+        stiffness = 280f
     )
 
     val MascotHeadTiltSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.56f,
-        stiffness = 190f
+        dampingRatio = 0.66f,
+        stiffness = 290f
     )
 
     val IndicatorDpSpring: SpringSpec<Dp> = spring(
-        dampingRatio = 0.68f,
-        stiffness = 380f
+        dampingRatio = 0.76f,
+        stiffness = 680f
     )
 
     val IndicatorFloatSpring: SpringSpec<Float> = spring(
-        dampingRatio = 0.66f,
-        stiffness = 360f
+        dampingRatio = 0.76f,
+        stiffness = 700f
     )
 
-    val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 190, easing = FastOutSlowInEasing)
+    val ShortFadeSpec: FiniteAnimationSpec<Float> = tween(durationMillis = 115, easing = FastOutSlowInEasing)
 }
 
 @Immutable
@@ -200,167 +200,167 @@ object MotionStyleCatalog {
         ThemeAnimationStyle.SILK_GLIDE to ThemeMotionSpec(
             style = ThemeAnimationStyle.SILK_GLIDE,
             tabChoreography = TabChoreography.HORIZONTAL_GLIDE,
-            tabSlideSpring = spring(dampingRatio = 0.86f, stiffness = 390f),
+            tabSlideSpring = spring(dampingRatio = 0.88f, stiffness = 740f),
             tabSlideFraction = 1.0f,
             tabEnterScale = 0.985f,
             tabExitScale = 0.98f,
             tabPerspectiveDeg = 0f,
             cardRevealSpring = IronPulseMotion.StaggerCardSpring,
-            cardFadeMs = 210,
-            cardSlideYDp = 20f,
+            cardFadeMs = 115,
+            cardSlideYDp = 16f,
             cardSlideXDp = 0f,
-            cardStartScale = 0.965f,
+            cardStartScale = 0.97f,
             pressSpring = IronPulseMotion.PressSpring,
             pressDepthFactor = 1.0f,
             navIndicatorSpring = IronPulseMotion.IndicatorFloatSpring,
             navIconSpring = IronPulseMotion.PressSpring,
             navActiveScale = 1.07f,
             sheenPeakAlpha = 0.18f,
-            sheenDurationMs = 3200,
-            heroBreathMs = 4200,
-            heroOrbitMs = 14000,
+            sheenDurationMs = 2600,
+            heroBreathMs = 3600,
+            heroOrbitMs = 12000,
             heroAuraSwing = 0.07f,
             surfaceRimAlpha = 0.16f,
             modalSpring = IronPulseMotion.ModalEntranceSpring,
-            modalFadeMs = 190,
-            modalStartScale = 0.93f,
-            backdropCadenceScale = 1.0f,
+            modalFadeMs = 110,
+            modalStartScale = 0.94f,
+            backdropCadenceScale = 0.95f,
             backdropBreathAlpha = 0.07f,
             mascotMorphSpring = IronPulseMotion.MorphSpring,
             mascotReturnSpring = IronPulseMotion.ReturnMorphSpring,
-            progressFillMs = 320
+            progressFillMs = 190
         ),
         ThemeAnimationStyle.DEPTH_ZOOM to ThemeMotionSpec(
             style = ThemeAnimationStyle.DEPTH_ZOOM,
             tabChoreography = TabChoreography.DEPTH_ZOOM,
-            tabSlideSpring = spring(dampingRatio = 0.80f, stiffness = 340f),
+            tabSlideSpring = spring(dampingRatio = 0.84f, stiffness = 650f),
             tabSlideFraction = 0.92f,
-            tabEnterScale = 0.82f,
-            tabExitScale = 0.82f,
+            tabEnterScale = 0.84f,
+            tabExitScale = 0.84f,
             tabPerspectiveDeg = 0f,
-            cardRevealSpring = spring(dampingRatio = 0.76f, stiffness = 310f),
-            cardFadeMs = 240,
-            cardSlideYDp = 12f,
+            cardRevealSpring = spring(dampingRatio = 0.80f, stiffness = 600f),
+            cardFadeMs = 130,
+            cardSlideYDp = 10f,
             cardSlideXDp = 0f,
-            cardStartScale = 0.88f,
-            pressSpring = spring(dampingRatio = 0.68f, stiffness = 350f),
-            pressDepthFactor = 1.18f,
-            navIndicatorSpring = spring(dampingRatio = 0.76f, stiffness = 320f),
-            navIconSpring = spring(dampingRatio = 0.64f, stiffness = 360f),
+            cardStartScale = 0.90f,
+            pressSpring = spring(dampingRatio = 0.72f, stiffness = 680f),
+            pressDepthFactor = 1.15f,
+            navIndicatorSpring = spring(dampingRatio = 0.80f, stiffness = 620f),
+            navIconSpring = spring(dampingRatio = 0.68f, stiffness = 680f),
             navActiveScale = 1.12f,
             sheenPeakAlpha = 0.22f,
-            sheenDurationMs = 2800,
-            heroBreathMs = 4400,
-            heroOrbitMs = 15000,
+            sheenDurationMs = 2400,
+            heroBreathMs = 3800,
+            heroOrbitMs = 13000,
             heroAuraSwing = 0.095f,
             surfaceRimAlpha = 0.24f,
-            modalSpring = spring(dampingRatio = 0.78f, stiffness = 310f),
-            modalFadeMs = 230,
-            modalStartScale = 0.80f,
-            backdropCadenceScale = 1.08f,
+            modalSpring = spring(dampingRatio = 0.80f, stiffness = 620f),
+            modalFadeMs = 120,
+            modalStartScale = 0.84f,
+            backdropCadenceScale = 1.0f,
             backdropBreathAlpha = 0.10f,
-            mascotMorphSpring = spring(dampingRatio = 0.72f, stiffness = 280f),
-            mascotReturnSpring = spring(dampingRatio = 0.76f, stiffness = 250f),
-            progressFillMs = 380
+            mascotMorphSpring = spring(dampingRatio = 0.74f, stiffness = 520f),
+            mascotReturnSpring = spring(dampingRatio = 0.78f, stiffness = 480f),
+            progressFillMs = 220
         ),
         ThemeAnimationStyle.FLIP_3D to ThemeMotionSpec(
             style = ThemeAnimationStyle.FLIP_3D,
             tabChoreography = TabChoreography.PERSPECTIVE_FLIP_3D,
-            tabSlideSpring = spring(dampingRatio = 0.78f, stiffness = 420f),
+            tabSlideSpring = spring(dampingRatio = 0.82f, stiffness = 780f),
             tabSlideFraction = 1.0f,
-            tabEnterScale = 0.91f,
-            tabExitScale = 0.90f,
+            tabEnterScale = 0.92f,
+            tabExitScale = 0.91f,
             tabPerspectiveDeg = 28f,
-            cardRevealSpring = spring(dampingRatio = 0.72f, stiffness = 410f),
-            cardFadeMs = 185,
-            cardSlideYDp = 14f,
-            cardSlideXDp = 18f,
-            cardStartScale = 0.92f,
-            pressSpring = spring(dampingRatio = 0.62f, stiffness = 450f),
-            pressDepthFactor = 1.08f,
-            navIndicatorSpring = spring(dampingRatio = 0.70f, stiffness = 420f),
-            navIconSpring = spring(dampingRatio = 0.58f, stiffness = 460f),
+            cardRevealSpring = spring(dampingRatio = 0.76f, stiffness = 720f),
+            cardFadeMs = 110,
+            cardSlideYDp = 12f,
+            cardSlideXDp = 14f,
+            cardStartScale = 0.93f,
+            pressSpring = spring(dampingRatio = 0.66f, stiffness = 800f),
+            pressDepthFactor = 1.06f,
+            navIndicatorSpring = spring(dampingRatio = 0.74f, stiffness = 760f),
+            navIconSpring = spring(dampingRatio = 0.64f, stiffness = 800f),
             navActiveScale = 1.10f,
             sheenPeakAlpha = 0.24f,
-            sheenDurationMs = 2500,
-            heroBreathMs = 3600,
-            heroOrbitMs = 10500,
+            sheenDurationMs = 2200,
+            heroBreathMs = 3200,
+            heroOrbitMs = 9600,
             heroAuraSwing = 0.085f,
             surfaceRimAlpha = 0.26f,
-            modalSpring = spring(dampingRatio = 0.72f, stiffness = 410f),
-            modalFadeMs = 180,
-            modalStartScale = 0.89f,
-            backdropCadenceScale = 0.88f,
+            modalSpring = spring(dampingRatio = 0.76f, stiffness = 740f),
+            modalFadeMs = 105,
+            modalStartScale = 0.90f,
+            backdropCadenceScale = 0.84f,
             backdropBreathAlpha = 0.085f,
-            mascotMorphSpring = spring(dampingRatio = 0.66f, stiffness = 340f),
-            mascotReturnSpring = spring(dampingRatio = 0.72f, stiffness = 300f),
-            progressFillMs = 270
+            mascotMorphSpring = spring(dampingRatio = 0.70f, stiffness = 600f),
+            mascotReturnSpring = spring(dampingRatio = 0.76f, stiffness = 540f),
+            progressFillMs = 175
         ),
         ThemeAnimationStyle.ELASTIC_POP to ThemeMotionSpec(
             style = ThemeAnimationStyle.ELASTIC_POP,
             tabChoreography = TabChoreography.VERTICAL_ELASTIC,
-            tabSlideSpring = spring(dampingRatio = 0.62f, stiffness = 340f),
+            tabSlideSpring = spring(dampingRatio = 0.68f, stiffness = 640f),
             tabSlideFraction = 1.0f,
             tabEnterScale = 0.94f,
             tabExitScale = 0.94f,
             tabPerspectiveDeg = 0f,
-            cardRevealSpring = spring(dampingRatio = 0.52f, stiffness = 340f),
-            cardFadeMs = 190,
-            cardSlideYDp = 28f,
+            cardRevealSpring = spring(dampingRatio = 0.58f, stiffness = 640f),
+            cardFadeMs = 115,
+            cardSlideYDp = 22f,
             cardSlideXDp = 0f,
-            cardStartScale = 0.92f,
-            pressSpring = spring(dampingRatio = 0.42f, stiffness = 420f),
-            pressDepthFactor = 1.28f,
-            navIndicatorSpring = spring(dampingRatio = 0.48f, stiffness = 350f),
-            navIconSpring = spring(dampingRatio = 0.44f, stiffness = 400f),
+            cardStartScale = 0.93f,
+            pressSpring = spring(dampingRatio = 0.48f, stiffness = 760f),
+            pressDepthFactor = 1.24f,
+            navIndicatorSpring = spring(dampingRatio = 0.56f, stiffness = 660f),
+            navIconSpring = spring(dampingRatio = 0.50f, stiffness = 720f),
             navActiveScale = 1.16f,
             sheenPeakAlpha = 0.21f,
-            sheenDurationMs = 2900,
-            heroBreathMs = 3500,
-            heroOrbitMs = 11500,
+            sheenDurationMs = 2400,
+            heroBreathMs = 3100,
+            heroOrbitMs = 10200,
             heroAuraSwing = 0.11f,
             surfaceRimAlpha = 0.24f,
-            modalSpring = spring(dampingRatio = 0.50f, stiffness = 360f),
-            modalFadeMs = 175,
-            modalStartScale = 0.86f,
-            backdropCadenceScale = 0.92f,
+            modalSpring = spring(dampingRatio = 0.56f, stiffness = 660f),
+            modalFadeMs = 105,
+            modalStartScale = 0.88f,
+            backdropCadenceScale = 0.88f,
             backdropBreathAlpha = 0.09f,
-            mascotMorphSpring = spring(dampingRatio = 0.50f, stiffness = 320f),
-            mascotReturnSpring = spring(dampingRatio = 0.54f, stiffness = 290f),
-            progressFillMs = 350
+            mascotMorphSpring = spring(dampingRatio = 0.56f, stiffness = 580f),
+            mascotReturnSpring = spring(dampingRatio = 0.60f, stiffness = 520f),
+            progressFillMs = 200
         ),
         ThemeAnimationStyle.INSTANT_SNAP to ThemeMotionSpec(
             style = ThemeAnimationStyle.INSTANT_SNAP,
             tabChoreography = TabChoreography.INSTANT_SNAP,
-            tabSlideSpring = spring(dampingRatio = 0.96f, stiffness = 1050f),
+            tabSlideSpring = spring(dampingRatio = 0.98f, stiffness = 1550f),
             tabSlideFraction = 1.0f,
             tabEnterScale = 1.0f,
             tabExitScale = 1.0f,
             tabPerspectiveDeg = 0f,
-            cardRevealSpring = spring(dampingRatio = 0.95f, stiffness = 980f),
-            cardFadeMs = 100,
-            cardSlideYDp = 8f,
+            cardRevealSpring = spring(dampingRatio = 0.96f, stiffness = 1450f),
+            cardFadeMs = 65,
+            cardSlideYDp = 6f,
             cardSlideXDp = 0f,
             cardStartScale = 0.99f,
-            pressSpring = spring(dampingRatio = 0.90f, stiffness = 960f),
+            pressSpring = spring(dampingRatio = 0.92f, stiffness = 1400f),
             pressDepthFactor = 0.72f,
-            navIndicatorSpring = spring(dampingRatio = 0.94f, stiffness = 920f),
-            navIconSpring = spring(dampingRatio = 0.90f, stiffness = 920f),
+            navIndicatorSpring = spring(dampingRatio = 0.96f, stiffness = 1380f),
+            navIconSpring = spring(dampingRatio = 0.92f, stiffness = 1380f),
             navActiveScale = 1.03f,
             sheenPeakAlpha = 0.14f,
-            sheenDurationMs = 2200,
-            heroBreathMs = 3200,
-            heroOrbitMs = 9600,
+            sheenDurationMs = 1900,
+            heroBreathMs = 2800,
+            heroOrbitMs = 8800,
             heroAuraSwing = 0.05f,
             surfaceRimAlpha = 0.15f,
-            modalSpring = spring(dampingRatio = 0.95f, stiffness = 980f),
-            modalFadeMs = 95,
+            modalSpring = spring(dampingRatio = 0.96f, stiffness = 1450f),
+            modalFadeMs = 65,
             modalStartScale = 0.98f,
-            backdropCadenceScale = 0.82f,
+            backdropCadenceScale = 0.78f,
             backdropBreathAlpha = 0.05f,
-            mascotMorphSpring = spring(dampingRatio = 0.92f, stiffness = 680f),
-            mascotReturnSpring = spring(dampingRatio = 0.94f, stiffness = 640f),
-            progressFillMs = 120
+            mascotMorphSpring = spring(dampingRatio = 0.94f, stiffness = 1100f),
+            mascotReturnSpring = spring(dampingRatio = 0.96f, stiffness = 1040f),
+            progressFillMs = 80
         )
     )
 

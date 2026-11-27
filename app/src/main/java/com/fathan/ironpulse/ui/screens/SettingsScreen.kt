@@ -70,6 +70,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -2552,7 +2553,7 @@ private fun ThemePreviewCard(
         UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
-        UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+        UiTheme.TERMINAL_CLI -> RectangleShape
         UiTheme.FRUTIGER_AERO -> RoundedCornerShape(18.dp)
         UiTheme.XMATERIAL_YOU -> RoundedCornerShape(28.dp)
         UiTheme.MATERIAL_YOU -> RoundedCornerShape(18.dp)
@@ -2606,7 +2607,7 @@ private fun ThemePreviewCard(
                 UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
                 UiTheme.UBUNTU_YARU -> RoundedCornerShape(8.dp)
                 UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
-                UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+                UiTheme.TERMINAL_CLI -> RectangleShape
                 UiTheme.FRUTIGER_AERO -> RoundedCornerShape(14.dp)
                 UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
             }
@@ -2638,7 +2639,7 @@ private fun ThemePreviewCard(
                             UiTheme.CARBON_FORGE -> Color(0xFF0E1218)
                             UiTheme.UBUNTU_YARU -> Color(0xFF2D1729)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-                            UiTheme.TERMINAL_CLI -> Color(0xFF050806)
+                            UiTheme.TERMINAL_CLI -> Color(0xFF030604)
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xFF162A52) else Color(0xFFD6F3FF)
                             UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B10)
                         }
@@ -2807,6 +2808,19 @@ private fun ThemePreviewCard(
                                     strokeWidth = 2.dp.toPx(),
                                     cap = StrokeCap.Round
                                 )
+                            } else if (theme == UiTheme.TERMINAL_CLI) {
+                                val tLen = 5.dp.toPx()
+                                val tPad = 2.dp.toPx()
+                                val tColor = Color(0xFF00FF66)
+                                val tSw = 1.25.dp.toPx()
+                                drawLine(tColor, Offset(tPad, tPad), Offset(tPad + tLen, tPad), tSw)
+                                drawLine(tColor, Offset(tPad, tPad), Offset(tPad, tPad + tLen), tSw)
+                                drawLine(tColor, Offset(size.width - tPad, tPad), Offset(size.width - tPad - tLen, tPad), tSw)
+                                drawLine(tColor, Offset(size.width - tPad, tPad), Offset(size.width - tPad, tPad + tLen), tSw)
+                                drawLine(tColor, Offset(tPad, size.height - tPad), Offset(tPad + tLen, size.height - tPad), tSw)
+                                drawLine(tColor, Offset(tPad, size.height - tPad), Offset(tPad, size.height - tPad - tLen), tSw)
+                                drawLine(tColor, Offset(size.width - tPad, size.height - tPad), Offset(size.width - tPad - tLen, size.height - tPad), tSw)
+                                drawLine(tColor, Offset(size.width - tPad, size.height - tPad), Offset(size.width - tPad, size.height - tPad - tLen), tSw)
                             }
                         }
                     }
@@ -2820,7 +2834,7 @@ private fun ThemePreviewCard(
                                     UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.26f)
                                     UiTheme.UBUNTU_YARU -> Color(0xFF141414)
                                     UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.52f)
-                                    UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.62f)
+                                    UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.78f)
                                     UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xB45BC6FA) else Color(0xC20082C8)
                                     else -> previewAccent.copy(alpha = 0.36f)
                                 },
@@ -2840,7 +2854,7 @@ private fun ThemePreviewCard(
                                 UiTheme.XMATERIAL_YOU -> Color(0xFF101218)
                                 UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
                                 UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
-                                UiTheme.TERMINAL_CLI -> Color(0xFF0A120D)
+                                UiTheme.TERMINAL_CLI -> Color(0xFF08110C)
                                 UiTheme.CARBON_FORGE -> Color(0xCC181E28)
                                 UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.08f)
                             }
@@ -2853,7 +2867,7 @@ private fun ThemePreviewCard(
                         modifier = Modifier
                             .width(24.dp)
                             .height(3.5.dp)
-                            .clip(RoundedCornerShape(2.dp))
+                            .clip(if (theme == UiTheme.TERMINAL_CLI) RectangleShape else RoundedCornerShape(2.dp))
                             .background(
                                 when {
                                     isAeroNightPreview -> Color(0xFF7DD3FC).copy(alpha = 0.85f)
@@ -2893,6 +2907,7 @@ private fun ThemePreviewCard(
                         isAeroNightPreview -> Color(0x667DD3FC)
                         isAeroPreview -> Color(0x550082C8)
                         isXMaterialPreview -> previewAccent.copy(alpha = 0.28f)
+                        theme == UiTheme.TERMINAL_CLI -> Color(0xFF1F8A4C)
                         else -> Color.White.copy(alpha = 0.10f)
                     }
                 )

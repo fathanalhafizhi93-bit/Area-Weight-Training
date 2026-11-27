@@ -78,6 +78,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -607,7 +608,7 @@ fun IronPulseTopBar(
             UiTheme.UBUNTU_YARU -> RoundedCornerShape(9.dp)
             UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RectangleShape
             UiTheme.FRUTIGER_AERO -> CircleShape
             UiTheme.XMATERIAL_YOU -> CircleShape
         }
@@ -617,7 +618,7 @@ fun IronPulseTopBar(
         UiTheme.CARBON_FORGE -> tokens.accentColor.copy(alpha = 0.42f)
         UiTheme.UBUNTU_YARU -> Color(0xFF141216)
         UiTheme.AMOLED_STEALTH -> tokens.accentColor.copy(alpha = 0.42f)
-        UiTheme.TERMINAL_CLI -> tokens.accentColor.copy(alpha = 0.55f)
+        UiTheme.TERMINAL_CLI -> tokens.accentColor.copy(alpha = 0.70f)
         UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0x885BC6FA) else Color(0x990099E5)
         UiTheme.XMATERIAL_YOU -> tokens.phaseTokens.headerBorder
     }
@@ -650,7 +651,8 @@ fun IronPulseTopBar(
                     accentColor = tokens.accentColor,
                     emblemSize = 26.dp,
                     fontSize = 18.5.sp,
-                    onClick = onLogoClick
+                    onClick = onLogoClick,
+                    activeTab = activeTab
                 )
             }
 
@@ -713,8 +715,8 @@ fun IronPulseTopBar(
                                     .background(Color(0xFF000000), ctaShape)
                                     .border(1.15.dp, tokens.accentColor.copy(alpha = 0.90f), ctaShape)
                                 isCli -> Modifier
-                                    .background(Color(0xFF08120C), ctaShape)
-                                    .border(1.15.dp, tokens.accentColor.copy(alpha = 0.85f), ctaShape)
+                                    .background(Color(0xFF08110C), ctaShape)
+                                    .border(1.15.dp, tokens.accentColor.copy(alpha = 0.88f), ctaShape)
                                 isCarbon -> Modifier
                                     .background(
                                         Brush.verticalGradient(
@@ -793,12 +795,12 @@ private fun TopBarIconButton(
         active && isMaterialYou -> tokens.palette.secondaryContainer
         active && isAero -> if (isAeroNight) Color(0xFF0099E5) else Color(0xFF0084CE)
         active && isStealth -> tokens.accentColor.copy(alpha = 0.16f)
-        active && isCli -> Color(0xFF0B1C12)
+        active && isCli -> Color(0xFF0D2115)
         active && isXMaterial -> tokens.phaseTokens.accent.copy(alpha = 0.14f)
         active -> tokens.accentColor.copy(alpha = 0.22f)
         isAero -> if (isAeroNight) Color(0xD91E3D6B) else Color(0xF5FFFFFF)
         isStealth -> Color(0xFF05070A)
-        isCli -> Color(0xFF070D0A)
+        isCli -> Color(0xFF050A07)
         isXMaterial -> Color(0xFF13151C)
         isMaterialYou -> tokens.palette.surfaceContainerHigh
         else -> tokens.controlBg
@@ -810,7 +812,7 @@ private fun TopBarIconButton(
         active -> tokens.accentColor
         isAero -> if (isAeroNight) Color(0x885BC6FA) else Color(0x990082C8)
         isStealth -> tokens.accentColor.copy(alpha = 0.42f)
-        isCli -> tokens.accentColor.copy(alpha = 0.46f)
+        isCli -> tokens.accentColor.copy(alpha = 0.56f)
         isXMaterial -> Color(0xFF282A34)
         isMaterialYou -> tokens.palette.outlineVariant
         tokens.uiTheme == UiTheme.UBUNTU_YARU -> Color(0xFF141216)
@@ -1155,22 +1157,28 @@ fun IronPulseBottomNav(
                             }
                         }
                         isCli -> {
-                            // Crisp 4.dp TUI terminal selection box with bright phosphor top bar
-                            val cliBoxShape = RoundedCornerShape(4.dp)
+                            // Sharp 0dp TUI selection box with layered phosphor glow & top/bottom accent ticks
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(vertical = 4.dp)
-                                    .clip(cliBoxShape)
-                                    .background(Color(0xFF0A1910))
-                                    .border(1.dp, tokens.accentColor.copy(alpha = 0.72f), cliBoxShape),
-                                contentAlignment = Alignment.TopCenter
+                                    .clip(RectangleShape)
+                                    .background(Color(0xFF0D1C14))
+                                    .border(1.dp, tokens.accentColor.copy(alpha = 0.84f), RectangleShape)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .width(28.dp)
-                                        .height(2.dp)
+                                        .align(Alignment.TopCenter)
+                                        .width(32.dp)
+                                        .height(2.5.dp)
                                         .background(tokens.accentColor)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .width(24.dp)
+                                        .height(1.5.dp)
+                                        .background(Color(0xFFFFB000).copy(alpha = 0.85f))
                                 )
                             }
                         }
@@ -1261,11 +1269,19 @@ fun IronPulseBottomNav(
                                 )
                             } else {
                                 Text(
-                                    text = if (isStealth || isCli) label.uppercase() else label,
-                                    fontSize = if (isStealth || isCli) 9.5.sp else 11.sp,
+                                    text = when {
+                                        isCli -> "[${label.uppercase()}]"
+                                        isStealth -> label.uppercase()
+                                        else -> label
+                                    },
+                                    fontSize = when {
+                                        isCli -> 8.5.sp
+                                        isStealth -> 9.5.sp
+                                        else -> 11.sp
+                                    },
                                     fontFamily = tokens.fontPack.displayFont,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                                    letterSpacing = if (isStealth || isCarbon || isCli) 0.4.sp else 0.sp,
+                                    letterSpacing = if (isStealth || isCarbon || isCli) 0.25.sp else 0.sp,
                                     color = itemContentColor,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -1297,13 +1313,21 @@ private fun BottomNavTodayLabel(
     }
     val compactRestText by labelFlow.collectAsStateWithLifecycle(initialValue = null)
     val showCompactRest = compactRestText != null
-    val renderedText = compactRestText ?: if (isStealth || isCli) defaultLabel.uppercase() else defaultLabel
+    val renderedText = compactRestText ?: when {
+        isCli -> "[${defaultLabel.uppercase()}]"
+        isStealth -> defaultLabel.uppercase()
+        else -> defaultLabel
+    }
     Text(
         text = renderedText,
-        fontSize = if (isStealth || isCli) 9.5.sp else 11.sp,
+        fontSize = when {
+            isCli -> 8.5.sp
+            isStealth -> 9.5.sp
+            else -> 11.sp
+        },
         fontFamily = if (showCompactRest) tokens.fontPack.monoFont else tokens.fontPack.displayFont,
         fontWeight = if (showCompactRest || isActive) FontWeight.Bold else FontWeight.Medium,
-        letterSpacing = if (isStealth || isCli || tokens.uiTheme == UiTheme.CARBON_FORGE) 0.5.sp else 0.sp,
+        letterSpacing = if (isStealth || isCli || tokens.uiTheme == UiTheme.CARBON_FORGE) 0.25.sp else 0.sp,
         color = if (showCompactRest) accentColor else defaultColor,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis

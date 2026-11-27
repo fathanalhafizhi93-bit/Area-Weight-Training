@@ -85,7 +85,9 @@ import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.MedalUnlockEvent
 import com.fathan.ironpulse.model.MonthlyMedalEvaluator
+import com.fathan.ironpulse.model.MuscleAnatomyResolver
 import com.fathan.ironpulse.model.MuscleGroup
+import com.fathan.ironpulse.model.MuscleRegion
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
@@ -103,8 +105,10 @@ import com.fathan.ironpulse.model.WorkoutSetLog
 import com.fathan.ironpulse.data.MascotDialogueContext
 import com.fathan.ironpulse.data.MascotDialogues
 import com.fathan.ironpulse.timer.RestTimerService
+import com.fathan.ironpulse.model.MascotExpression
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MascotPersonality
+import com.fathan.ironpulse.model.MascotSpeechLine
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
@@ -478,15 +482,36 @@ class StartupSmokeTest {
     @Test
     fun exerciseLibrary_hasExpandedUniqueMovementsAcrossAllGroups() {
         val lib = GymPresets.EXERCISE_LIBRARY
-        assertTrue("Expected at least 120 exercises, was ${lib.size}", lib.size >= 120)
+        assertTrue("Expected at least 300 exercises, was ${lib.size}", lib.size >= 300)
 
         val uniqueNames = lib.map { it.name.trim().lowercase(Locale.ROOT) }.toSet()
         assertEquals("Exercise names must be unique", lib.size, uniqueNames.size)
 
         MuscleGroup.entries.forEach { group ->
             val count = lib.count { it.muscleGroup == group }
-            assertTrue("Expected at least 12 exercises in $group, found $count", count >= 12)
+            assertTrue("Expected at least 35 exercises in $group, found $count", count >= 35)
         }
+
+        // Every single exercise in the 300+ library must resolve to valid primary muscle regions
+        lib.forEach { ex ->
+            val anatomy = MuscleAnatomyResolver.resolve(ex.name, ex.muscleGroup, ex.equipment)
+            assertTrue("Primary muscle regions empty for ${ex.name}", anatomy.primary.isNotEmpty())
+        }
+
+        // Biomechanical accuracy spot checks across anterior & posterior views
+        val inclinePress = MuscleAnatomyResolver.resolve("Incline Dumbbell Press", MuscleGroup.DADA, "Dumbbell")
+        assertTrue(inclinePress.primary.contains(MuscleRegion.UPPER_CHEST))
+        assertTrue(inclinePress.secondary.contains(MuscleRegion.TRICEPS))
+
+        val facePull = MuscleAnatomyResolver.resolve("Face Pull", MuscleGroup.BAHU, "Kabel Tali")
+        assertTrue(facePull.primary.contains(MuscleRegion.REAR_DELTS))
+
+        val rdl = MuscleAnatomyResolver.resolve("Romanian Deadlift (RDL)", MuscleGroup.KAKI, "Barbel")
+        assertTrue(rdl.primary.contains(MuscleRegion.HAMSTRINGS))
+        assertTrue(rdl.primary.contains(MuscleRegion.GLUTES))
+
+        val calf = MuscleAnatomyResolver.resolve("Standing Calf Raise", MuscleGroup.KAKI, "Mesin")
+        assertTrue(calf.primary.contains(MuscleRegion.CALVES))
     }
 
     @Test
@@ -3867,8 +3892,8 @@ class StartupSmokeTest {
         composeRule.waitForIdle()
         assertTrue("Terminal CLI must lock phosphor palette", resolvedAccentLocked)
         assertEquals(Color(0xFF00FF66), resolvedAccent)
-        assertEquals(Color(0xFF050806), resolvedTint)
-        assertEquals(4.dp, resolvedCardRadius)
+        assertEquals(Color(0xFF030604), resolvedTint)
+        assertEquals(0.dp, resolvedCardRadius)
         assertEquals(JetBrainsMonoFamily, fontPack.displayFont)
         assertEquals(JetBrainsMonoFamily, fontPack.bodyFont)
         assertEquals("CLI", fontPack.osBadgeLabel)
@@ -3948,5 +3973,219 @@ class StartupSmokeTest {
             vmStore.clear()
         }
     }
-}
 
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun exercisesScreen_minimalistCardsShowMiniAnatomyAndTapOpensDetailDialog() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(context)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val vm = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(context)
+            )[GymViewModel::class.java]
+            val schedules = GymPresets.createDefaultSchedules("u_ex_minimal")
+            val uiState = IronPulseUiState(
+                authReady = true,
+                userUid = "u_ex_minimal",
+                schedules = schedules,
+                selectedExerciseDayKey = DayKey.MON,
+                todayDayKey = DayKey.MON,
+                appPrefs = AppPreferences(
+                    uiTheme = UiTheme.MATERIAL_YOU,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            )
+
+            composeRule.setContent {
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        ExercisesScreen(
+                            state = uiState,
+                            viewModel = vm,
+                            contentPadding = PaddingValues(0.dp)
+                        )
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("exercises_day_card").assertIsDisplayed()
+            composeRule.onNodeWithTag("open_exercise_library_button").assertIsDisplayed()
+            composeRule.onNodeWithTag("open_custom_exercise_button").assertIsDisplayed()
+            composeRule.onNodeWithTag("exercise_anatomy_thumb_mon_0", useUnmergedTree = true).assertIsDisplayed()
+
+            composeRule.onNodeWithTag("exercise_card_mon_0").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("exercise_anatomy_detail_dialog").assertIsDisplayed()
+            composeRule.onNodeWithTag("muscle_anatomy_canvas").assertIsDisplayed()
+            composeRule.onNodeWithText("Target Otot Utama").assertIsDisplayed()
+        } finally {
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun exerciseLibrary_displaysOver300MovementsWithAnatomyPreviewDialog() {
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.CARBON_FORGE,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                ExerciseLibraryFullScreen(
+                    lang = AppLanguage.ID,
+                    selectedDayLabel = "Senin",
+                    existingNames = emptySet(),
+                    remainingSlots = 20,
+                    onAddSingle = {},
+                    onAddBatch = {},
+                    onDismiss = {}
+                )
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Pustaka Gerakan (${GymPresets.EXERCISE_LIBRARY.size})").assertIsDisplayed()
+        composeRule.onNodeWithTag("library_anatomy_thumb_Barbell Bench Press", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("library_detail_btn_Barbell Bench Press", useUnmergedTree = true).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("exercise_anatomy_detail_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("muscle_anatomy_canvas").assertIsDisplayed()
+        composeRule.onNodeWithText("Pilih Gerakan").assertIsDisplayed()
+    }
+
+    @Test
+    fun mascotCatalogue_providesOver100DialoguesAndRichExpressionsForCoachAndPartner() {
+        listOf(AppLanguage.ID, AppLanguage.EN).forEach { lang ->
+            val partnerLines = MascotDialogues.allCatalogEntries(lang, MascotPersonality.PARTNER)
+            val coachLines = MascotDialogues.allCatalogEntries(lang, MascotPersonality.COACH)
+
+            assertTrue(
+                "Partner catalogue ($lang) must have >= 100 unique dialogues, found ${partnerLines.map { it.id }.distinct().size}",
+                partnerLines.map { it.id }.distinct().size >= 100
+            )
+            assertTrue(
+                "Coach catalogue ($lang) must have >= 100 unique dialogues, found ${coachLines.map { it.id }.distinct().size}",
+                coachLines.map { it.id }.distinct().size >= 100
+            )
+            assertTrue(
+                "Partner catalogue ($lang) must cover >= 10 expressions",
+                partnerLines.map { it.expression }.distinct().size >= 10
+            )
+            assertTrue(
+                "Coach catalogue ($lang) must cover >= 10 expressions",
+                coachLines.map { it.expression }.distinct().size >= 10
+            )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun todayMascot_typesOutDialogueBeforeTriggeringVoiceSpeech() {
+        val eyeFlow = MutableStateFlow(MascotEyeState())
+        val finishedEvents = mutableListOf<Int>()
+        val mascotState = MascotUiState(
+            mood = MascotMood.READY,
+            timePhase = DayTimePhase.MORNING,
+            activeTimePose = TimePhasePose.SPARKLE,
+            personality = MascotPersonality.PARTNER,
+            activeLine = MascotSpeechLine(
+                id = "type_test_1",
+                headline = "Siap gas!",
+                subline = "Ayo mulai pemanasan singkat.",
+                expression = MascotExpression.EXCITED
+            ),
+            speechEventId = 1,
+            shouldSpeakAfterReveal = true
+        )
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                IronPulseTheme(
+                    prefs = AppPreferences(
+                        uiTheme = UiTheme.MATERIAL_YOU,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                ) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        TodayMascot(
+                            mascot = mascotState,
+                            eyeStateFlow = eyeFlow,
+                            voiceEnabled = true,
+                            isVoiceSpeaking = false,
+                            onSpeechRevealFinished = { eventId -> finishedEvents += eventId },
+                            onTapMascot = {},
+                            onReplayVoice = {}
+                        )
+                    }
+                }
+            }
+
+            // Immediately after composition (mid-typing), TTS trigger callback must NOT have fired yet
+            composeRule.mainClock.advanceTimeBy(40)
+            assertTrue("Expected voice reveal callback to wait until typing completes", finishedEvents.isEmpty())
+
+            // Advance enough clock time for all characters (9 + 30 chars at ~15ms + pause ~50ms < 1200ms)
+            composeRule.mainClock.advanceTimeBy(1500)
+            composeRule.waitForIdle()
+
+            assertEquals("Expected speech reveal callback to fire once after typing ends", listOf(1), finishedEvents)
+            composeRule.onNodeWithTag("mascot_speech_headline", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("mascot_speech_subline", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithText("Siap gas!", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithText("Ayo mulai pemanasan singkat.", useUnmergedTree = true).assertIsDisplayed()
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun terminalCliChrome_rendersHeaderShellPromptAndBracketedBottomTabs() {
+        val restFlow = MutableStateFlow(RestTimerDisplayState())
+        composeRule.setContent {
+            IronPulseTheme(
+                prefs = AppPreferences(
+                    uiTheme = UiTheme.TERMINAL_CLI,
+                    lang = AppLanguage.ID,
+                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                )
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    IronPulseTopBar(
+                        activeTab = AppTab.EXERCISES,
+                        onLogoClick = {},
+                        onOpenSettings = {},
+                        onTestAlarm = {}
+                    )
+                    IronPulseBottomNav(
+                        activeTab = AppTab.EXERCISES,
+                        restTimerFlow = restFlow,
+                        onSelectTab = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("theme_brand_lockup_${UiTheme.TERMINAL_CLI.wireValue}").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_brand_wordmark_${UiTheme.TERMINAL_CLI.wireValue}", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("cli_header_prompt", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("root@ironpulse:~/moves$", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("[HARI INI]", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("[JADWAL]", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("[RIWAYAT]", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("[GERAKAN]", useUnmergedTree = true).assertIsDisplayed()
+    }
+}

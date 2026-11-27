@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,6 +90,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.DayTimePhase
+import com.fathan.ironpulse.model.MascotExpression
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.TimePhasePose
@@ -102,6 +104,8 @@ import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotReaction
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -418,6 +422,7 @@ fun MascotOrbFace(
     eyeStateFlow: StateFlow<MascotEyeState>? = null,
     size: Dp = 64.dp,
     animActive: Boolean = true,
+    isTalking: Boolean = false,
     switchPulseKey: Any? = null,
     modifier: Modifier = Modifier
 ) {
@@ -531,6 +536,8 @@ fun MascotOrbFace(
         staticOne
     }
 
+    val expr = mascot.activeLine.expression
+
     // Natural bouncy squash-and-stretch impulse on tap / combo / pet
     val squashX = remember { Animatable(1f) }
     val squashY = remember { Animatable(1f) }
@@ -541,15 +548,43 @@ fun MascotOrbFace(
             return@LaunchedEffect
         }
         val intense = eyeState.reactionKind == MascotReaction.COMBO_EXCITED
-        val wide = if (intense) 1.17f else 1.11f
-        val flat = if (intense) 0.85f else 0.90f
+        val wide = if (intense) 1.15f else 1.10f
+        val flat = if (intense) 0.87f else 0.91f
         launch {
             squashX.snapTo(wide)
-            squashX.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 320f))
+            squashX.animateTo(1f, spring(dampingRatio = 0.48f, stiffness = 460f))
         }
         launch {
             squashY.snapTo(flat)
-            squashY.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 320f))
+            squashY.animateTo(1f, spring(dampingRatio = 0.48f, stiffness = 460f))
+        }
+    }
+
+    // Rhythmic mouth-opening & subtle head-nod synced to typing & TTS speech playback
+    val talkAnimActive = isTalking && runAnim && !isSleepPose
+    val talkApertureAnim = remember { Animatable(0f) }
+    val talkHeadNodAnim = remember { Animatable(0f) }
+    LaunchedEffect(talkAnimActive, mascot.speechEventId) {
+        if (!talkAnimActive) {
+            talkApertureAnim.animateTo(0f, tween(80))
+            talkHeadNodAnim.animateTo(0f, tween(80))
+            return@LaunchedEffect
+        }
+        var step = 0
+        val pattern = floatArrayOf(0.86f, 0.30f, 0.98f, 0.20f, 0.76f, 0.42f, 0.92f, 0.16f)
+        while (true) {
+            val target = pattern[step % pattern.size]
+            val dur = if (isCoach) 88 else 78
+            coroutineScope {
+                launch {
+                    talkApertureAnim.animateTo(target, tween(dur, easing = FastOutSlowInEasing))
+                }
+                launch {
+                    val nodTarget = if (step % 2 == 0) 0.9f else -0.45f
+                    talkHeadNodAnim.animateTo(nodTarget, tween(dur, easing = FastOutSlowInEasing))
+                }
+            }
+            step += 1
         }
     }
 
@@ -614,18 +649,18 @@ fun MascotOrbFace(
                 lastSwitchKeySeen = switchPulseKey
                 launch {
                     switchSpinDeg.snapTo(0f)
-                    switchSpinDeg.animateTo(360f, tween(durationMillis = 460, easing = FastOutSlowInEasing))
+                    switchSpinDeg.animateTo(360f, tween(durationMillis = 320, easing = FastOutSlowInEasing))
                     switchSpinDeg.snapTo(0f)
                 }
                 launch {
                     switchPopScale.snapTo(1f)
-                    switchPopScale.animateTo(0.86f, tween(65, easing = FastOutSlowInEasing))
-                    switchPopScale.animateTo(1.16f, tween(155, easing = FastOutSlowInEasing))
-                    switchPopScale.animateTo(1f, spring(dampingRatio = 0.50f, stiffness = 380f))
+                    switchPopScale.animateTo(0.88f, tween(50, easing = FastOutSlowInEasing))
+                    switchPopScale.animateTo(1.14f, tween(115, easing = FastOutSlowInEasing))
+                    switchPopScale.animateTo(1f, spring(dampingRatio = 0.56f, stiffness = 520f))
                 }
                 launch {
                     switchAuraProgress.snapTo(0f)
-                    switchAuraProgress.animateTo(1f, tween(durationMillis = 540, easing = FastOutSlowInEasing))
+                    switchAuraProgress.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
                     switchAuraProgress.snapTo(0f)
                 }
             }
@@ -833,7 +868,7 @@ fun MascotOrbFace(
                     val bobDp = if (runAnim) sin(phase - 0.28f) * bobAmpDp else 0f
                     val swayAmp = if (isCoach) 0.55f else 1.1f
                     val sway = if (isClosedEyeExpression || !runAnim) 0f else sin(idleSwayPhaseState.value) * swayAmp
-                    translationY = bobDp * density.density
+                    translationY = (bobDp + talkHeadNodAnim.value) * density.density
                     val ts = tapScaleState.value
                     val swScale = switchPopScale.value
                     scaleX = ts * squashX.value * breathScaleX * swScale
@@ -1086,18 +1121,19 @@ fun MascotOrbFace(
                         drawLine(phaseColor, pt(16.5f, 20f), pt(26.2f, 24.4f), px(2.7f), cap = StrokeCap.Round)
                         drawLine(phaseColor, pt(47.5f, 20f), pt(37.8f, 24.4f), px(2.7f), cap = StrokeCap.Round)
                     }
-                    isFocusedEyes || isFlexPose || isSalutePose -> {
+                    isFocusedEyes || isFlexPose || isSalutePose ||
+                        expr == MascotExpression.FOCUSED || expr == MascotExpression.DETERMINED || expr == MascotExpression.SERIOUS -> {
                         drawLine(Color(0xFFD1D5DB), pt(17.5f, 21.5f), pt(25.5f, 23.8f), px(2.3f), cap = StrokeCap.Round)
                         drawLine(Color(0xFFD1D5DB), pt(46.5f, 21.5f), pt(38.5f, 23.8f), px(2.3f), cap = StrokeCap.Round)
                     }
-                    isSmirkPose -> {
+                    isSmirkPose || expr == MascotExpression.SMIRK || expr == MascotExpression.TEASING -> {
                         drawLine(Color(0xFFD1D5DB), pt(17.5f, 22.8f), pt(25.5f, 22.8f), px(2.1f), cap = StrokeCap.Round)
                         pathA.reset()
                         pathA.moveTo(px(38.5f), px(20.6f))
                         pathA.cubicTo(px(41f), px(18.2f), px(44.5f), px(18.4f), px(46.8f), px(20.8f))
                         drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2.2f), cap = StrokeCap.Round))
                     }
-                    isCuriousPose -> {
+                    isCuriousPose || expr == MascotExpression.CURIOUS -> {
                         pathA.reset()
                         pathA.moveTo(px(18f), px(22.5f))
                         pathA.cubicTo(px(20f), px(20.5f), px(23f), px(20.5f), px(25f), px(22.5f))
@@ -1107,7 +1143,7 @@ fun MascotOrbFace(
                         drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
                         drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2.1f), cap = StrokeCap.Round))
                     }
-                    isWinkPose || isWhistlePose -> {
+                    isWinkPose || isWhistlePose || expr == MascotExpression.PLAYFUL -> {
                         pathA.reset()
                         pathA.moveTo(px(18f), px(21.5f))
                         pathA.cubicTo(px(20f), px(19.6f), px(23.5f), px(19.6f), px(25.5f), px(21.5f))
@@ -1117,7 +1153,7 @@ fun MascotOrbFace(
                         drawPath(pathA, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
                         drawPath(pathB, Color(0xFFD1D5DB), style = Stroke(px(2f), cap = StrokeCap.Round))
                     }
-                    isYawnPose || isSweatPose -> {
+                    isYawnPose || isSweatPose || expr == MascotExpression.SLEEPY -> {
                         pathA.reset()
                         pathA.moveTo(px(18f), px(22f))
                         pathA.cubicTo(px(20f), px(20.5f), px(23.5f), px(21f), px(25f), px(22.5f))
@@ -1340,8 +1376,56 @@ fun MascotOrbFace(
                     drawCircle(blushColor.copy(alpha = blushAlpha), blushR, pt(47.8f, 34f))
                 }
 
-                // Dynamic Mouth
+                // Dynamic Mouth (animated speech aperture when typing or TTS speaking + rich expression mapping)
+                val talkAperture = talkApertureAnim.value
                 when {
+                    talkAperture > 0.06f && !isSleepPose -> {
+                        val mouthW = if (isCoach) px(11.5f + talkAperture * 2.8f) else px(10.8f + talkAperture * 4.2f)
+                        val mouthH = if (isCoach) px(2.0f + talkAperture * 5.6f) else px(2.2f + talkAperture * 7.2f)
+                        val mouthLeft = px(32f) - mouthW * 0.5f
+                        val mouthTop = px(38.0f) - mouthH * 0.42f
+                        if (theme == UiTheme.TERMINAL_CLI) {
+                            drawRect(
+                                color = Color(0xFF04140A),
+                                topLeft = Offset(mouthLeft, mouthTop),
+                                size = Size(mouthW, mouthH)
+                            )
+                            drawRect(
+                                color = phaseColor.copy(alpha = 0.45f + talkAperture * 0.45f),
+                                topLeft = Offset(mouthLeft + px(1.0f), mouthTop + mouthH * 0.52f),
+                                size = Size((mouthW - px(2.0f)).coerceAtLeast(1f), (mouthH * 0.34f).coerceAtLeast(1f))
+                            )
+                            drawRect(
+                                color = phaseColor,
+                                topLeft = Offset(mouthLeft, mouthTop),
+                                size = Size(mouthW, mouthH),
+                                style = Stroke(px(1.9f))
+                            )
+                        } else {
+                            val cornerR = CornerRadius(mouthH * 0.48f, mouthH * 0.48f)
+                            drawRoundRect(
+                                color = Color(0xFF0C1018).copy(alpha = 0.88f),
+                                topLeft = Offset(mouthLeft, mouthTop),
+                                size = Size(mouthW, mouthH),
+                                cornerRadius = cornerR
+                            )
+                            if (talkAperture > 0.42f && !isCoach) {
+                                drawRoundRect(
+                                    color = phaseColor.copy(alpha = 0.34f),
+                                    topLeft = Offset(mouthLeft + mouthW * 0.18f, mouthTop + mouthH * 0.52f),
+                                    size = Size(mouthW * 0.64f, mouthH * 0.36f),
+                                    cornerRadius = CornerRadius(mouthH * 0.25f)
+                                )
+                            }
+                            drawRoundRect(
+                                color = phaseColor,
+                                topLeft = Offset(mouthLeft, mouthTop),
+                                size = Size(mouthW, mouthH),
+                                cornerRadius = cornerR,
+                                style = Stroke(px(if (isCoach) 2.2f else 2.35f))
+                            )
+                        }
+                    }
                     isCoach && eyeState.isPetting -> {
                         // Subtle stoic half-smile nod
                         pathA.reset()
@@ -1349,7 +1433,7 @@ fun MascotOrbFace(
                         pathA.cubicTo(px(29.5f), px(39.6f), px(34.5f), px(39.2f), px(38.2f), px(37.4f))
                         drawPath(pathA, phaseColor, style = Stroke(px(2.4f), cap = StrokeCap.Round))
                     }
-                    isCoach && (isCelebration || isFlexPose || isBeastPose) -> {
+                    isCoach && (isCelebration || isFlexPose || isBeastPose || expr == MascotExpression.PROUD || expr == MascotExpression.EXCITED) -> {
                         // Determined athletic grin
                         pathA.reset()
                         pathA.moveTo(px(24.5f), px(38.2f))
@@ -1360,7 +1444,8 @@ fun MascotOrbFace(
                         // Serious firm straight-set Coach line
                         drawLine(phaseColor, pt(25.2f, 38.4f), pt(38.8f, 38.0f), px(2.5f), cap = StrokeCap.Round)
                     }
-                    isCelebration || isFlexPose || isBeastPose || isSparklePose -> {
+                    isCelebration || isFlexPose || isBeastPose || isSparklePose ||
+                        expr == MascotExpression.EXCITED || expr == MascotExpression.ENERGETIC || expr == MascotExpression.PROUD -> {
                         pathA.reset()
                         pathA.moveTo(px(22.5f), px(36.5f))
                         pathA.cubicTo(px(25.5f), px(42.5f), px(38.5f), px(42.5f), px(41.5f), px(36.5f))
@@ -1372,7 +1457,7 @@ fun MascotOrbFace(
                         drawCircle(phaseColor.copy(alpha = 0.2f), px(2.4f), pt(34f, 38.2f))
                         drawCircle(phaseColor, px(2.4f), pt(34f, 38.2f), style = Stroke(px(2.3f)))
                     }
-                    isSmirkPose -> {
+                    isSmirkPose || expr == MascotExpression.SMIRK || expr == MascotExpression.TEASING -> {
                         pathA.reset()
                         pathA.moveTo(px(25f), px(38.6f))
                         pathA.cubicTo(px(29.5f), px(40f), px(35.8f), px(39f), px(40.5f), px(35.4f))
@@ -1382,14 +1467,14 @@ fun MascotOrbFace(
                         drawOval(phaseColor.copy(alpha = 0.18f), pt(28.9f, 35.2f), Size(px(6.2f), px(8f)))
                         drawOval(phaseColor, pt(28.9f, 35.2f), Size(px(6.2f), px(8f)), style = Stroke(px(2.3f)))
                     }
-                    isSleepPose -> {
+                    isSleepPose || expr == MascotExpression.SLEEPY -> {
                         drawCircle(phaseColor.copy(alpha = 0.2f), px(2.1f), pt(32f, 38.5f))
                         drawCircle(phaseColor, px(2.1f), pt(32f, 38.5f), style = Stroke(px(2.1f)))
                     }
-                    isCuriousPose || isStargazePose -> {
+                    isCuriousPose || isStargazePose || expr == MascotExpression.CURIOUS -> {
                         drawCircle(phaseColor, px(2.4f), pt(32f, 38.5f), style = Stroke(px(2.4f)))
                     }
-                    isFocusedEyes -> {
+                    isFocusedEyes || expr == MascotExpression.FOCUSED || expr == MascotExpression.SERIOUS || expr == MascotExpression.DETERMINED -> {
                         drawLine(phaseColor, pt(25.5f, 38.5f), pt(38.5f, 38.5f), px(2.6f), cap = StrokeCap.Round)
                     }
                     isTeaPose || isCoffeePose || isProteinPose -> {
@@ -1398,13 +1483,14 @@ fun MascotOrbFace(
                         pathA.cubicTo(px(27.2f), px(39.5f), px(33.2f), px(39.5f), px(36f), px(36.5f))
                         drawPath(pathA, phaseColor, style = Stroke(px(2.5f), cap = StrokeCap.Round))
                     }
-                    isShadesPose || isWinkPose || isSalutePose -> {
+                    isShadesPose || isWinkPose || isSalutePose || expr == MascotExpression.PLAYFUL -> {
                         pathA.reset()
                         pathA.moveTo(px(24.5f), px(37.5f))
                         pathA.cubicTo(px(28.5f), px(40.8f), px(36f), px(40.2f), px(40f), px(36f))
                         drawPath(pathA, phaseColor, style = Stroke(px(2.7f), cap = StrokeCap.Round))
                     }
-                    isNightChillPose || isZenPose || isCalmEyes || isCozyPose || isDreamPose || isMoonlitPose || isRechargePose -> {
+                    isNightChillPose || isZenPose || isCalmEyes || isCozyPose || isDreamPose || isMoonlitPose || isRechargePose ||
+                        expr == MascotExpression.COZY || expr == MascotExpression.CALM -> {
                         pathA.reset()
                         pathA.moveTo(px(26.5f), px(37.5f))
                         pathA.cubicTo(px(29f), px(39.8f), px(35f), px(39.8f), px(37.5f), px(37.5f))
@@ -1574,6 +1660,7 @@ fun TodayMascot(
     mascot: MascotUiState,
     eyeStateFlow: StateFlow<MascotEyeState>,
     voiceEnabled: Boolean,
+    isVoiceSpeaking: Boolean = false,
     orbVisibleAlpha: () -> Float = { 1f },
     orbAnimActive: Boolean = true,
     orbAnimActiveProvider: (() -> Boolean)? = null,
@@ -1581,6 +1668,7 @@ fun TodayMascot(
     homeOrbBoundsHolder: OrbBoundsHolder? = null,
     landingPulseTick: Int = 0,
     landingPulseTickState: State<Int>? = null,
+    onSpeechRevealFinished: (Int) -> Unit = {},
     onTapMascot: () -> Unit,
     onPetMascot: () -> Unit = {},
     onReplayVoice: () -> Unit,
@@ -1598,7 +1686,9 @@ fun TodayMascot(
     }
     val phaseColor = orbPalette.cardAccent
     val noAnim = tokens.performance.noAnimations
+    val tabActive = LocalTabActive.current
     val effectiveLandingTick = landingPulseTickState?.value ?: landingPulseTick
+    val currentOnSpeechRevealFinished by rememberUpdatedState(onSpeechRevealFinished)
 
     val landScaleX = remember { Animatable(1f) }
     val landScaleY = remember { Animatable(1f) }
@@ -1613,23 +1703,73 @@ fun TodayMascot(
             return@LaunchedEffect
         }
         launch {
-            landScaleX.snapTo(1.16f)
-            landScaleX.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 300f))
+            landScaleX.snapTo(1.13f)
+            landScaleX.animateTo(1f, spring(dampingRatio = 0.50f, stiffness = 520f))
         }
         launch {
-            landScaleY.snapTo(0.85f)
-            landScaleY.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 300f))
+            landScaleY.snapTo(0.88f)
+            landScaleY.animateTo(1f, spring(dampingRatio = 0.50f, stiffness = 520f))
         }
         launch {
-            landOffsetY.snapTo(3.5f)
-            landOffsetY.animateTo(0f, spring(dampingRatio = 0.48f, stiffness = 300f))
+            landOffsetY.snapTo(2.5f)
+            landOffsetY.animateTo(0f, spring(dampingRatio = 0.54f, stiffness = 520f))
         }
         launch {
             landRingProgress.snapTo(0f)
-            landRingProgress.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+            landRingProgress.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
             landRingProgress.snapTo(0f)
         }
     }
+
+    // Character-by-character typewriter reveal synced to mouth animation; speaks voice only after completion
+    var revealedHeadlineLen by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
+    var revealedSublineLen by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
+    var isTypingSpeech by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mascot.speechEventId, tabActive, hideForTutorial, noAnim) {
+        val headline = mascot.activeLine.headline
+        val subline = mascot.activeLine.subline
+        val eventId = mascot.speechEventId
+        val activeHere = tabActive && !hideForTutorial && orbVisibleAlpha() > 0.15f
+        if (!activeHere || eventId <= 0) {
+            revealedHeadlineLen = headline.length
+            revealedSublineLen = subline.length
+            isTypingSpeech = false
+            return@LaunchedEffect
+        }
+        if (noAnim) {
+            revealedHeadlineLen = headline.length
+            revealedSublineLen = subline.length
+            isTypingSpeech = false
+            currentOnSpeechRevealFinished(eventId)
+            return@LaunchedEffect
+        }
+        revealedHeadlineLen = 0
+        revealedSublineLen = 0
+        isTypingSpeech = true
+        for (i in 1..headline.length) {
+            val ch = headline[i - 1]
+            delay(if (ch in ",.!?·:") 36L else 15L)
+            revealedHeadlineLen = i
+        }
+        if (subline.isNotEmpty()) {
+            delay(50L)
+            for (i in 1..subline.length) {
+                val ch = subline[i - 1]
+                delay(if (ch in ",.!?·:") 32L else 12L)
+                revealedSublineLen = i
+            }
+        }
+        isTypingSpeech = false
+        currentOnSpeechRevealFinished(eventId)
+    }
+
+    val visibleHeadline = mascot.activeLine.headline.take(revealedHeadlineLen.coerceIn(0, mascot.activeLine.headline.length))
+    val visibleSubline = mascot.activeLine.subline.take(revealedSublineLen.coerceIn(0, mascot.activeLine.subline.length))
+    val cursorChar = if (tokens.uiTheme == UiTheme.TERMINAL_CLI) "▌" else "|"
+    val typingHeadlineNow = isTypingSpeech && revealedHeadlineLen < mascot.activeLine.headline.length
+    val typingSublineNow = isTypingSpeech && !typingHeadlineNow && mascot.activeLine.subline.isNotEmpty()
+    val mascotIsTalking = (isTypingSpeech || (isVoiceSpeaking && orbVisibleAlpha() > 0.15f)) && !hideForTutorial
 
     Row(
         modifier = modifier
@@ -1698,59 +1838,54 @@ fun TodayMascot(
                 mascot = mascot,
                 eyeStateFlow = eyeStateFlow,
                 size = 50.dp,
-                animActive = orbAnimActiveProvider?.invoke() ?: orbAnimActive
+                animActive = orbAnimActiveProvider?.invoke() ?: orbAnimActive,
+                isTalking = mascotIsTalking
             )
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            AnimatedContent(
-                targetState = mascot.activeLine,
-                transitionSpec = {
-                    if (tokens.performance.noAnimations) {
-                        EnterTransition.None togetherWith ExitTransition.None
-                    } else {
-                        fadeIn(tween(200)) togetherWith fadeOut(tween(140))
-                    }
-                },
-                label = "mascotLine"
-            ) { line ->
-                Column {
-                    if (mascot.personality == MascotPersonality.COACH) {
-                        Text(
-                            text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.8.sp,
-                            color = phaseColor
-                        )
-                        Spacer(modifier = Modifier.height(1.dp))
-                    }
-                    Text(
-                        text = line.headline,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tokens.palette.onSurface,
-                        lineHeight = 18.sp
-                    )
-                    if (line.subline.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = line.subline,
-                            fontSize = 12.sp,
-                            color = tokens.mutedTextColor,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
+            if (mascot.personality == MascotPersonality.COACH) {
+                Text(
+                    text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.8.sp,
+                    color = phaseColor
+                )
+                Spacer(modifier = Modifier.height(1.dp))
+            }
+            Text(
+                text = if (typingHeadlineNow) "$visibleHeadline$cursorChar" else visibleHeadline,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.palette.onSurface,
+                lineHeight = 18.sp,
+                modifier = Modifier.testTag("mascot_speech_headline")
+            )
+            if (mascot.activeLine.subline.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (typingSublineNow) "$visibleSubline$cursorChar" else visibleSubline,
+                    fontSize = 12.sp,
+                    color = tokens.mutedTextColor,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.testTag("mascot_speech_subline")
+                )
             }
         }
 
         if (voiceEnabled) {
             IconButton(
-                onClick = onReplayVoice,
+                onClick = {
+                    revealedHeadlineLen = mascot.activeLine.headline.length
+                    revealedSublineLen = mascot.activeLine.subline.length
+                    isTypingSpeech = false
+                    onReplayVoice()
+                },
                 modifier = Modifier
                     .size(36.dp)
                     .tactilePress(disabledByPerf = tokens.performance.noAnimations)
+                    .testTag("mascot_replay_voice_button")
             ) {
                 ThemedIcon(
                     icon = IronPulseIcon.VOLUME,
@@ -1768,12 +1903,14 @@ fun TodayMascot(
 fun FloatingMascotDock(
     mascot: MascotUiState,
     eyeStateFlow: StateFlow<MascotEyeState>,
+    isVoiceSpeaking: Boolean = false,
     anchorSideRight: Boolean,
     anchorYRatio: Float,
     shouldFloat: Boolean,
     morphProgressState: State<Float>,
     homeOrbBoundsHolder: OrbBoundsHolder,
     animActive: Boolean = true,
+    onSpeechRevealFinished: (Int) -> Unit = {},
     onTapOrb: () -> Unit,
     onPetOrb: () -> Unit = {},
     onSaveAnchor: (sideRight: Boolean, yRatio: Float) -> Unit
@@ -1786,6 +1923,7 @@ fun FloatingMascotDock(
     val tokens = LocalIronPulseTokens.current
     val noAnim = tokens.performance.noAnimations
     val density = LocalDensity.current
+    val currentOnSpeechRevealFinished by rememberUpdatedState(onSpeechRevealFinished)
     val phaseColor = remember(tokens.uiTheme, tokens.timePhase, tokens.accentColor, tokens.palette, tokens.isLightTheme) {
         resolveMascotOrbPalette(
             theme = tokens.uiTheme,
@@ -1858,6 +1996,62 @@ fun FloatingMascotDock(
             TransformOrigin(pivotFractionX = if (anchorSideRight) 1f else 0f, pivotFractionY = 0.5f)
         }
 
+        // Typewriter reveal for FloatingMascotDock bubble + voice handoff
+        var revealedHeadlineLen by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
+        var revealedSublineLen by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
+        var isTypingBubble by remember { mutableStateOf(false) }
+        LaunchedEffect(mascot.speechEventId, bubbleVisible, shouldFloat, noAnim) {
+            val headline = mascot.activeLine.headline
+            val subline = mascot.activeLine.subline
+            val eventId = mascot.speechEventId
+            if (!shouldFloat || eventId <= 0) {
+                revealedHeadlineLen = headline.length
+                revealedSublineLen = subline.length
+                isTypingBubble = false
+                return@LaunchedEffect
+            }
+            if (!bubbleVisible) {
+                revealedHeadlineLen = headline.length
+                revealedSublineLen = subline.length
+                if (mascot.shouldSpeakAfterReveal) {
+                    if (!noAnim) {
+                        isTypingBubble = true
+                        delay(260L)
+                        isTypingBubble = false
+                    }
+                    currentOnSpeechRevealFinished(eventId)
+                } else {
+                    isTypingBubble = false
+                }
+                return@LaunchedEffect
+            }
+            if (noAnim) {
+                revealedHeadlineLen = headline.length
+                revealedSublineLen = subline.length
+                isTypingBubble = false
+                currentOnSpeechRevealFinished(eventId)
+                return@LaunchedEffect
+            }
+            revealedHeadlineLen = 0
+            revealedSublineLen = 0
+            isTypingBubble = true
+            for (i in 1..headline.length) {
+                val ch = headline[i - 1]
+                delay(if (ch in ",.!?·:") 36L else 15L)
+                revealedHeadlineLen = i
+            }
+            if (subline.isNotEmpty()) {
+                delay(50L)
+                for (i in 1..subline.length) {
+                    val ch = subline[i - 1]
+                    delay(if (ch in ",.!?·:") 32L else 12L)
+                    revealedSublineLen = i
+                }
+            }
+            isTypingBubble = false
+            currentOnSpeechRevealFinished(eventId)
+        }
+
         fun computeBezierControlX(p0x: Float, p1x: Float): Float {
             val midX = (p0x + p1x) * 0.5f
             val centerX = (widthPx - orbSizePx) * 0.48f
@@ -1914,22 +2108,22 @@ fun FloatingMascotDock(
             return bankNorm * 16f * envelope
         }
 
-        // Anchored, organic spring speech bubble next to floating orb
+        // Anchored, crisp spring speech bubble next to floating orb
         AnimatedVisibility(
             visible = bubbleVisible,
             enter = if (noAnim) {
                 EnterTransition.None
             } else {
-                fadeIn(tween(200)) +
-                    scaleIn(animationSpec = IronPulseMotion.BubbleSpring, initialScale = 0.65f, transformOrigin = bubbleOrigin) +
-                    slideInHorizontally(tween(210)) { if (anchorSideRight) 18 else -18 }
+                fadeIn(tween(120)) +
+                    scaleIn(animationSpec = IronPulseMotion.BubbleSpring, initialScale = 0.78f, transformOrigin = bubbleOrigin) +
+                    slideInHorizontally(tween(130)) { if (anchorSideRight) 14 else -14 }
             },
             exit = if (noAnim) {
                 ExitTransition.None
             } else {
-                fadeOut(tween(150)) +
-                    scaleOut(animationSpec = tween(160), targetScale = 0.72f, transformOrigin = bubbleOrigin) +
-                    slideOutHorizontally(tween(150)) { if (anchorSideRight) 16 else -16 }
+                fadeOut(tween(90)) +
+                    scaleOut(animationSpec = tween(95), targetScale = 0.82f, transformOrigin = bubbleOrigin) +
+                    slideOutHorizontally(tween(90)) { if (anchorSideRight) 12 else -12 }
             },
             modifier = Modifier.graphicsLayer {
                 val orbX = computeOrbX()
@@ -1957,47 +2151,39 @@ fun FloatingMascotDock(
                     .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.BubbleSizeSpring))
                     .padding(13.dp)
             ) {
+                val visibleBubbleHeadline = mascot.activeLine.headline.take(revealedHeadlineLen.coerceIn(0, mascot.activeLine.headline.length))
+                val visibleBubbleSubline = mascot.activeLine.subline.take(revealedSublineLen.coerceIn(0, mascot.activeLine.subline.length))
+                val cursorChar = if (tokens.uiTheme == UiTheme.TERMINAL_CLI) "▌" else "|"
+                val typingHead = isTypingBubble && revealedHeadlineLen < mascot.activeLine.headline.length
+                val typingSub = isTypingBubble && !typingHead && mascot.activeLine.subline.isNotEmpty()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    AnimatedContent(
-                        targetState = mascot.activeLine,
-                        transitionSpec = {
-                            if (noAnim) {
-                                EnterTransition.None togetherWith ExitTransition.None
-                            } else {
-                                (fadeIn(tween(190))) togetherWith (fadeOut(tween(120)))
-                            }
-                        },
-                        label = "floatingBubbleLine",
-                        modifier = Modifier.weight(1f)
-                    ) { line ->
-                        Column {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (typingHead) "$visibleBubbleHeadline$cursorChar" else visibleBubbleHeadline,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.palette.onSurface,
+                            lineHeight = 17.sp
+                        )
+                        if (mascot.activeLine.subline.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = line.headline,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.palette.onSurface,
-                                lineHeight = 17.sp
+                                text = if (typingSub) "$visibleBubbleSubline$cursorChar" else visibleBubbleSubline,
+                                fontSize = 11.5.sp,
+                                lineHeight = 15.5.sp,
+                                color = tokens.mutedTextColor
                             )
-                            if (line.subline.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = line.subline,
-                                    fontSize = 11.5.sp,
-                                    lineHeight = 15.5.sp,
-                                    color = tokens.mutedTextColor
-                                )
-                            }
                         }
                     }
                     Box(
                         modifier = Modifier
                             .padding(start = 4.dp)
                             .size(32.dp)
-                            .clip(CircleShape)
+                            .clip(if (tokens.uiTheme == UiTheme.TERMINAL_CLI) androidx.compose.ui.graphics.RectangleShape else CircleShape)
                             .clickable { bubbleOpen = false },
                         contentAlignment = Alignment.Center
                     ) {
@@ -2109,7 +2295,8 @@ fun FloatingMascotDock(
                     mascot = mascot,
                     eyeStateFlow = eyeStateFlow,
                     size = 54.dp,
-                    animActive = animActive
+                    animActive = animActive,
+                    isTalking = isTypingBubble || (isVoiceSpeaking && shouldFloat)
                 )
             }
         }

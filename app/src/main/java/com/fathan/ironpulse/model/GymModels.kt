@@ -492,11 +492,29 @@ enum class TimePhasePose {
     SLEEP, YAWN, NIGHT_CHILL, STARGAZE, ZEN, COZY, DREAM, MOONLIT, RECHARGE
 }
 
+enum class MascotExpression {
+    CHEERFUL,
+    EXCITED,
+    PROUD,
+    FOCUSED,
+    CURIOUS,
+    PLAYFUL,
+    SMIRK,
+    COZY,
+    SLEEPY,
+    ENERGETIC,
+    CALM,
+    TEASING,
+    SERIOUS,
+    DETERMINED
+}
+
 @Immutable
 data class MascotSpeechLine(
     val id: String,
     val headline: String,
-    val subline: String
+    val subline: String,
+    val expression: MascotExpression = MascotExpression.CHEERFUL
 )
 
 object GymModelHelpers {

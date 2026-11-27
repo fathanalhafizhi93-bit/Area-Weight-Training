@@ -73,7 +73,8 @@ enum class IronPulseIcon {
     BOOKMARK,
     SPARKLE,
     SCHOOL,
-    SNOOZE
+    SNOOZE,
+    MORE_VERT
 }
 
 /**
@@ -331,18 +332,16 @@ private fun DrawScope.drawThemeIconUnderlay(
         }
         UiTheme.TERMINAL_CLI -> {
             if (filledBadge) {
-                drawRoundRect(
-                    color = Color(0xFF060B08),
+                drawRect(
+                    color = Color(0xFF050A07),
                     topLeft = Offset(w * 0.05f, h * 0.05f),
-                    size = Size(w * 0.90f, h * 0.90f),
-                    cornerRadius = CornerRadius(w * 0.12f, w * 0.12f)
+                    size = Size(w * 0.90f, h * 0.90f)
                 )
-                drawRoundRect(
-                    color = style.secondary.copy(alpha = 0.62f),
+                drawRect(
+                    color = style.secondary.copy(alpha = 0.72f),
                     topLeft = Offset(w * 0.05f, h * 0.05f),
                     size = Size(w * 0.90f, h * 0.90f),
-                    cornerRadius = CornerRadius(w * 0.12f, w * 0.12f),
-                    style = Stroke(w * 0.045f)
+                    style = Stroke(w * 0.048f, join = StrokeJoin.Miter)
                 )
             }
         }
@@ -1024,6 +1023,13 @@ private fun DrawScope.drawSemanticGlyph(
             }
             drawPath(z1, style.primary, style = stroke)
             drawPath(z2, style.primary, style = thinStroke)
+        }
+
+        IronPulseIcon.MORE_VERT -> {
+            val r = w * 0.085f
+            drawCircle(style.primary, r, Offset(cx, h * 0.24f))
+            drawCircle(style.primary, r, Offset(cx, cy))
+            drawCircle(style.primary, r, Offset(cx, h * 0.76f))
         }
     }
 }

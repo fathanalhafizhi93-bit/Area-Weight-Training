@@ -165,7 +165,8 @@ data class MascotUiState(
     val phaseColorHex: String = "#FBBF24",
     val activeLine: MascotSpeechLine = MascotSpeechLine("init", "Siap Latihan!", "Ayo bangun momentum hari ini."),
     val speechEventId: Int = 0,
-    val isDialogueLocked: Boolean = false
+    val isDialogueLocked: Boolean = false,
+    val shouldSpeakAfterReveal: Boolean = false
 )
 
 @Immutable
@@ -308,6 +309,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     val exerciseTimersFlow: StateFlow<Map<String, ExerciseTimerUiState>> = _exerciseTimers.asStateFlow()
     val cooldownSecondsFlow: StateFlow<Int> = _cooldownSeconds.asStateFlow()
     val mascotEyeFlow: StateFlow<MascotEyeState> = _mascotEyeState.asStateFlow()
+    val mascotTtsSpeakingFlow: StateFlow<Boolean> = ttsSpeaker.isSpeakingFlow
 
     val themeUiFlow: StateFlow<ThemeUiSpec> = combine(prefsStore.state, _timePhase) { prefs, phase ->
         ThemeUiSpec(prefs = prefs, timePhase = phase)
@@ -369,6 +371,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private var initialGreetingFired = false
     private var lastMascotTapAtMs: Long = 0L
     private var mascotComboCount: Int = 0
+    private var pendingSpeakEventId: Int = -1
+    private var lastSpokenEventId: Int = -1
 
     private data class CoreCloudState(
         val authReady: Boolean,
@@ -1293,7 +1297,13 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     fun setMascotVoiceEnabled(enabled: Boolean) {
         haptics.toggle()
         prefsStore.setMascotVoiceEnabled(enabled)
-        if (!enabled) ttsSpeaker.stop()
+        if (!enabled) {
+            pendingSpeakEventId = -1
+            if (_mascotState.value.shouldSpeakAfterReveal) {
+                _mascotState.value = _mascotState.value.copy(shouldSpeakAfterReveal = false)
+            }
+            ttsSpeaker.stop()
+        }
     }
 
     fun setMascotPersonality(personality: MascotPersonality) {
@@ -1366,6 +1376,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val signedOutUid = _user.value?.uid
         haptics.destructive()
         audioEngine.stop()
+        pendingSpeakEventId = -1
+        lastSpokenEventId = -1
         ttsSpeaker.stop()
         RestTimerService.stop(getApplication())
         signInJob?.cancel()
@@ -2840,6 +2852,10 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val pool = MascotDialogues.buildQuickTipPool(prefs.lang, n, personality)
         mascotQuoteRoll = (mascotQuoteRoll + 1) % pool.size
         val picked = pool[mascotQuoteRoll]
+        ttsSpeaker.stop()
+        val nextEventId = _mascotState.value.speechEventId + 1
+        val willSpeak = speakTts && prefs.mascotVoiceEnabled
+        pendingSpeakEventId = if (willSpeak) nextEventId else -1
         _mascotState.value = _mascotState.value.copy(
             mood = MascotMood.READY,
             timePhase = phase,
@@ -2847,13 +2863,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             personality = personality,
             phaseColorHex = resolvePhaseThemeTokens(phase).accentBrightHex,
             activeLine = picked,
-            speechEventId = _mascotState.value.speechEventId + 1,
-            isDialogueLocked = true
+            speechEventId = nextEventId,
+            isDialogueLocked = true,
+            shouldSpeakAfterReveal = willSpeak
         )
         audioEngine.playMascotChirp("ready", vol, personality)
-        if (speakTts && prefs.mascotVoiceEnabled) {
-            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true, personality)
-        }
     }
 
     fun tapMascot() {
@@ -2928,12 +2942,17 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             val n = if (cleanName.isNotEmpty()) ", $cleanName" else ""
             val comboPool = MascotDialogues.buildComboPokePool(prefs.lang, n, mascotComboCount, personality)
             val picked = comboPool[(mascotComboCount - 3) % comboPool.size]
+            ttsSpeaker.stop()
+            val nextEventId = _mascotState.value.speechEventId + 1
+            val willSpeak = prefs.mascotVoiceEnabled
+            pendingSpeakEventId = if (willSpeak) nextEventId else -1
             _mascotState.value = _mascotState.value.copy(
                 activeTimePose = excitedPose,
                 personality = personality,
                 phaseColorHex = prefs.accentColorHex,
                 activeLine = picked,
-                speechEventId = _mascotState.value.speechEventId + 1
+                speechEventId = nextEventId,
+                shouldSpeakAfterReveal = willSpeak
             )
             val vol = (_profile.value?.volume ?: 0.85).toFloat()
             audioEngine.playMascotChirp(if (personality == MascotPersonality.COACH) "clap" else "celebrate", vol, personality)
@@ -3002,11 +3021,16 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             glanceX = 0f,
             glanceY = 0f
         )
+        ttsSpeaker.stop()
+        val nextEventId = _mascotState.value.speechEventId + 1
+        val willSpeak = prefs.mascotVoiceEnabled
+        pendingSpeakEventId = if (willSpeak) nextEventId else -1
         _mascotState.value = _mascotState.value.copy(
             activeTimePose = if (personality == MascotPersonality.COACH) TimePhasePose.ZEN else TimePhasePose.COZY,
             personality = personality,
             activeLine = picked,
-            speechEventId = _mascotState.value.speechEventId + 1
+            speechEventId = nextEventId,
+            shouldSpeakAfterReveal = willSpeak
         )
         val vol = ((_profile.value?.volume ?: 0.85) * 0.65).toFloat().coerceIn(0.2f, 0.72f)
         audioEngine.playMascotChirp("pet", vol, personality)
@@ -3022,10 +3046,32 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun onMascotSpeechRevealFinished(eventId: Int) {
+        val cur = _mascotState.value
+        if (eventId != cur.speechEventId || eventId != pendingSpeakEventId || lastSpokenEventId == eventId) {
+            return
+        }
+        pendingSpeakEventId = -1
+        lastSpokenEventId = eventId
+        _mascotState.value = cur.copy(shouldSpeakAfterReveal = false)
+        val prefs = prefsStore.state.value
+        if (prefs.mascotVoiceEnabled) {
+            val text = "${cur.activeLine.headline}. ${cur.activeLine.subline}"
+            ttsSpeaker.speak(text, prefs.lang, enabled = true, personality = prefs.mascotPersonality)
+        }
+    }
+
     fun replayMascotVoice() {
         haptics.buttonTap()
         val prefs = prefsStore.state.value
-        val line = _mascotState.value.activeLine
+        val cur = _mascotState.value
+        pendingSpeakEventId = -1
+        lastSpokenEventId = cur.speechEventId
+        if (cur.shouldSpeakAfterReveal) {
+            _mascotState.value = cur.copy(shouldSpeakAfterReveal = false)
+        }
+        ttsSpeaker.stop()
+        val line = cur.activeLine
         val text = "${line.headline}. ${line.subline}"
         ttsSpeaker.speak(text, prefs.lang, enabled = true, personality = prefs.mascotPersonality)
     }
@@ -3107,6 +3153,11 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         dialogueLockedUntilMs = if (lockDialogue) now + 14_000L else 0L
         lastAutoChatAtMs = now
 
+        ttsSpeaker.stop()
+        val nextEventId = _mascotState.value.speechEventId + 1
+        val willSpeak = speakTts && prefs.mascotVoiceEnabled
+        pendingSpeakEventId = if (willSpeak) nextEventId else -1
+
         val nextState = _mascotState.value.copy(
             mood = ctx.mood,
             timePhase = phase,
@@ -3115,8 +3166,9 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             personality = prefs.mascotPersonality,
             phaseColorHex = colorHex,
             activeLine = picked,
-            speechEventId = _mascotState.value.speechEventId + 1,
-            isDialogueLocked = lockDialogue
+            speechEventId = nextEventId,
+            isDialogueLocked = lockDialogue,
+            shouldSpeakAfterReveal = willSpeak
         )
         _mascotState.value = nextState
 
@@ -3136,9 +3188,6 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             }
             val variant = if (phase == DayTimePhase.NIGHT && urgent == null) "night" else ctx.mood.wireValue
             audioEngine.playMascotChirp(variant, vol, prefs.mascotPersonality)
-        }
-        if (speakTts && prefs.mascotVoiceEnabled) {
-            ttsSpeaker.speak("${picked.headline}. ${picked.subline}", prefs.lang, true, prefs.mascotPersonality)
         }
     }
 

@@ -44,6 +44,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -82,12 +84,15 @@ import com.fathan.ironpulse.model.EquipmentBucket
 import com.fathan.ironpulse.model.ExerciseItem
 import com.fathan.ironpulse.model.ExerciseTrackingMode
 import com.fathan.ironpulse.model.GymModelHelpers
+import com.fathan.ironpulse.model.MuscleAnatomyResolver
 import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.TimerDirection
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
+import com.fathan.ironpulse.ui.components.ExerciseAnatomyDetailDialog
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.IronPulseMotion
+import com.fathan.ironpulse.ui.components.MuscleAnatomyThumbnail
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
@@ -127,6 +132,7 @@ fun ExercisesScreen(
         if (onOpenLibrary != null) onOpenLibrary() else localShowLibrary = true
     }
     var editingExercise by remember { mutableStateOf<ExerciseItem?>(null) }
+    var inspectingExercise by remember { mutableStateOf<ExerciseItem?>(null) }
     var showCreateCustomModal by remember { mutableStateOf(false) }
     var pendingDeleteExercise by remember { mutableStateOf<ExerciseItem?>(null) }
 
@@ -139,15 +145,16 @@ fun ExercisesScreen(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = contentPadding.calculateTopPadding() + 14.dp,
+                top = contentPadding.calculateTopPadding() + 12.dp,
                 bottom = contentPadding.calculateBottomPadding() + 92.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .widthIn(max = 640.dp)
                 .fillMaxSize()
+                .testTag("exercises_list")
         ) {
-            // Header Card
+            // Minimalist Unified Day Card
             item(key = "exercises_header", contentType = "header") {
                 Column(
                     modifier = Modifier
@@ -155,36 +162,59 @@ fun ExercisesScreen(
                         .staggeredCardEntrance(0, active = tabActive, disabledByPerf = noAnim)
                         .tutorialSpotlightTarget(TutorialSpotlightTarget.EXERCISES_HEADER)
                         .ironGlassSurface(tokens)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(14.dp)
+                        .testTag("exercises_day_card"),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = lang.t("Program Latihan Harian", "Daily Exercise Planner"),
-                            fontSize = 21.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = tokens.palette.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = schedule?.focusTitle?.ifBlank { selectedDay.label(lang) } ?: selectedDay.label(lang),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = tokens.palette.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (schedule?.isGymDay == true) {
+                                    "${selectedDay.label(lang)} · ${lang.t("Hari Latihan", "Gym Day")}"
+                                } else {
+                                    "${selectedDay.label(lang)} · ${lang.t("Pemulihan", "Rest Day")}"
+                                },
+                                fontSize = 12.sp,
+                                color = tokens.palette.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${exercises.size}/30",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.accentColor
-                        )
+                        IronPulseTonalSurface(
+                            shape = tokens.buttonShape,
+                            baseColor = if (exercises.size >= 30) Color(0x2EF59E0B) else tokens.accentColor.copy(alpha = 0.14f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (exercises.size >= 30) Color(0x80F59E0B) else tokens.accentColor.copy(alpha = 0.35f)
+                            )
+                        ) {
+                            Text(
+                                text = "${exercises.size}/30",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (exercises.size >= 30) tokens.warningColor else tokens.accentTextColor,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         IronPulseButton(
                             onClick = openLibrary,
@@ -194,18 +224,22 @@ fun ExercisesScreen(
                                 contentColor = tokens.onAccentColor
                             ),
                             modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
+                                .weight(1.2f)
+                                .height(46.dp)
                                 .testTag("open_exercise_library_button"),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 18.dp)
+                            ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 17.dp)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = lang.t("Pustaka", "Library"),
+                                text = lang.t(
+                                    "Pustaka (${GymPresets.EXERCISE_LIBRARY.size})",
+                                    "Library (${GymPresets.EXERCISE_LIBRARY.size})"
+                                ),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         IronPulseOutlinedButton(
@@ -213,13 +247,13 @@ fun ExercisesScreen(
                             shape = tokens.buttonShape,
                             border = BorderStroke(1.dp, tokens.surfaceBorderColor),
                             modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
+                                .weight(0.9f)
+                                .height(46.dp)
                                 .testTag("open_custom_exercise_button"),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
-                            Spacer(modifier = Modifier.width(6.dp))
+                            ThemedIcon(IronPulseIcon.ADD, contentDescription = null, tint = tokens.accentTextColor, size = 17.dp)
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
                                 text = lang.t("Buat Baru", "Custom"),
                                 fontWeight = FontWeight.Bold,
@@ -232,199 +266,138 @@ fun ExercisesScreen(
                 }
             }
 
-        // 7-Day Selector Rail
-        item(key = "day_rail", contentType = "day_rail") {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
-            ) {
-                items(DayKey.entries, key = { it.key }) { day ->
-                    val daySched = state.schedules[day]
-                    val count = daySched?.exercises?.size ?: 0
-                    val isSelected = day == selectedDay
-                    val isToday = day == state.todayDayKey
-                    IronPulseTonalSurface(
-                        onClick = { viewModel.setSelectedExerciseDay(day) },
-                        shape = tokens.buttonShape,
-                        baseColor = if (isSelected) tokens.accentColor else tokens.controlBg,
-                        isAccent = isSelected,
-                        pressedScale = 0.94f,
-                        border = BorderStroke(
-                            1.dp,
-                            when {
-                                isSelected -> tokens.accentColor
-                                isToday -> tokens.accentColor.copy(alpha = 0.45f)
-                                else -> tokens.surfaceBorderColor
-                            }
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = day.label(lang),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isSelected) tokens.onAccentColor else tokens.palette.onSurface
+            // Minimalist 7-Day Selector Rail
+            item(key = "day_rail", contentType = "day_rail") {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    modifier = Modifier.staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                ) {
+                    items(DayKey.entries, key = { it.key }) { day ->
+                        val daySched = state.schedules[day]
+                        val count = daySched?.exercises?.size ?: 0
+                        val isSelected = day == selectedDay
+                        val isToday = day == state.todayDayKey
+                        IronPulseTonalSurface(
+                            onClick = { viewModel.setSelectedExerciseDay(day) },
+                            shape = tokens.buttonShape,
+                            baseColor = if (isSelected) tokens.accentColor else tokens.controlBg,
+                            isAccent = isSelected,
+                            pressedScale = 0.94f,
+                            border = BorderStroke(
+                                1.dp,
+                                when {
+                                    isSelected -> tokens.accentColor
+                                    isToday -> tokens.accentColor.copy(alpha = 0.45f)
+                                    else -> tokens.surfaceBorderColor
+                                }
                             )
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(
-                                        if (isSelected) tokens.onAccentColor.copy(alpha = 0.18f)
-                                        else tokens.subtleChipBg
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                Text(
+                                    text = day.label(lang),
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) tokens.onAccentColor else tokens.palette.onSurface
+                                )
                                 Text(
                                     text = "$count",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) tokens.onAccentColor else tokens.mutedTextColor
+                                    color = if (isSelected) tokens.onAccentColor.copy(alpha = 0.85f) else tokens.mutedTextColor
                                 )
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Selected Day Summary Strip
-        item(key = "day_summary", contentType = "summary") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
-                    .ironGlassSurface(tokens, subtle = true)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = schedule?.focusTitle?.ifBlank { selectedDay.label(lang) } ?: selectedDay.label(lang),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tokens.palette.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (schedule?.isGymDay == true) {
-                            lang.t("Hari Gym Aktif · ${exercises.size}/30 gerakan", "Active Gym Day · ${exercises.size}/30 movements")
-                        } else {
-                            lang.t("Rest Day / Pemulihan · ${exercises.size}/30 gerakan", "Rest Day · ${exercises.size}/30 movements")
-                        },
-                        fontSize = 12.sp,
-                        color = tokens.palette.onSurfaceVariant
-                    )
-                }
-                IronPulseTonalSurface(
-                    shape = RoundedCornerShape(999.dp),
-                    baseColor = if (exercises.size >= 30) Color(0x2EF59E0B) else tokens.accentColor.copy(alpha = 0.14f),
-                    border = BorderStroke(
-                        1.dp,
-                        if (exercises.size >= 30) Color(0x80F59E0B) else tokens.accentColor.copy(alpha = 0.35f)
-                    )
-                ) {
-                    Text(
-                        text = "${exercises.size}/30",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (exercises.size >= 30) tokens.warningColor else tokens.accentTextColor,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
-        }
-
-        // Empty State or Exercise Items
-        if (exercises.isEmpty()) {
-            item(key = "exercises_empty", contentType = "empty") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
-                        .ironGlassSurface(tokens)
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
+            // Empty State or Minimalist Exercise Cards
+            if (exercises.isEmpty()) {
+                item(key = "exercises_empty", contentType = "empty") {
+                    Column(
                         modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(tokens.accentColor.copy(alpha = 0.12f))
-                            .border(1.dp, tokens.accentColor.copy(alpha = 0.35f), CircleShape),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                            .ironGlassSurface(tokens)
+                            .padding(22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ThemedIcon(
-                            icon = IronPulseIcon.EXERCISES,
-                            contentDescription = null,
-                            tint = tokens.accentColor,
-                            size = 26.dp
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(tokens.subtleCardShape)
+                                .background(tokens.accentColor.copy(alpha = 0.12f))
+                                .border(1.dp, tokens.accentColor.copy(alpha = 0.35f), tokens.subtleCardShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ThemedIcon(
+                                icon = IronPulseIcon.EXERCISES,
+                                contentDescription = null,
+                                tint = tokens.accentTextColor,
+                                size = 24.dp
+                            )
+                        }
+                        Text(
+                            text = lang.t(
+                                "Belum Ada Gerakan di ${selectedDay.label(lang)}",
+                                "No Movements on ${selectedDay.label(lang)}"
+                            ),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.palette.onSurface
                         )
-                    }
-                    Text(
-                        text = lang.t(
-                            "Belum Ada Gerakan di ${selectedDay.label(lang)}",
-                            "No Movements on ${selectedDay.label(lang)}"
-                        ),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tokens.palette.onSurface
-                    )
-                    Text(
-                        text = lang.t(
-                            "Tambahkan gerakan dari Pustaka Gerakan siap pakai atau buat gerakan kustom sesuai programmu.",
-                            "Add exercises from the built-in Library or create a custom movement for this day."
-                        ),
-                        fontSize = 13.sp,
-                        color = tokens.palette.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    IronPulseButton(
-                        onClick = openLibrary,
-                        shape = tokens.buttonShape,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = tokens.accentColor,
-                            contentColor = tokens.onAccentColor
+                        Text(
+                            text = lang.t(
+                                "Pilih dari ${GymPresets.EXERCISE_LIBRARY.size}+ gerakan lengkap dengan diagram otot atau buat kustom.",
+                                "Pick from ${GymPresets.EXERCISE_LIBRARY.size}+ movements with muscle maps or create your own."
+                            ),
+                            fontSize = 12.5.sp,
+                            color = tokens.palette.onSurfaceVariant
                         )
-                    ) {
-                        ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 18.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(lang.t("Buka Pustaka Gerakan", "Open Exercise Library"), fontWeight = FontWeight.Bold)
+                        IronPulseButton(
+                            onClick = openLibrary,
+                            shape = tokens.buttonShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = tokens.accentColor,
+                                contentColor = tokens.onAccentColor
+                            )
+                        ) {
+                            ThemedIcon(IronPulseIcon.LIBRARY_ADD, contentDescription = null, size = 18.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(lang.t("Buka Pustaka Gerakan", "Open Exercise Library"), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
+            } else {
+                itemsIndexed(
+                    items = exercises,
+                    key = { _, item -> item.id },
+                    contentType = { _, _ -> "exercise_manage_card" }
+                ) { idx, ex ->
+                    ScheduledExerciseManageCard(
+                        index = idx,
+                        total = exercises.size,
+                        exercise = ex,
+                        lang = lang,
+                        onInspect = { inspectingExercise = ex },
+                        onMoveUp = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = true) },
+                        onMoveDown = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = false) },
+                        onEdit = { editingExercise = ex },
+                        onDelete = { pendingDeleteExercise = ex },
+                        modifier = if (idx < 3) {
+                            Modifier.staggeredCardEntrance(idx + 2, active = tabActive, disabledByPerf = noAnim)
+                        } else {
+                            Modifier
+                        }
+                    )
+                }
             }
-        } else {
-            itemsIndexed(
-                items = exercises,
-                key = { _, item -> item.id },
-                contentType = { _, _ -> "exercise_manage_card" }
-            ) { idx, ex ->
-                ScheduledExerciseManageCard(
-                    index = idx,
-                    total = exercises.size,
-                    exercise = ex,
-                    lang = lang,
-                    onMoveUp = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = true) },
-                    onMoveDown = { viewModel.moveExerciseInDay(selectedDay, ex.id, moveUp = false) },
-                    onEdit = { editingExercise = ex },
-                    onDelete = { pendingDeleteExercise = ex },
-                    modifier = if (idx < 3) {
-                        Modifier.staggeredCardEntrance(idx + 3, active = tabActive, disabledByPerf = noAnim)
-                    } else {
-                        Modifier
-                    }
-                )
-            }
-        }
         }
     }
 
@@ -449,6 +422,33 @@ fun ExercisesScreen(
                 onDismiss = { localShowLibrary = false }
             )
         }
+    }
+
+    val inspected = inspectingExercise
+    if (inspected != null) {
+        ExerciseAnatomyDetailDialog(
+            name = inspected.name,
+            muscleGroup = inspected.muscleGroup,
+            equipment = inspected.equipment,
+            targetSets = inspected.targetSets,
+            targetReps = inspected.targetReps,
+            targetWeightKg = inspected.targetWeightKg,
+            restSeconds = inspected.restSeconds,
+            notes = inspected.notes,
+            trackingMode = inspected.trackingMode,
+            usesWeight = inspected.usesWeight,
+            timerDirection = inspected.timerDirection,
+            targetDurationSeconds = inspected.targetDurationSeconds,
+            lang = lang,
+            primaryActionLabel = lang.t("Ubah Gerakan", "Edit Movement"),
+            onPrimaryAction = {
+                editingExercise = inspected
+                inspectingExercise = null
+            },
+            secondaryActionLabel = lang.t("Tutup", "Close"),
+            onSecondaryAction = { inspectingExercise = null },
+            onDismiss = { inspectingExercise = null }
+        )
     }
 
     if (showCreateCustomModal || editingExercise != null) {
@@ -490,13 +490,13 @@ fun ExercisesScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ScheduledExerciseManageCard(
     index: Int,
     total: Int,
     exercise: ExerciseItem,
     lang: AppLanguage,
+    onInspect: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onEdit: () -> Unit,
@@ -505,170 +505,157 @@ private fun ScheduledExerciseManageCard(
 ) {
     val tokens = LocalIronPulseTokens.current
     val isTimer = exercise.trackingMode == ExerciseTrackingMode.TIMER
+    val anatomy = remember(exercise.name, exercise.muscleGroup, exercise.equipment) {
+        MuscleAnatomyResolver.resolve(exercise.name, exercise.muscleGroup, exercise.equipment)
+    }
+    var menuExpanded by remember { mutableStateOf(false) }
 
-    Column(
+    val summaryText = remember(exercise, lang) {
+        buildString {
+            append(exercise.muscleGroup.label(lang))
+            append(" · ")
+            append(exercise.equipment)
+            append(" · ")
+            append("${exercise.targetSets}×")
+            if (isTimer) {
+                append(GymModelHelpers.formatCompactDuration(exercise.targetDurationSeconds, lang))
+            } else {
+                append(exercise.targetReps)
+            }
+            if (exercise.usesWeight && exercise.targetWeightKg > 0.0) {
+                append(" · ${GymModelHelpers.formatWeight(exercise.targetWeightKg)}kg")
+            }
+        }
+    }
+
+    IronPulseTonalSurface(
+        onClick = onInspect,
+        shape = tokens.cardShape,
+        baseColor = tokens.palette.surfaceContainerLow,
+        border = BorderStroke(1.dp, tokens.surfaceBorderColor),
         modifier = modifier
             .fillMaxWidth()
-            .ironGlassSurface(tokens)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .testTag("exercise_card_${exercise.id}")
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
+            MuscleAnatomyThumbnail(
+                anatomy = anatomy,
+                width = 56.dp,
+                height = 48.dp,
+                modifier = Modifier.testTag("exercise_anatomy_thumb_${exercise.id}")
+            )
+
+            Column(
                 modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .ironTonalControl(
-                            tokens = tokens,
-                            shape = RoundedCornerShape(8.dp),
-                            baseColor = tokens.accentColor.copy(alpha = 0.14f),
-                            isAccent = false
-                        )
-                        .border(1.dp, tokens.accentColor.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "${index + 1}",
+                        text = "#${index + 1}",
                         fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
                         color = tokens.accentTextColor
                     )
-                }
-
-                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = exercise.name,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = tokens.palette.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        SmallMetaBadge(
-                            text = exercise.muscleGroup.label(lang),
-                            color = tokens.accentTextColor,
-                            fill = tokens.accentColor.copy(alpha = 0.12f)
-                        )
-                        SmallMetaBadge(
-                            text = exercise.equipment,
-                            color = tokens.palette.onSurfaceVariant,
-                            fill = tokens.subtleChipBg
-                        )
-                        if (isTimer) {
-                            SmallMetaBadge(
-                                text = if (exercise.timerDirection == TimerDirection.COUNTUP) "COUNT-UP" else "COUNTDOWN",
-                                color = tokens.infoColor,
-                                fill = tokens.infoColor.copy(alpha = 0.14f)
-                            )
-                        }
-                        if (!exercise.usesWeight) {
-                            SmallMetaBadge(
-                                text = lang.t("Tanpa Beban", "Bodyweight"),
-                                color = tokens.successColor,
-                                fill = tokens.successColor.copy(alpha = 0.14f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Reorder, Edit, Delete Controls
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onMoveUp,
-                    enabled = index > 0,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    ThemedIcon(
-                        icon = IronPulseIcon.EXPAND_LESS,
-                        contentDescription = lang.t("Naik", "Move up"),
-                        tint = if (index > 0) tokens.palette.onSurface else tokens.palette.onSurfaceVariant.copy(alpha = 0.3f),
-                        size = 18.dp
+                        color = tokens.palette.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(
-                    onClick = onMoveDown,
-                    enabled = index < total - 1,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    ThemedIcon(
-                        icon = IronPulseIcon.EXPAND_MORE,
-                        contentDescription = lang.t("Turun", "Move down"),
-                        tint = if (index < total - 1) tokens.palette.onSurface else tokens.palette.onSurfaceVariant.copy(alpha = 0.3f),
-                        size = 18.dp
-                    )
-                }
-                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    ThemedIcon(
-                        icon = IronPulseIcon.EDIT,
-                        contentDescription = lang.t("Ubah", "Edit"),
-                        tint = tokens.accentTextColor,
-                        size = 17.dp
-                    )
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    ThemedIcon(
-                        icon = IronPulseIcon.DELETE,
-                        contentDescription = lang.t("Hapus", "Delete"),
-                        tint = tokens.dangerColor,
-                        size = 17.dp
-                    )
-                }
-            }
-        }
-
-        // Metrics Strip
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            MetricMiniBox(
-                label = "SET",
-                value = "${exercise.targetSets}",
-                modifier = Modifier.weight(1f)
-            )
-            MetricMiniBox(
-                label = if (isTimer) lang.t("DURASI", "TIME") else "REP",
-                value = if (isTimer) {
-                    GymModelHelpers.formatCompactDuration(exercise.targetDurationSeconds, lang)
-                } else {
-                    exercise.targetReps
-                },
-                modifier = Modifier.weight(1.2f)
-            )
-            if (exercise.usesWeight) {
-                MetricMiniBox(
-                    label = lang.t("BEBAN", "LOAD"),
-                    value = "${GymModelHelpers.formatWeight(exercise.targetWeightKg)} kg",
-                    modifier = Modifier.weight(1.1f)
+                Text(
+                    text = summaryText,
+                    fontSize = 12.sp,
+                    color = tokens.palette.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            MetricMiniBox(
-                label = lang.t("ISTIRAHAT", "REST"),
-                value = "${exercise.restSeconds}${lang.t("d", "s")}",
-                modifier = Modifier.weight(1f)
-            )
-        }
 
-        if (exercise.notes.isNotBlank()) {
-            Text(
-                text = exercise.notes,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                color = tokens.palette.onSurfaceVariant
-            )
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .testTag("exercise_more_${exercise.id}")
+                ) {
+                    ThemedIcon(
+                        icon = IronPulseIcon.MORE_VERT,
+                        contentDescription = lang.t("Opsi gerakan", "Movement options"),
+                        tint = tokens.palette.onSurfaceVariant,
+                        size = 18.dp
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(lang.t("Lihat Otot & Detail", "View Muscles & Detail")) },
+                        leadingIcon = {
+                            ThemedIcon(IronPulseIcon.INFO, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onInspect()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(lang.t("Ubah Gerakan", "Edit Movement")) },
+                        leadingIcon = {
+                            ThemedIcon(IronPulseIcon.EDIT, contentDescription = null, tint = tokens.palette.onSurface, size = 18.dp)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onEdit()
+                        }
+                    )
+                    if (index > 0) {
+                        DropdownMenuItem(
+                            text = { Text(lang.t("Naikkan Urutan", "Move Up")) },
+                            leadingIcon = {
+                                ThemedIcon(IronPulseIcon.EXPAND_LESS, contentDescription = null, tint = tokens.palette.onSurface, size = 18.dp)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onMoveUp()
+                            }
+                        )
+                    }
+                    if (index < total - 1) {
+                        DropdownMenuItem(
+                            text = { Text(lang.t("Turunkan Urutan", "Move Down")) },
+                            leadingIcon = {
+                                ThemedIcon(IronPulseIcon.EXPAND_MORE, contentDescription = null, tint = tokens.palette.onSurface, size = 18.dp)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onMoveDown()
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(lang.t("Hapus", "Delete"), color = tokens.dangerColor) },
+                        leadingIcon = {
+                            ThemedIcon(IronPulseIcon.DELETE, contentDescription = null, tint = tokens.dangerColor, size = 18.dp)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -679,9 +666,10 @@ private fun SmallMetaBadge(
     color: Color,
     fill: Color
 ) {
+    val tokens = LocalIronPulseTokens.current
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(tokens.buttonShape)
             .background(fill)
             .padding(horizontal = 7.dp, vertical = 2.dp)
     ) {
@@ -690,43 +678,6 @@ private fun SmallMetaBadge(
             fontSize = 10.5.sp,
             fontWeight = FontWeight.Bold,
             color = color
-        )
-    }
-}
-
-@Composable
-private fun MetricMiniBox(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    val tokens = LocalIronPulseTokens.current
-    Column(
-        modifier = modifier
-            .ironTonalControl(
-                tokens = tokens,
-                shape = RoundedCornerShape(10.dp),
-                baseColor = tokens.wellBg,
-                isAccent = false
-            )
-            .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(10.dp))
-            .padding(horizontal = 8.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = label,
-            fontSize = 9.5.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.6.sp,
-            color = tokens.mutedTextColor
-        )
-        Text(
-            text = value,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 12.5.sp,
-            fontWeight = FontWeight.Bold,
-            color = tokens.palette.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -749,6 +700,7 @@ fun ExerciseLibraryFullScreen(
     var selectedBucket by remember { mutableStateOf(EquipmentBucket.ALL) }
     var multiSelectMode by remember { mutableStateOf(true) }
     val selectedNames = remember { mutableStateListOf<String>() }
+    var previewTemplate by remember { mutableStateOf<PresetExerciseTemplate?>(null) }
 
     BackHandler(onBack = onDismiss)
 
@@ -762,7 +714,11 @@ fun ExerciseLibraryFullScreen(
                     item.name.lowercase(Locale.ROOT).contains(q) ||
                     item.equipment.lowercase(Locale.ROOT).contains(q) ||
                     item.muscleGroup.label(lang).lowercase(Locale.ROOT).contains(q) ||
-                    item.notes.lowercase(Locale.ROOT).contains(q)
+                    item.notes.lowercase(Locale.ROOT).contains(q) ||
+                    MuscleAnatomyResolver.resolve(item.name, item.muscleGroup, item.equipment)
+                        .searchableKeywords(lang)
+                        .lowercase(Locale.ROOT)
+                        .contains(q)
                 matchMuscle && matchBucket && matchQuery
             }
         }
@@ -827,7 +783,7 @@ fun ExerciseLibraryFullScreen(
                         )
                     }
                     IronPulseTonalSurface(
-                        shape = RoundedCornerShape(999.dp),
+                        shape = tokens.buttonShape,
                         baseColor = if (remainingSlots <= 0) Color(0x2EF59E0B) else tokens.accentColor.copy(alpha = 0.14f),
                         border = BorderStroke(
                             1.dp,
@@ -865,7 +821,7 @@ fun ExerciseLibraryFullScreen(
                         value = query,
                         onValueChange = { query = it },
                         placeholder = {
-                            Text(lang.t("Cari nama gerakan, otot, atau alat...", "Search movement, muscle, or gear..."))
+                            Text(lang.t("Cari gerakan, sub-otot, atau alat...", "Search movement, muscle, or gear..."))
                         },
                         leadingIcon = {
                             ThemedIcon(IronPulseIcon.SEARCH, contentDescription = null, tint = tokens.accentColor, size = 18.dp)
@@ -926,7 +882,7 @@ fun ExerciseLibraryFullScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .ironGlassSurface(tokens, subtle = true, radiusOverride = 12.dp)
+                            .ironGlassSurface(tokens, subtle = true)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -982,14 +938,15 @@ fun ExerciseLibraryFullScreen(
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .testTag("exercise_library_list"),
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
                         top = 2.dp,
                         bottom = if (multiSelectMode) 16.dp else 28.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (filtered.isEmpty()) {
                         item(key = "library_empty") {
@@ -1024,9 +981,12 @@ fun ExerciseLibraryFullScreen(
                             }
                         }
                     } else {
-                        itemsIndexed(filtered, key = { _, it -> it.name }) { idx, tmpl ->
+                        itemsIndexed(filtered, key = { _, it -> it.name }) { _, tmpl ->
                             val isAlreadyInDay = existingNames.contains(tmpl.name.lowercase(Locale.ROOT))
                             val isChecked = selectedNames.contains(tmpl.name)
+                            val anatomy = remember(tmpl.name, tmpl.muscleGroup, tmpl.equipment) {
+                                MuscleAnatomyResolver.resolve(tmpl.name, tmpl.muscleGroup, tmpl.equipment)
+                            }
 
                             IronPulseTonalSurface(
                                 onClick = {
@@ -1037,7 +997,7 @@ fun ExerciseLibraryFullScreen(
                                         onAddSingle(tmpl)
                                     }
                                 },
-                                shape = RoundedCornerShape(14.dp),
+                                shape = tokens.cardShape,
                                 baseColor = if (isChecked) tokens.accentColor.copy(alpha = 0.14f) else tokens.palette.surfaceContainerLow,
                                 border = BorderStroke(
                                     if (isChecked) 1.4.dp else 1.dp,
@@ -1046,20 +1006,20 @@ fun ExerciseLibraryFullScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(14.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     if (multiSelectMode) {
                                         Box(
                                             modifier = Modifier
-                                                .size(24.dp)
-                                                .clip(RoundedCornerShape(7.dp))
+                                                .size(22.dp)
+                                                .clip(tokens.subtleCardShape)
                                                 .background(if (isChecked) tokens.accentColor else Color.Transparent)
                                                 .border(
                                                     1.5.dp,
                                                     if (isChecked) tokens.accentColor else tokens.palette.onSurfaceVariant,
-                                                    RoundedCornerShape(7.dp)
+                                                    tokens.subtleCardShape
                                                 ),
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -1068,33 +1028,43 @@ fun ExerciseLibraryFullScreen(
                                                     icon = IronPulseIcon.CHECK,
                                                     contentDescription = null,
                                                     tint = tokens.onAccentColor,
-                                                    size = 16.dp
+                                                    size = 15.dp
                                                 )
                                             }
                                         }
                                     }
 
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    MuscleAnatomyThumbnail(
+                                        anatomy = anatomy,
+                                        width = 50.dp,
+                                        height = 44.dp,
+                                        modifier = Modifier
+                                            .clickable { previewTemplate = tmpl }
+                                            .testTag("library_anatomy_thumb_${tmpl.name}")
+                                    )
+
+                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
                                             Text(
                                                 text = tmpl.name,
-                                                fontSize = 14.5.sp,
+                                                fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = tokens.palette.onSurface,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f, fill = false)
                                             )
                                             if (isAlreadyInDay) {
                                                 SmallMetaBadge(
                                                     text = lang.t("Terpasang", "Added"),
-                                                    color = Color(0xFF34D399),
-                                                    fill = Color(0x1E34D399)
+                                                    color = tokens.successColor,
+                                                    fill = tokens.successColor.copy(alpha = 0.14f)
                                                 )
                                             }
                                         }
-                                        Spacer(modifier = Modifier.height(3.dp))
                                         Text(
                                             text = buildString {
                                                 append(tmpl.muscleGroup.label(lang))
@@ -1102,24 +1072,30 @@ fun ExerciseLibraryFullScreen(
                                                 append(tmpl.equipment)
                                                 append(" · ")
                                                 append("${tmpl.targetSets}×${tmpl.targetReps}")
-                                                if (tmpl.usesWeight) {
+                                                if (tmpl.usesWeight && tmpl.targetWeightKg > 0.0) {
                                                     append(" · ${GymModelHelpers.formatWeight(tmpl.targetWeightKg)}kg")
                                                 }
                                             },
-                                            fontSize = 12.sp,
-                                            color = tokens.palette.onSurfaceVariant
+                                            fontSize = 11.5.sp,
+                                            color = tokens.palette.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
-                                        if (tmpl.notes.isNotBlank()) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = tmpl.notes,
-                                                fontSize = 11.5.sp,
-                                                lineHeight = 15.5.sp,
-                                                color = tokens.mutedTextColor,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                                    }
+
+                                    IconButton(
+                                        onClick = { previewTemplate = tmpl },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .tactilePress(disabledByPerf = noAnim)
+                                            .testTag("library_detail_btn_${tmpl.name}")
+                                    ) {
+                                        ThemedIcon(
+                                            icon = IronPulseIcon.INFO,
+                                            contentDescription = lang.t("Lihat otot dilatih", "View target muscles"),
+                                            tint = tokens.accentTextColor,
+                                            size = 18.dp
+                                        )
                                     }
 
                                     if (!multiSelectMode) {
@@ -1196,6 +1172,47 @@ fun ExerciseLibraryFullScreen(
             }
         }
     }
+
+    val preview = previewTemplate
+    if (preview != null) {
+        val isPreviewChecked = selectedNames.contains(preview.name)
+        ExerciseAnatomyDetailDialog(
+            name = preview.name,
+            muscleGroup = preview.muscleGroup,
+            equipment = preview.equipment,
+            targetSets = preview.targetSets,
+            targetReps = preview.targetReps,
+            targetWeightKg = preview.targetWeightKg,
+            restSeconds = preview.restSeconds,
+            notes = preview.notes,
+            trackingMode = preview.trackingMode,
+            usesWeight = preview.usesWeight,
+            timerDirection = preview.timerDirection,
+            targetDurationSeconds = preview.targetDurationSeconds,
+            lang = lang,
+            primaryActionLabel = when {
+                multiSelectMode && isPreviewChecked -> lang.t("Batalkan Pilihan", "Deselect")
+                multiSelectMode && remainingSlots > selectedNames.size -> lang.t("Pilih Gerakan", "Select Movement")
+                !multiSelectMode && remainingSlots > 0 -> lang.t("Tambah ke Hari", "Add to Day")
+                else -> null
+            },
+            onPrimaryAction = {
+                if (multiSelectMode) {
+                    if (isPreviewChecked) {
+                        selectedNames.remove(preview.name)
+                    } else if (selectedNames.size < remainingSlots) {
+                        selectedNames.add(preview.name)
+                    }
+                } else if (remainingSlots > 0) {
+                    onAddSingle(preview)
+                }
+                previewTemplate = null
+            },
+            secondaryActionLabel = lang.t("Tutup", "Close"),
+            onSecondaryAction = { previewTemplate = null },
+            onDismiss = { previewTemplate = null }
+        )
+    }
 }
 
 @Composable
@@ -1207,7 +1224,7 @@ private fun FilterPill(
     val tokens = LocalIronPulseTokens.current
     IronPulseTonalSurface(
         onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
+        shape = tokens.buttonShape,
         baseColor = if (selected) tokens.accentColor.copy(alpha = 0.18f) else tokens.controlBg,
         isAccent = selected,
         pressedScale = 0.94f,

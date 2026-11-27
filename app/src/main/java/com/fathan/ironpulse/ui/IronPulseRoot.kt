@@ -70,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.ActiveAlarmOverlay
@@ -271,6 +273,7 @@ fun IronPulseRoot(
 
                     val morphProgressSource = remember { MorphProgressSource() }
                     val homeLandingTickState = remember { mutableIntStateOf(0) }
+                    val mascotVoiceSpeaking by viewModel.mascotTtsSpeakingFlow.collectAsStateWithLifecycle()
 
                     val activeScrollState = when (state.activeTab) {
                         AppTab.TODAY -> todayListState
@@ -332,6 +335,8 @@ fun IronPulseRoot(
                                             homeOrbBoundsHolder = homeOrbBoundsHolder,
                                             homeLandingTick = 0,
                                             homeLandingTickState = homeLandingTickState,
+                                            isMascotVoiceSpeaking = mascotVoiceSpeaking,
+                                            onMascotSpeechRevealFinished = { eventId -> viewModel.onMascotSpeechRevealFinished(eventId) },
                                             onTapMascot = { viewModel.tapMascot() },
                                             onPetMascot = { viewModel.petMascot(true) },
                                             onReplayMascotVoice = { viewModel.replayMascotVoice() },
@@ -431,8 +436,8 @@ fun IronPulseRoot(
                         // Floating Offline & Sync Error Banners anchored below TopBar
                         AnimatedVisibility(
                             visible = state.isOffline || !state.syncError.isNullOrBlank(),
-                            enter = if (noAnim) EnterTransition.None else expandVertically() + fadeIn(tween(180)),
-                            exit = if (noAnim) ExitTransition.None else shrinkVertically() + fadeOut(tween(150)),
+                            enter = if (noAnim) EnterTransition.None else expandVertically(tween(140)) + fadeIn(tween(120)),
+                            exit = if (noAnim) ExitTransition.None else shrinkVertically(tween(110)) + fadeOut(tween(100)),
                             modifier = Modifier
                                 .widthIn(max = 640.dp)
                                 .fillMaxWidth()
@@ -443,11 +448,12 @@ fun IronPulseRoot(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                val bannerShape = if (tokens.uiTheme == UiTheme.TERMINAL_CLI) RectangleShape else RoundedCornerShape(12.dp)
                                 if (state.isOffline) {
                                     Surface(
                                         color = Color(0xE61F180A),
                                         border = BorderStroke(1.dp, Color(0x88F59E0B)),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = bannerShape,
                                         shadowElevation = 8.dp,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
@@ -480,7 +486,7 @@ fun IronPulseRoot(
                                     Surface(
                                         color = Color(0xE6220D0E),
                                         border = BorderStroke(1.dp, Color(0x88EF4444)),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = bannerShape,
                                         shadowElevation = 8.dp,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
@@ -518,8 +524,8 @@ fun IronPulseRoot(
                         // LAYER 3: Bottom Navigation Bar
                         AnimatedVisibility(
                             visible = state.activeTab != AppTab.SETTINGS && !showExerciseLibraryScreen,
-                            enter = if (noAnim) EnterTransition.None else slideInVertically(tween(220)) { it } + fadeIn(tween(180)),
-                            exit = if (noAnim) ExitTransition.None else slideOutVertically(tween(180)) { it } + fadeOut(tween(140)),
+                            enter = if (noAnim) EnterTransition.None else slideInVertically(tween(150)) { it } + fadeIn(tween(120)),
+                            exit = if (noAnim) ExitTransition.None else slideOutVertically(tween(120)) { it } + fadeOut(tween(100)),
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth()
@@ -544,6 +550,7 @@ fun IronPulseRoot(
                         MascotDockCoordinator(
                             mascot = state.mascot,
                             eyeStateFlow = viewModel.mascotEyeFlow,
+                            isVoiceSpeaking = mascotVoiceSpeaking,
                             anchorSideRight = state.appPrefs.floatingOrbSideRight,
                             anchorYRatio = state.appPrefs.floatingOrbYRatio,
                             showFloatingMascotState = showFloatingMascotState,
@@ -552,6 +559,7 @@ fun IronPulseRoot(
                             homeOrbBoundsHolder = homeOrbBoundsHolder,
                             morphProgressSource = morphProgressSource,
                             homeLandingTickState = homeLandingTickState,
+                            onSpeechRevealFinished = { eventId -> viewModel.onMascotSpeechRevealFinished(eventId) },
                             onTapOrb = { viewModel.tapMascot() },
                             onPetOrb = { viewModel.petMascot(true) },
                             onSaveAnchor = { sideRight, yRatio -> viewModel.setFloatingOrbAnchor(sideRight, yRatio) }
@@ -564,16 +572,16 @@ fun IronPulseRoot(
                             enter = if (noAnim) {
                                 EnterTransition.None
                             } else {
-                                slideInVertically(tween(rootMotionSpec.modalFadeMs + 80)) { it / 7 } +
+                                slideInVertically(tween(rootMotionSpec.modalFadeMs + 40)) { it / 8 } +
                                     scaleIn(initialScale = rootMotionSpec.modalStartScale.coerceAtLeast(0.955f), animationSpec = rootMotionSpec.modalSpring) +
                                     fadeIn(tween(rootMotionSpec.modalFadeMs))
                             },
                             exit = if (noAnim) {
                                 ExitTransition.None
                             } else {
-                                slideOutVertically(tween(rootMotionSpec.modalFadeMs + 10)) { it / 9 } +
+                                slideOutVertically(tween(rootMotionSpec.modalFadeMs)) { it / 10 } +
                                     scaleOut(targetScale = 0.975f, animationSpec = tween(rootMotionSpec.modalFadeMs)) +
-                                    fadeOut(tween((rootMotionSpec.modalFadeMs - 20).coerceAtLeast(100)))
+                                    fadeOut(tween((rootMotionSpec.modalFadeMs - 15).coerceAtLeast(80)))
                             }
                         ) {
                             val selectedDay = state.selectedExerciseDayKey
@@ -714,6 +722,7 @@ private class MorphProgressSource {
 private fun MascotDockCoordinator(
     mascot: MascotUiState,
     eyeStateFlow: StateFlow<MascotEyeState>,
+    isVoiceSpeaking: Boolean,
     anchorSideRight: Boolean,
     anchorYRatio: Float,
     showFloatingMascotState: State<Boolean>,
@@ -722,6 +731,7 @@ private fun MascotDockCoordinator(
     homeOrbBoundsHolder: OrbBoundsHolder,
     morphProgressSource: MorphProgressSource,
     homeLandingTickState: MutableIntState,
+    onSpeechRevealFinished: (Int) -> Unit,
     onTapOrb: () -> Unit,
     onPetOrb: () -> Unit,
     onSaveAnchor: (sideRight: Boolean, yRatio: Float) -> Unit
@@ -782,12 +792,14 @@ private fun MascotDockCoordinator(
     FloatingMascotDock(
         mascot = mascot,
         eyeStateFlow = eyeStateFlow,
+        isVoiceSpeaking = isVoiceSpeaking,
         anchorSideRight = anchorSideRight,
         anchorYRatio = anchorYRatio,
         shouldFloat = showFloatingMascot,
         morphProgressState = morphProgressState,
         homeOrbBoundsHolder = homeOrbBoundsHolder,
         animActive = !modalBlocking,
+        onSpeechRevealFinished = onSpeechRevealFinished,
         onTapOrb = onTapOrb,
         onPetOrb = onPetOrb,
         onSaveAnchor = onSaveAnchor
@@ -837,7 +849,7 @@ internal fun PersistedTabStage(
 
     if (prewarmInBackground) {
         LaunchedEffect(Unit) {
-            delay(if (noAnim) 80L else 320L)
+            delay(if (noAnim) 50L else 180L)
             val warmOrder = listOf(
                 AppTab.SCHEDULE,
                 AppTab.HISTORY,
@@ -849,7 +861,7 @@ internal fun PersistedTabStage(
                 if (candidate !in warmedTabs) {
                     warmedTabs.add(candidate)
                     withFrameNanos { }
-                    delay(50L)
+                    delay(25L)
                 }
             }
         }

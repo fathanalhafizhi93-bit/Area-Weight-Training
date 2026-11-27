@@ -83,7 +83,7 @@ object MaterialYouColorEngine {
         UiTheme.AMOLED_STEALTH -> "#07080B"
         UiTheme.FRUTIGER_AERO -> "#DDF5FF"
         UiTheme.XMATERIAL_YOU -> "#0E0F13"
-        UiTheme.TERMINAL_CLI -> "#050806"
+        UiTheme.TERMINAL_CLI -> "#030604"
     }
 
     fun normalizeHexColor(hex: String?, fallback: String = DEFAULT_ACCENT_COLOR): String {
@@ -652,27 +652,27 @@ object MaterialYouColorEngine {
     private fun buildTerminalCliPalette(): MaterialYouPalette = buildFixedPalette(
         seed = CLI_PHOSPHOR_ACCENT,
         primaryHex = CLI_PHOSPHOR_ACCENT,
-        onPrimaryHex = "#031A0A",
-        primaryContainerHex = "#0E2917",
-        onPrimaryContainerHex = "#9BFFBE",
-        secondaryHex = "#4ADE80",
-        onSecondaryHex = "#041C0B",
-        secondaryContainerHex = "#0B2113",
-        onSecondaryContainerHex = "#7FFFA9",
+        onPrimaryHex = "#021809",
+        primaryContainerHex = "#0A2815",
+        onPrimaryContainerHex = "#A7FFCB",
+        secondaryHex = "#2EE6B8",
+        onSecondaryHex = "#031B16",
+        secondaryContainerHex = "#08221D",
+        onSecondaryContainerHex = "#8BFFDF",
         tertiaryHex = "#FFB000",
-        onTertiaryHex = "#1E1400",
-        tertiaryContainerHex = "#241B06",
-        onTertiaryContainerHex = "#FFE08A",
-        surfaceHex = "#050806",
-        surfaceContainerLowestHex = "#030504",
-        surfaceContainerLowHex = "#070C09",
-        surfaceContainerHex = "#0A100C",
-        surfaceContainerHighHex = "#0F1812",
-        surfaceContainerHighestHex = "#152119",
-        onSurfaceHex = "#E6F9EC",
-        onSurfaceVariantHex = "#7CA88B",
+        onTertiaryHex = "#1E1300",
+        tertiaryContainerHex = "#261A04",
+        onTertiaryContainerHex = "#FFE194",
+        surfaceHex = "#040806",
+        surfaceContainerLowestHex = "#030604",
+        surfaceContainerLowHex = "#050A07",
+        surfaceContainerHex = "#08110C",
+        surfaceContainerHighHex = "#0D1C14",
+        surfaceContainerHighestHex = "#13291D",
+        onSurfaceHex = "#D9FFE6",
+        onSurfaceVariantHex = "#6FA883",
         outlineHex = "#00FF66",
-        outlineVariantHex = "#1D3B27"
+        outlineVariantHex = "#1F8A4C"
     )
 
     private fun buildFixedPalette(

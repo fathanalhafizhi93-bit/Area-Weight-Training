@@ -44,10 +44,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
@@ -528,7 +530,7 @@ fun Modifier.ironGlassSurface(
         when (tokens.uiTheme) {
             UiTheme.CARBON_FORGE -> CutCornerShape(radius.coerceAtMost(8.dp))
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(radius.coerceAtMost(6.dp))
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(radius.coerceAtMost(4.dp))
+            UiTheme.TERMINAL_CLI -> RectangleShape
             UiTheme.XMATERIAL_YOU -> if (radiusOverride != null) {
                 RoundedCornerShape(radiusOverride)
             } else if (subtle) {
@@ -933,35 +935,63 @@ fun Modifier.ironGlassSurface(
                 .border(if (subtle) 0.9.dp else 1.dp, obsidianRimBrush, shape)
         }
         UiTheme.TERMINAL_CLI -> {
-            // Unix TUI / CRT Workstation Pane — deep phosphor obsidian, cached scanlines & crisp phosphor border
-            val baseBg = if (subtle) Color(0xFF060B08) else Color(0xFF09100C)
-            val cliBorder = borderOverride ?: Color(0xFF00FF66).copy(alpha = if (subtle) 0.24f else 0.44f)
+            // Unix TUI / CRT Workstation Box — sharp 0.dp phosphor panes, double inner inset frame & corner ticks
+            val baseBg = if (subtle) Color(0xFF050A07) else Color(0xFF08110C)
+            val cliBorder = borderOverride ?: Color(0xFF00FF66).copy(alpha = if (subtle) 0.34f else 0.62f)
+            val innerInsetColor = Color(0xFF1F8A4C).copy(alpha = if (subtle) 0.38f else 0.62f)
+            val tickColor = borderOverride?.copy(alpha = 0.95f) ?: Color(0xFF00FF66).copy(alpha = if (subtle) 0.70f else 0.96f)
             this
                 .clip(shape)
                 .drawWithCache {
                     val strokePx = 1.dp.toPx()
+                    val insetPx = 2.5.dp.toPx()
+                    val tickArm = (if (subtle) 5.dp else 7.dp).toPx()
+                    val tickStroke = (if (subtle) 1.2.dp else 1.5.dp).toPx()
                     val scanPx = (3.5.dp.toPx()).roundToInt().coerceIn(3, 6)
                     val scanBrush = if (!tokens.performance.noAmbientGlow) {
                         ThemeMaterialShaderCache.getCliScanlineBrush(linePx = scanPx, subtle = subtle)
                     } else null
-                    val topWash = if (!subtle && !tokens.performance.noAmbientGlow) {
+                    val topWash = if (!tokens.performance.noAmbientGlow) {
                         Brush.verticalGradient(
-                            0.0f to Color(0xFF00FF66).copy(alpha = 0.055f),
-                            0.36f to Color.Transparent
+                            0.0f to Color(0xFF00FF66).copy(alpha = if (subtle) 0.032f else 0.072f),
+                            0.40f to Color.Transparent
                         )
                     } else null
-                    val phosphorRim = Color(0xFF00FF66).copy(alpha = if (subtle) 0.22f else 0.48f)
+                    val bottomAmberGlow = if (!subtle && !tokens.performance.noAmbientGlow) {
+                        Brush.radialGradient(
+                            colors = listOf(Color(0x162EE6B8), Color.Transparent),
+                            center = Offset(size.width * 0.92f, size.height * 0.90f),
+                            radius = size.maxDimension.coerceAtLeast(120f) * 0.55f
+                        )
+                    } else null
                     onDrawBehind {
                         drawRect(baseBg)
                         if (scanBrush != null) drawRect(scanBrush)
                         if (topWash != null) drawRect(topWash)
-                        if (!subtle && size.width > 64.dp.toPx()) {
-                            drawLine(
-                                color = phosphorRim,
-                                start = Offset(0f, strokePx * 0.8f),
-                                end = Offset(size.width * 0.26f, strokePx * 0.8f),
-                                strokeWidth = strokePx * 1.4f
+                        if (bottomAmberGlow != null) drawRect(bottomAmberGlow)
+                        // Double-line inner inset TUI hairline
+                        if (size.width > 36.dp.toPx() && size.height > 28.dp.toPx()) {
+                            drawRect(
+                                color = innerInsetColor,
+                                topLeft = Offset(insetPx, insetPx),
+                                size = Size(size.width - insetPx * 2f, size.height - insetPx * 2f),
+                                style = Stroke(width = strokePx * 0.75f)
                             )
+                        }
+                        // Crisp L-shaped phosphor corner ticks
+                        if (size.width > 24.dp.toPx() && size.height > 24.dp.toPx()) {
+                            val half = tickStroke * 0.5f
+                            drawLine(tickColor, Offset(0f, half), Offset(tickArm, half), tickStroke)
+                            drawLine(tickColor, Offset(half, 0f), Offset(half, tickArm), tickStroke)
+
+                            drawLine(tickColor, Offset(size.width - tickArm, half), Offset(size.width, half), tickStroke)
+                            drawLine(tickColor, Offset(size.width - half, 0f), Offset(size.width - half, tickArm), tickStroke)
+
+                            drawLine(tickColor, Offset(0f, size.height - half), Offset(tickArm, size.height - half), tickStroke)
+                            drawLine(tickColor, Offset(half, size.height - tickArm), Offset(half, size.height), tickStroke)
+
+                            drawLine(tickColor, Offset(size.width - tickArm, size.height - half), Offset(size.width, size.height - half), tickStroke)
+                            drawLine(tickColor, Offset(size.width - half, size.height - tickArm), Offset(size.width - half, size.height), tickStroke)
                         }
                     }
                 }
@@ -1073,7 +1103,7 @@ fun Modifier.ironGlassBar(
                 UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
                 UiTheme.FRUTIGER_AERO -> if (tokens.isAeroNight) Color(0xF4162E52) else Color(0xF6F2FBFF)
                 UiTheme.XMATERIAL_YOU -> Color(0xFA090A0E)
-                UiTheme.TERMINAL_CLI -> Color(0xFF060B08)
+                UiTheme.TERMINAL_CLI -> Color(0xFF040806)
             }
             onDrawBehind {
                 drawRect(solidBg)
@@ -1630,7 +1660,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFF162A52) else Color(0xFF7FD9FF)
             UiTheme.XMATERIAL_YOU -> Color(0xFF060608)
-            UiTheme.TERMINAL_CLI -> Color(0xFF050806)
+            UiTheme.TERMINAL_CLI -> Color(0xFF030604)
         }
         val canvasSecondaryBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
@@ -1639,7 +1669,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFF0F3D3E) else Color(0xFFDFFCE9)
             UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B0F)
-            UiTheme.TERMINAL_CLI -> Color(0xFF0A120D)
+            UiTheme.TERMINAL_CLI -> Color(0xFF07120C)
         }
         val borderColor = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant
@@ -1648,7 +1678,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> palette.primary.copy(alpha = 0.32f)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0x995BC6FA) else Color(0xAA0099E5)
             UiTheme.XMATERIAL_YOU -> phaseTokens.accent.copy(alpha = 0.28f)
-            UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.42f)
+            UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.56f)
         }
         val subtleBorder = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.outlineVariant.copy(alpha = 0.65f)
@@ -1657,7 +1687,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> palette.primary.copy(alpha = 0.18f)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0x555BC6FA) else Color(0x660088CC)
             UiTheme.XMATERIAL_YOU -> Color(0xFF262832)
-            UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.22f)
+            UiTheme.TERMINAL_CLI -> Color(0xFF1F8A4C).copy(alpha = 0.45f)
         }
         val cardRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 22.dp
@@ -1666,7 +1696,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> 6.dp
             UiTheme.FRUTIGER_AERO -> 18.dp
             UiTheme.XMATERIAL_YOU -> 28.dp
-            UiTheme.TERMINAL_CLI -> 4.dp
+            UiTheme.TERMINAL_CLI -> 0.dp
         }
         val buttonRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 999.dp
@@ -1675,7 +1705,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> 6.dp
             UiTheme.FRUTIGER_AERO -> 999.dp
             UiTheme.XMATERIAL_YOU -> 999.dp
-            UiTheme.TERMINAL_CLI -> 4.dp
+            UiTheme.TERMINAL_CLI -> 0.dp
         }
         val inputRadius = when (uiTheme) {
             UiTheme.CARBON_FORGE -> 6.dp
@@ -1684,7 +1714,7 @@ fun IronPulseTheme(
             UiTheme.MATERIAL_YOU -> 14.dp
             UiTheme.FRUTIGER_AERO -> 14.dp
             UiTheme.XMATERIAL_YOU -> 18.dp
-            UiTheme.TERMINAL_CLI -> 4.dp
+            UiTheme.TERMINAL_CLI -> 0.dp
         }
         val bubbleRadius = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> 20.dp
@@ -1693,32 +1723,32 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> 6.dp
             UiTheme.FRUTIGER_AERO -> 18.dp
             UiTheme.XMATERIAL_YOU -> 24.dp
-            UiTheme.TERMINAL_CLI -> 4.dp
+            UiTheme.TERMINAL_CLI -> 0.dp
         }
         val cardShape: Shape = when (uiTheme) {
             UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(28.dp)
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RectangleShape
             else -> RoundedCornerShape(cardRadius)
         }
         val subtleCardShape: Shape = when (uiTheme) {
             UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(22.dp)
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RectangleShape
             else -> RoundedCornerShape(cardRadius)
         }
         val buttonShape: Shape = when (uiTheme) {
             UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(999.dp)
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RectangleShape
             else -> RoundedCornerShape(buttonRadius)
         }
         val inputShape: Shape = when (uiTheme) {
             UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
-            UiTheme.TERMINAL_CLI -> RoundedCornerShape(4.dp)
+            UiTheme.TERMINAL_CLI -> RectangleShape
             else -> RoundedCornerShape(inputRadius)
         }
         val heroScrimAlpha = when (uiTheme) {
@@ -1728,7 +1758,7 @@ fun IronPulseTheme(
             UiTheme.MATERIAL_YOU -> 0.62f
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) 0.28f else 0.12f
             UiTheme.XMATERIAL_YOU -> 0.44f
-            UiTheme.TERMINAL_CLI -> 0.68f
+            UiTheme.TERMINAL_CLI -> 0.72f
         }
         val wellBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerLowest
@@ -1737,7 +1767,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> Color(0xFF020305)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xE0112442) else Color(0xF0EAF7FF)
             UiTheme.XMATERIAL_YOU -> Color(0xFF07080B)
-            UiTheme.TERMINAL_CLI -> Color(0xFF060A07)
+            UiTheme.TERMINAL_CLI -> Color(0xFF050A07)
         }
         val controlBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh
@@ -1746,7 +1776,7 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> Color(0xFF0B0D12)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xEB1E3C66) else Color(0xFAFFFFFF)
             UiTheme.XMATERIAL_YOU -> Color(0xFF14161D)
-            UiTheme.TERMINAL_CLI -> Color(0xFF0D1510)
+            UiTheme.TERMINAL_CLI -> Color(0xFF0D1C14)
         }
         val subtleChipBg = when (uiTheme) {
             UiTheme.MATERIAL_YOU -> palette.surfaceContainerHigh.copy(alpha = 0.78f)
@@ -1755,13 +1785,13 @@ fun IronPulseTheme(
             UiTheme.AMOLED_STEALTH -> Color(0xFF080A0E)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xDC1B3860) else Color(0xE8DCF2FF)
             UiTheme.XMATERIAL_YOU -> Color(0xFF181A22)
-            UiTheme.TERMINAL_CLI -> Color(0xFF09100C)
+            UiTheme.TERMINAL_CLI -> Color(0xFF08110C)
         }
         val mutedTextColor = when (uiTheme) {
             UiTheme.UBUNTU_YARU -> Color(0xFFBEB9B6)
             UiTheme.AMOLED_STEALTH -> Color(0xFF94A3B8)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFFB4D3EB) else Color(0xFF24496A)
-            UiTheme.TERMINAL_CLI -> Color(0xFF7CA88B)
+            UiTheme.TERMINAL_CLI -> Color(0xFF6FA883)
             else -> palette.onSurfaceVariant
         }
         val cardTopHighlight = when (uiTheme) {
@@ -1771,7 +1801,7 @@ fun IronPulseTheme(
             UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.05f)
             UiTheme.FRUTIGER_AERO -> if (isAeroNight) Color(0xFFBAE6FD).copy(alpha = 0.48f) else Color.White.copy(alpha = 0.94f)
             UiTheme.XMATERIAL_YOU -> phaseTokens.accentBright.copy(alpha = 0.34f)
-            UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.48f)
+            UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.62f)
         }
         val accentTextColor = when {
             isLightAero -> Color(0xFF005F9E)
@@ -1779,14 +1809,14 @@ fun IronPulseTheme(
             isXMaterial && timePhase == DayTimePhase.MORNING -> Color(0xFFEBCEA0)
             isXMaterial && timePhase == DayTimePhase.AFTERNOON -> Color(0xFFA7D8D5)
             isXMaterial -> Color(0xFFC5BBE9)
-            isCli -> Color(0xFF5CFF94)
+            isCli -> Color(0xFF6BFF9E)
             else -> palette.primary
         }
         val dividerColor = when {
             isLightAero -> Color(0x280B4B75)
             isAeroNight -> Color(0x367DD3FC)
             isXMaterial -> Color.White.copy(alpha = 0.07f)
-            isCli -> Color(0xFF00FF66).copy(alpha = 0.16f)
+            isCli -> Color(0xFF1F8A4C).copy(alpha = 0.36f)
             else -> Color.White.copy(alpha = 0.09f)
         }
         val successColor = if (isLightTheme) Color(0xFF15803D) else Color(0xFF4ADE80)
