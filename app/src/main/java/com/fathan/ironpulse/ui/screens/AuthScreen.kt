@@ -1,5 +1,8 @@
 package com.fathan.ironpulse.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -24,35 +27,36 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fathan.ironpulse.R
 import com.fathan.ironpulse.model.AppLanguage
+import com.fathan.ironpulse.model.MascotExpression
 import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MascotSpeechLine
 import com.fathan.ironpulse.model.TimePhasePose
+import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.ThemeBrandLockup
@@ -64,8 +68,10 @@ import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
+import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -81,8 +87,19 @@ fun AuthScreen(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
+    val isCli = tokens.uiTheme == UiTheme.TERMINAL_CLI
     val backdropBitmap = rememberScaledResourceBitmap(R.drawable.gym_arena_backdrop, 1024)
+
     var mascotTapCount by remember { mutableIntStateOf(0) }
+    var isCoolingDown by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mascotTapCount) {
+        if (mascotTapCount > 0) {
+            isCoolingDown = true
+            delay(GymViewModel.MASCOT_SPEECH_COOLDOWN_MS)
+            isCoolingDown = false
+        }
+    }
 
     val loginPoses = remember {
         listOf(
@@ -92,38 +109,93 @@ fun AuthScreen(
             TimePhasePose.SPARKLE
         )
     }
-    val greetingPair = remember(lang, mascotTapCount) {
-        val idx = mascotTapCount % 3
-        when (idx) {
-            0 -> lang.t("Halo! Saya Pulse", "Hey! I'm Pulse") to lang.t(
-                "Masuk dengan akun Google agar jadwal latihan, ringtone, dan progresmu aman di Cloud.",
-                "Sign in with Google so your workout schedule, ringtones, and progress stay safely synced."
+    val loginExpressions = remember {
+        listOf(
+            MascotExpression.EXCITED,
+            MascotExpression.PLAYFUL,
+            MascotExpression.PROUD,
+            MascotExpression.ENERGETIC
+        )
+    }
+
+    val greetingLine = remember(lang, mascotTapCount) {
+        when (mascotTapCount % 3) {
+            0 -> MascotSpeechLine(
+                id = "auth_welcome_0",
+                headline = lang.t("Halo! Saya Pulse", "Hey! I'm Pulse"),
+                subline = lang.t(
+                    "Masuk dengan Google agar jadwal, alarm ringtone, dan medali bulananmu aman di Cloud.",
+                    "Sign in with Google to keep your workouts, custom alarms, and monthly medals synced."
+                ),
+                expression = loginExpressions[mascotTapCount % loginExpressions.size]
             )
-            1 -> lang.t("Siap Bangun Kebiasaan!", "Ready to Build Consistency!") to lang.t(
-                "Alarm harian tepat waktu, timer istirahat otomatis, dan panduan 120+ gerakan menunggumu.",
-                "On-time workout alarms, auto rest timers, and a 120+ exercise library are ready for you."
+            1 -> MascotSpeechLine(
+                id = "auth_welcome_1",
+                headline = lang.t("Siap Bangun Kebiasaan!", "Ready to Build Consistency!"),
+                subline = lang.t(
+                    "Panduan 300+ gerakan anatomi, timer istirahat otomatis, dan medali bulanan menunggumu.",
+                    "300+ anatomical exercises, automatic rest timers, and monthly medals are waiting for you."
+                ),
+                expression = loginExpressions[mascotTapCount % loginExpressions.size]
             )
-            else -> lang.t("Ketuk Aku Lagi Kapan Saja!", "Tap Me Anytime!") to lang.t(
-                "Aku akan menemani dan menyemangatimu setiap set latihan di tab Hari Ini.",
-                "I'll cheer you on through every set once you sign in."
+            else -> MascotSpeechLine(
+                id = "auth_welcome_2",
+                headline = lang.t("Fokus Satu Ketukan!", "Focused From Day One!"),
+                subline = lang.t(
+                    "Atur jadwal gym, pilih ringtone alarm favorit, dan raih targetmu setiap minggu.",
+                    "Set your training schedule, pick your alarm ringtone, and hit every weekly goal."
+                ),
+                expression = loginExpressions[mascotTapCount % loginExpressions.size]
             )
         }
     }
 
-    val displayMascot = remember(mascot, tokens.timePhase, mascotTapCount, greetingPair) {
+    // Smooth fade-out -> fade-in dialogue transition (no typewriter or cursor)
+    var displayedGreeting by remember { mutableStateOf(greetingLine) }
+    var lastRenderedTapCount by remember { mutableIntStateOf(0) }
+    var lastRenderedLang by remember { mutableStateOf(lang) }
+    val greetingAlpha = remember { Animatable(1f) }
+    var isTalkingGreeting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(greetingLine, mascotTapCount, lang, noAnim) {
+        val tapChanged = mascotTapCount != lastRenderedTapCount
+        val langChanged = lang != lastRenderedLang
+        if (!tapChanged && !langChanged) {
+            displayedGreeting = greetingLine
+            greetingAlpha.snapTo(1f)
+            isTalkingGreeting = false
+            return@LaunchedEffect
+        }
+        if (noAnim || langChanged) {
+            displayedGreeting = greetingLine
+            greetingAlpha.snapTo(1f)
+            lastRenderedTapCount = mascotTapCount
+            lastRenderedLang = lang
+            isTalkingGreeting = false
+            return@LaunchedEffect
+        }
+        isTalkingGreeting = true
+        greetingAlpha.animateTo(0f, tween(durationMillis = 110, easing = FastOutSlowInEasing))
+        displayedGreeting = greetingLine
+        greetingAlpha.animateTo(1f, tween(durationMillis = 150, easing = FastOutSlowInEasing))
+        lastRenderedTapCount = mascotTapCount
+        lastRenderedLang = lang
+        delay(380L)
+        isTalkingGreeting = false
+    }
+
+    val displayMascot = remember(mascot, tokens.timePhase, mascotTapCount, displayedGreeting) {
         (mascot ?: MascotUiState()).copy(
             mood = MascotMood.READY,
             timePhase = tokens.timePhase,
             urgentMood = null,
             activeTimePose = loginPoses[mascotTapCount % loginPoses.size],
             phaseColorHex = tokens.phaseTokens.accentBrightHex,
-            activeLine = MascotSpeechLine(
-                id = "auth_welcome_$mascotTapCount",
-                headline = greetingPair.first,
-                subline = greetingPair.second
-            )
+            activeLine = displayedGreeting
         )
     }
+
+    val chipShape = if (isCli) RectangleShape else RoundedCornerShape(999.dp)
 
     Box(
         modifier = Modifier
@@ -137,7 +209,7 @@ fun AuthScreen(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(if (tokens.isLightTheme) 0.12f else 0.42f)
+                    .alpha(if (tokens.isLightTheme) 0.10f else 0.34f)
             )
         }
 
@@ -147,22 +219,9 @@ fun AuthScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            tokens.canvasBg.copy(alpha = 0.72f),
-                            tokens.canvasBg.copy(alpha = 0.82f),
-                            tokens.canvasBg.copy(alpha = 0.96f)
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            tokens.canvasBg.copy(alpha = 0.92f),
-                            tokens.canvasBg.copy(alpha = 0.72f),
-                            tokens.canvasBg.copy(alpha = 0.45f)
+                            tokens.canvasBg.copy(alpha = 0.78f),
+                            tokens.canvasBg.copy(alpha = 0.88f),
+                            tokens.canvasBg.copy(alpha = 0.97f)
                         )
                     )
                 )
@@ -175,11 +234,14 @@ fun AuthScreen(
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top header: IronPulse + ID/EN toggle
+            // Top header: IronPulse + ID/EN toggle (no version badge on login)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -187,13 +249,14 @@ fun AuthScreen(
                     theme = tokens.uiTheme,
                     accentColor = tokens.accentColor,
                     emblemSize = 30.dp,
-                    fontSize = 22.sp
+                    fontSize = 21.sp
                 )
 
-                val toggleContainerShape = RoundedCornerShape(12.dp)
+                val toggleContainerShape = if (isCli) RectangleShape else RoundedCornerShape(12.dp)
+                val toggleOptionShape = if (isCli) RectangleShape else RoundedCornerShape(8.dp)
                 IronPulseTonalSurface(
                     shape = toggleContainerShape,
-                    baseColor = tokens.wellBg.copy(alpha = 0.85f),
+                    baseColor = tokens.wellBg.copy(alpha = 0.88f),
                     border = BorderStroke(1.dp, tokens.surfaceBorderColor)
                 ) {
                     Row(
@@ -208,17 +271,17 @@ fun AuthScreen(
                                     .tactilePress(pressedScale = 0.94f, disabledByPerf = noAnim)
                                     .ironTonalControl(
                                         tokens = tokens,
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = toggleOptionShape,
                                         baseColor = if (selected) tokens.accentColor else Color.Transparent,
                                         isAccent = selected
                                     )
                                     .clickable { onSelectLang(option) }
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                    .padding(horizontal = 11.dp, vertical = 6.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (selected) tokens.onAccentColor else tokens.mutedTextColor
                                 )
@@ -228,16 +291,17 @@ fun AuthScreen(
                 }
             }
 
-            // Main Hero Content + Welcoming IronPulse Mascot
+            // Minimalist Focused Hero Stage + Mascot + 3 Feature Pills + Google Sign-In CTA
             Column(
                 modifier = Modifier
-                    .widthIn(max = 560.dp)
+                    .widthIn(max = 520.dp)
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Interactive Mascot Welcome Strip
-                Row(
+                // Interactive Live Mascot Hero Stage
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("auth_mascot_greeting_card")
@@ -245,93 +309,120 @@ fun AuthScreen(
                         .ironGlassSurface(
                             tokens = tokens,
                             subtle = true,
-                            borderOverride = tokens.phaseTokens.accent.copy(alpha = 0.36f),
-                            radiusOverride = 18.dp
+                            borderOverride = tokens.phaseTokens.accent.copy(alpha = 0.42f),
+                            radiusOverride = if (isCli) 0.dp else 22.dp
                         )
-                        .clickable { mascotTapCount += 1 }
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        .clickable {
+                            if (!isCoolingDown) {
+                                mascotTapCount += 1
+                            }
+                        }
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     MascotOrbFace(
                         mascot = displayMascot,
                         eyeStateFlow = mascotEyeFlow,
-                        size = 58.dp,
+                        size = 82.dp,
                         animActive = !noAnim,
+                        isTalking = isTalkingGreeting && !noAnim,
                         modifier = Modifier.testTag("auth_mascot_orb")
                     )
+
                     Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer { alpha = greetingAlpha.value },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = displayMascot.activeLine.headline,
-                            fontSize = 14.sp,
+                            text = displayedGreeting.headline,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = tokens.phaseTokens.accentBright
+                            color = tokens.phaseTokens.accentBright,
+                            textAlign = TextAlign.Center
                         )
                         Text(
-                            text = displayMascot.activeLine.subline,
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp,
-                            color = tokens.palette.onSurfaceVariant
+                            text = displayedGreeting.subline,
+                            fontSize = 12.5.sp,
+                            lineHeight = 18.sp,
+                            color = tokens.palette.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
+
+                    Text(
+                        text = if (isCoolingDown) {
+                            lang.t("• • jeda sejenak", "• • pausing")
+                        } else {
+                            lang.t("Ketuk Pulse untuk sapaan lain", "Tap Pulse to say hi")
+                        },
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isCoolingDown) {
+                            tokens.phaseTokens.accentBright.copy(alpha = 0.85f)
+                        } else {
+                            tokens.mutedTextColor
+                        },
+                        modifier = Modifier.testTag("auth_mascot_cooldown_hint")
+                    )
                 }
 
                 Text(
                     text = lang.t(
-                        "GYM REMINDER & PELACAK LATIHAN",
-                        "GYM REMINDER & WORKOUT TRACKER"
+                        "Latihan Terjadwal.\nProgres Terukur.",
+                        "Scheduled Training.\nMeasured Progress."
                     ),
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 2.sp,
-                    color = tokens.accentColor
-                )
-
-                Text(
-                    text = lang.t(
-                        "Disiplin Jadwal Latihan, Ringtone Pilihan Sendiri, dan Catatan Progres Nyata.",
-                        "Disciplined Training Schedules, Custom Ringtones, and Real Set Tracking."
-                    ),
-                    fontSize = 34.sp,
-                    lineHeight = 38.sp,
+                    fontSize = 28.sp,
+                    lineHeight = 33.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.8).sp,
-                    color = tokens.palette.onSurface
+                    letterSpacing = (-0.6).sp,
+                    color = tokens.palette.onSurface,
+                    textAlign = TextAlign.Center
                 )
 
-                Text(
-                    text = lang.t(
-                        "Atur hari gym Anda dari Senin hingga Minggu, unggah ringtone pengingat favorit Anda, pantau daftar gerakan hari ini, catat beban dan repetisi tiap set, serta jalankan timer istirahat otomatis dalam satu ruang kerja.",
-                        "Configure your weekly training days Monday through Sunday, upload custom reminder ringtones, track today's exercises with weight and reps, and run automatic rest timers in one focused workspace."
-                    ),
-                    fontSize = 14.5.sp,
-                    lineHeight = 22.sp,
-                    color = tokens.palette.onSurfaceVariant
-                )
-
+                // 3 Concise Feature Highlights (300+ Anatomy, Medals, Alarm)
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val highlights = listOf(
-                        lang.t("Jadwal Hari Kustom", "Custom Weekly Days"),
-                        lang.t("Upload MP3/WAV Ringtone", "Custom MP3/WAV Ringtones"),
-                        lang.t("Catatan Set & Beban", "Set & Load Logging"),
-                        lang.t("Timer Istirahat", "Rest Timer")
+                        IronPulseIcon.EXERCISES to lang.t("300+ Gerakan & Anatomi", "300+ Moves & Anatomy"),
+                        IronPulseIcon.SPARKLE to lang.t("Medali Bulanan", "Monthly Medals"),
+                        IronPulseIcon.ALARM to lang.t("Alarm & Ringtone", "Alarm & Ringtone")
                     )
-                    highlights.forEachIndexed { idx, item ->
-                        Text(
-                            text = if (idx == 0) item else "·  $item",
-                            fontSize = 13.sp,
-                            color = tokens.mutedTextColor
-                        )
+                    highlights.forEach { (icon, label) ->
+                        IronPulseTonalSurface(
+                            shape = chipShape,
+                            baseColor = tokens.wellBg.copy(alpha = 0.90f),
+                            border = BorderStroke(1.dp, tokens.subtleBorderColor)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                ThemedIcon(
+                                    icon = icon,
+                                    contentDescription = null,
+                                    tint = tokens.accentTextColor,
+                                    size = 14.dp
+                                )
+                                Text(
+                                    text = label,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = tokens.palette.onSurface
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 IronPulseButton(
                     onClick = onSignInClick,
@@ -343,8 +434,9 @@ fun AuthScreen(
                     ),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
                     modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
                         .testTag("google_sign_in_button")
-                        .height(52.dp)
                 ) {
                     if (authLoading) {
                         CircularProgressIndicator(
@@ -368,30 +460,41 @@ fun AuthScreen(
                         Text(
                             text = lang.t("Masuk dengan Akun Google", "Sign in with Google"),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 14.5.sp
                         )
                     }
                 }
 
                 if (!authError.isNullOrBlank()) {
-                    Text(
-                        text = authError,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFF87171)
-                    )
+                    IronPulseTonalSurface(
+                        shape = tokens.subtleCardShape,
+                        baseColor = Color(0x22F87171),
+                        border = BorderStroke(1.dp, Color(0x88F87171)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = authError,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFCA5A5),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
                 }
             }
 
-            // Quiet Footer
+            // Quiet Cloud Footer
             Text(
                 text = lang.t(
-                    "Data jadwal latihan, daftar gerakan, dan catatan set tersimpan aman di akun Cloud Anda.",
-                    "Your schedules, exercise routines, and workout logs are securely synced to your Cloud account."
+                    "Jadwal latihan, catatan set, dan medali tersinkron aman di akun Cloud Anda.",
+                    "Schedules, workout logs, and medals stay securely synced to your Cloud account."
                 ),
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                color = tokens.mutedTextColor
+                fontSize = 11.5.sp,
+                lineHeight = 16.sp,
+                color = tokens.mutedTextColor,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 460.dp)
             )
         }
     }

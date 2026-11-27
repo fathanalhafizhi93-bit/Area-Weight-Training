@@ -426,7 +426,7 @@ fun AboutContentCards(
     val appVersionLabel = remember(context) {
         val raw = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrNull().orEmpty().ifBlank { "0.0.1-alpha" }
+        }.getOrNull().orEmpty().ifBlank { "1.0.0" }
         "v${raw.replace('-', ' ')}"
     }
 

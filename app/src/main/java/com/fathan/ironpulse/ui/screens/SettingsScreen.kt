@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -313,20 +314,6 @@ fun SettingsScreen(
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
-                        item(key = "theme_animation_styles", contentType = "theme_animation_styles") {
-                            ThemeAnimationStyleCard(
-                                selectedStyle = state.appPrefs.themeAnimationStyle,
-                                onSelectStyle = { viewModel.setThemeAnimationStyle(it) },
-                                animationsEnabled = !state.appPrefs.performance.noAnimations,
-                                onToggleAnimations = { enabled ->
-                                    viewModel.setPerformance(noAnimations = !enabled)
-                                },
-                                onPreviewMedal = { tier -> viewModel.previewMedalUnlock(tier) },
-                                modifier = Modifier
-                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
-                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
-                            )
-                        }
                         item(key = "accent_tint", contentType = "accent_tint") {
                             AccentAndTintSettingsCard(
                                 accentColorHex = state.appPrefs.accentColorHex,
@@ -338,7 +325,7 @@ fun SettingsScreen(
                                 selectedDayTimeMode = state.appPrefs.todayThemeMode,
                                 onSelectDayTimeMode = { viewModel.setTodayThemeMode(it) },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -347,7 +334,7 @@ fun SettingsScreen(
                                 selectedMode = state.appPrefs.todayThemeMode,
                                 onSelectMode = { viewModel.setTodayThemeMode(it) },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -364,6 +351,15 @@ fun SettingsScreen(
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
+                        item(key = "theme_animation_styles", contentType = "theme_animation_styles") {
+                            ThemeAnimationStyleCard(
+                                selectedStyle = state.appPrefs.themeAnimationStyle,
+                                onSelectStyle = { viewModel.setThemeAnimationStyle(it) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
                         item(key = "performance_card", contentType = "performance_card") {
                             PerformanceSettingsCard(
                                 perf = state.appPrefs.performance,
@@ -376,19 +372,16 @@ fun SettingsScreen(
                                     )
                                 },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
                         item(key = "medal_animation_preview_card", contentType = "medal_animation_preview_card") {
                             MedalAnimationPreviewCard(
                                 perf = state.appPrefs.performance,
-                                onToggleAnimations = { enabled ->
-                                    viewModel.setPerformance(noAnimations = !enabled)
-                                },
                                 onPreviewMedal = { tier -> viewModel.previewMedalUnlock(tier) },
                                 modifier = Modifier
-                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
+                                    .staggeredCardEntrance(3, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -696,7 +689,14 @@ private fun SettingsCategoryRow(
     val noAnim = tokens.performance.noAnimations
     val title = settingsCategoryTitle(category, lang)
     val icon = settingsCategoryIcon(category)
-    val summary = remember(category, state, lang) {
+    val context = LocalContext.current
+    val appVersionLabel = remember(context) {
+        val raw = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty().ifBlank { "1.0.0" }
+        "v${raw.replace('-', ' ')}"
+    }
+    val summary = remember(category, state, lang, appVersionLabel) {
         when (category) {
             SettingsCategory.PROFILE -> {
                 val name = state.profile?.displayName?.takeIf { it.isNotBlank() }
@@ -728,7 +728,7 @@ private fun SettingsCategoryRow(
                 val clockLabel = if (state.appPrefs.clockFormat == ClockFormat.H24) "24H" else "12H"
                 "${state.appPrefs.lang.displayName} · $clockLabel"
             }
-            SettingsCategory.ABOUT -> "IronPulse v0.0.1 alpha"
+            SettingsCategory.ABOUT -> "IronPulse $appVersionLabel"
         }
     }
 
@@ -1230,9 +1230,6 @@ private fun ThemesGridCard(
 private fun ThemeAnimationStyleCard(
     selectedStyle: ThemeAnimationStyle,
     onSelectStyle: (ThemeAnimationStyle) -> Unit,
-    animationsEnabled: Boolean,
-    onToggleAnimations: (Boolean) -> Unit,
-    onPreviewMedal: (MedalTier) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -1281,8 +1278,8 @@ private fun ThemeAnimationStyleCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = lang.t(
-                        "Gaya Animasi Tema (5 Pilihan)",
-                        "Theme Animation Style (5 Presets)"
+                        "Gaya Animasi (2 Pilihan)",
+                        "Animation Style (2 Presets)"
                     ),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -1290,8 +1287,8 @@ private fun ThemeAnimationStyleCard(
                 )
                 Text(
                     text = lang.t(
-                        "Pilih 1 dari 5 karakter gerak berbeda total untuk semua tema.",
-                        "Pick 1 of 5 totally distinct motion choreographies across all themes."
+                        "Pilih karakter gerak halus mengalir atau pantulan kenyal dinamis.",
+                        "Choose between smooth horizontal glide or playful elastic pop."
                     ),
                     fontSize = 11.5.sp,
                     color = tokens.palette.onSurfaceVariant
@@ -1308,30 +1305,6 @@ private fun ThemeAnimationStyleCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(lang.t("Default", "Default"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tokens.accentTextColor)
                 }
-            }
-        }
-
-        // Quick UI Animation Switch right inside Theme -> Animation Style
-        IronPulseTonalSurface(
-            shape = tokens.subtleCardShape,
-            baseColor = tokens.wellBg,
-            border = BorderStroke(
-                1.dp,
-                if (animationsEnabled) tokens.accentColor.copy(alpha = 0.34f) else tokens.warningColor.copy(alpha = 0.42f)
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                PerformanceSwitchRow(
-                    title = lang.t("Animasi UI Aktif", "UI Animations Enabled"),
-                    subtitle = lang.t(
-                        "Nyalakan atau jedakan gerak transisi, maskot & medali secara langsung.",
-                        "Toggle screen transitions, mascot motion & medal celebrations live."
-                    ),
-                    checked = animationsEnabled,
-                    onCheckedChange = onToggleAnimations,
-                    switchModifier = Modifier.testTag("settings_theme_anim_quick_toggle")
-                )
             }
         }
 
@@ -1352,8 +1325,8 @@ private fun ThemeAnimationStyleCard(
                     ThemedIcon(IronPulseIcon.INFO, contentDescription = null, tint = tokens.warningColor, size = 16.dp)
                     Text(
                         text = lang.t(
-                            "Mode Tanpa Animasi aktif — nyalakan sakelar Animasi UI Aktif di atas untuk melihat gaya gerak penuh.",
-                            "Disable Animations is active — flip UI Animations Enabled above to preview full motion."
+                            "Mode Tanpa Animasi aktif — matikan Tanpa Animasi Gerak di Profil Performa di bawah untuk melihat gaya gerak penuh.",
+                            "Disable Animations is active — turn off Disable Animations in Performance below to preview full motion."
                         ),
                         fontSize = 11.sp,
                         lineHeight = 15.sp,
@@ -1442,35 +1415,11 @@ private fun ThemeAnimationStyleCard(
                                         scaleY = s
                                         rotationY = 0f
                                     }
-                                    TabChoreography.DEPTH_ZOOM -> {
-                                        translationX = inv * 12.dp.toPx()
-                                        translationY = 0f
-                                        val s = 0.78f + 0.22f * p.coerceIn(0f, 1.05f)
-                                        scaleX = s
-                                        scaleY = s
-                                        rotationY = 0f
-                                    }
-                                    TabChoreography.PERSPECTIVE_FLIP_3D -> {
-                                        translationX = inv * 18.dp.toPx()
-                                        translationY = 0f
-                                        val s = 0.90f + 0.10f * p.coerceIn(0f, 1.04f)
-                                        scaleX = s
-                                        scaleY = s
-                                        cameraDistance = 10f * density
-                                        rotationY = inv * 32f
-                                    }
                                     TabChoreography.VERTICAL_ELASTIC -> {
                                         translationX = 0f
                                         translationY = inv * 24.dp.toPx()
                                         scaleX = 0.92f + 0.08f * p.coerceIn(0f, 1.12f)
                                         scaleY = 1.06f - 0.06f * p.coerceIn(0f, 1.12f)
-                                        rotationY = 0f
-                                    }
-                                    TabChoreography.INSTANT_SNAP -> {
-                                        translationX = inv * 20.dp.toPx()
-                                        translationY = 0f
-                                        scaleX = 1f
-                                        scaleY = 1f
                                         rotationY = 0f
                                     }
                                 }
@@ -1640,25 +1589,6 @@ private fun ThemeAnimationStyleCard(
                     }
                 }
             }
-        }
-
-        IronPulseOutlinedButton(
-            onClick = { onPreviewMedal(MedalTier.GOLD) },
-            shape = tokens.buttonShape,
-            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.45f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 48.dp)
-                .testTag("settings_theme_medal_preview_shortcut")
-        ) {
-            ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentTextColor, size = 16.dp)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = lang.t("Lihat Animasi Dapat Medali", "Preview Medal Unlock Animation"),
-                fontSize = 12.5.sp,
-                fontWeight = FontWeight.Bold,
-                color = tokens.accentTextColor
-            )
         }
     }
 }
@@ -2598,7 +2528,6 @@ private fun PerformanceSettingsCard(
 @Composable
 private fun MedalAnimationPreviewCard(
     perf: PerformancePreferences,
-    onToggleAnimations: (Boolean) -> Unit,
     onPreviewMedal: (MedalTier) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -2623,15 +2552,15 @@ private fun MedalAnimationPreviewCard(
             ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = lang.t("Toggle Animasi & Pratinjau Medali", "Animation Toggle & Medal Preview"),
+                    text = lang.t("Pratinjau Animasi Medali", "Medal Animation Preview"),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = tokens.palette.onSurface
                 )
                 Text(
                     text = lang.t(
-                        "Nyalakan animasi lalu uji perayaan dapat medali & terbang ke Riwayat.",
-                        "Toggle UI motion and test the medal unlock celebration & History flight."
+                        "Uji banner perayaan medali, hujan konfeti & penerbangan ke Riwayat.",
+                        "Test the top medal celebration banner, confetti & History flight."
                     ),
                     fontSize = 11.5.sp,
                     color = tokens.palette.onSurfaceVariant
@@ -2639,34 +2568,11 @@ private fun MedalAnimationPreviewCard(
             }
         }
 
-        IronPulseTonalSurface(
-            shape = tokens.subtleCardShape,
-            baseColor = tokens.wellBg,
-            border = BorderStroke(
-                1.dp,
-                if (animationsEnabled) tokens.accentColor.copy(alpha = 0.34f) else tokens.warningColor.copy(alpha = 0.42f)
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                PerformanceSwitchRow(
-                    title = lang.t("Animasi UI Aktif", "UI Animations Enabled"),
-                    subtitle = lang.t(
-                        "Aktifkan animasi layar, confetti & penerbangan medali.",
-                        "Enable screen transitions, confetti & medal flight animations."
-                    ),
-                    checked = animationsEnabled,
-                    onCheckedChange = onToggleAnimations,
-                    switchModifier = Modifier.testTag("settings_anim_quick_toggle")
-                )
-            }
-        }
-
         if (!animationsEnabled) {
             Text(
                 text = lang.t(
-                    "Catatan: Mode Tanpa Animasi sedang aktif — aktifkan sakelar di atas untuk melihat animasi penuh.",
-                    "Note: Disable Animations is currently on — enable the toggle above to see full motion."
+                    "Catatan: Mode Tanpa Animasi sedang aktif di Profil Performa di atas.",
+                    "Note: Disable Animations is currently active in Performance above."
                 ),
                 fontSize = 11.sp,
                 color = tokens.warningColor

@@ -1001,27 +1001,6 @@ internal fun PersistedTabStage(
                                                         TransformOrigin(1f, 0.5f)
                                                     }
                                                 }
-                                                TabChoreography.DEPTH_ZOOM -> {
-                                                    translationX = off * (w * motionSpec.tabSlideFraction + gapPx)
-                                                    translationY = 0f
-                                                    scaleX = s
-                                                    scaleY = s
-                                                    rotationY = 0f
-                                                    transformOrigin = TransformOrigin.Center
-                                                }
-                                                TabChoreography.PERSPECTIVE_FLIP_3D -> {
-                                                    translationX = off * (w + gapPx * 1.4f)
-                                                    translationY = 0f
-                                                    scaleX = s
-                                                    scaleY = s
-                                                    cameraDistance = 10f * density
-                                                    rotationY = (off * motionSpec.tabPerspectiveDeg).coerceIn(-34f, 34f)
-                                                    transformOrigin = if (off >= 0f) {
-                                                        TransformOrigin(0f, 0.5f)
-                                                    } else {
-                                                        TransformOrigin(1f, 0.5f)
-                                                    }
-                                                }
                                                 TabChoreography.VERTICAL_ELASTIC -> {
                                                     translationX = 0f
                                                     translationY = off * (h + gapPx)
@@ -1033,13 +1012,6 @@ internal fun PersistedTabStage(
                                                     } else {
                                                         TransformOrigin(0.5f, 1f)
                                                     }
-                                                }
-                                                TabChoreography.INSTANT_SNAP -> {
-                                                    translationX = off * (w + gapPx)
-                                                    translationY = 0f
-                                                    scaleX = 1f
-                                                    scaleY = 1f
-                                                    rotationY = 0f
                                                 }
                                             }
                                         }

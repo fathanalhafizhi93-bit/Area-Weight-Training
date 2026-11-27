@@ -145,26 +145,8 @@ enum class ThemeAnimationStyle(
         titleEn = "Silk Glide",
         subtitleId = "Geser horizontal seimbang dan halus di seluruh layar.",
         subtitleEn = "Balanced horizontal glide with silky damped settles.",
-        tagId = "Geser Halus",
+        tagId = "Halus Mengalir",
         tagEn = "Horizontal"
-    ),
-    DEPTH_ZOOM(
-        wireValue = "depth-zoom",
-        titleId = "Depth Zoom",
-        titleEn = "Depth Zoom",
-        subtitleId = "Efek zoom sinematik: layar menyusut lalu mengembang ke fokus.",
-        subtitleEn = "Cinematic depth scale zoom pulling pages forward into focus.",
-        tagId = "Zoom Fokus",
-        tagEn = "Zoom Depth"
-    ),
-    FLIP_3D(
-        wireValue = "flip-3d",
-        titleId = "3D Flip",
-        titleEn = "3D Flip",
-        subtitleId = "Ayunan perspektif 3D berputar tajam bak lembaran kartu spasial.",
-        subtitleEn = "Crisp 3D perspective wing turn with spatial depth rotation.",
-        tagId = "Putar 3D",
-        tagEn = "3D Swing"
     ),
     ELASTIC_POP(
         wireValue = "elastic-pop",
@@ -172,17 +154,8 @@ enum class ThemeAnimationStyle(
         titleEn = "Elastic Pop",
         subtitleId = "Naik-turun vertikal dengan pantulan pegas kenyal di UI & maskot.",
         subtitleEn = "Vertical elevator slide with playful rubbery spring overshoot.",
-        tagId = "Vertikal Kenyal",
+        tagId = "Kenyal Dinamis",
         tagEn = "Vertical Pop"
-    ),
-    INSTANT_SNAP(
-        wireValue = "instant-snap",
-        titleId = "Instant Snap",
-        titleEn = "Instant Snap",
-        subtitleId = "Respon kilat super kencang tanpa ayunan untuk navigasi instan.",
-        subtitleEn = "Ultra-crisp high-stiffness snap with near-zero settle delay.",
-        tagId = "Kilat Instan",
-        tagEn = "Instant"
     );
 
     fun title(lang: AppLanguage): String = lang.t(titleId, titleEn)
@@ -191,11 +164,12 @@ enum class ThemeAnimationStyle(
 
     companion object {
         fun fromWire(raw: String?): ThemeAnimationStyle = when (raw) {
-            SILK_GLIDE.wireValue, "fluid-silk", "zen-breath" -> SILK_GLIDE
-            DEPTH_ZOOM.wireValue, "prismatic-bloom", "tactical-radar" -> DEPTH_ZOOM
-            FLIP_3D.wireValue, "velocity-flip", "aero-crystal" -> FLIP_3D
-            ELASTIC_POP.wireValue, "elastic-bounce", "ubuntu-dock" -> ELASTIC_POP
-            INSTANT_SNAP.wireValue, "hyper-snap", "carbon-mech" -> INSTANT_SNAP
+            ELASTIC_POP.wireValue,
+            "elastic-bounce",
+            "ubuntu-dock",
+            "flip-3d",
+            "velocity-flip",
+            "aero-crystal" -> ELASTIC_POP
             else -> SILK_GLIDE
         }
     }

@@ -96,7 +96,6 @@ import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
-import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
@@ -430,9 +429,8 @@ fun MascotOrbFace(
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
     val tabSettled = LocalTabSettled.current
-    val scrollActive = LocalScrollActiveState.current.value
     val staticMode = tokens.performance.staticMascot || tokens.performance.noAnimations
-    val runAnim = !staticMode && animActive && tabActive && tabSettled && !scrollActive
+    val runAnim = !staticMode && animActive && tabActive && tabSettled
     val eyeState = if (eyeStateFlow != null && runAnim) {
         eyeStateFlow.collectAsStateWithLifecycle().value
     } else {
@@ -574,16 +572,16 @@ fun MascotOrbFace(
             return@LaunchedEffect
         }
         var step = 0
-        val pattern = floatArrayOf(0.86f, 0.30f, 0.98f, 0.20f, 0.76f, 0.42f, 0.92f, 0.16f)
+        val pattern = floatArrayOf(0.75f, 0.28f, 0.92f, 0.18f, 0.65f, 0.35f)
         while (true) {
             val target = pattern[step % pattern.size]
-            val dur = if (isCoach) 88 else 78
+            val dur = if (isCoach) 150 else 135
             coroutineScope {
                 launch {
                     talkApertureAnim.animateTo(target, tween(dur, easing = FastOutSlowInEasing))
                 }
                 launch {
-                    val nodTarget = if (step % 2 == 0) 0.9f else -0.45f
+                    val nodTarget = if (step % 2 == 0) 0.6f else -0.35f
                     talkHeadNodAnim.animateTo(nodTarget, tween(dur, easing = FastOutSlowInEasing))
                 }
             }
@@ -1383,51 +1381,57 @@ fun MascotOrbFace(
                 val talkAperture = talkApertureAnim.value
                 when {
                     talkAperture > 0.06f && !isSleepPose -> {
-                        val mouthW = if (isCoach) px(11.5f + talkAperture * 2.8f) else px(10.8f + talkAperture * 4.2f)
-                        val mouthH = if (isCoach) px(2.0f + talkAperture * 5.6f) else px(2.2f + talkAperture * 7.2f)
-                        val mouthLeft = px(32f) - mouthW * 0.5f
-                        val mouthTop = px(38.0f) - mouthH * 0.42f
-                        if (theme == UiTheme.TERMINAL_CLI) {
-                            drawRect(
-                                color = Color(0xFF04140A),
-                                topLeft = Offset(mouthLeft, mouthTop),
-                                size = Size(mouthW, mouthH)
-                            )
-                            drawRect(
-                                color = phaseColor.copy(alpha = 0.45f + talkAperture * 0.45f),
-                                topLeft = Offset(mouthLeft + px(1.0f), mouthTop + mouthH * 0.52f),
-                                size = Size((mouthW - px(2.0f)).coerceAtLeast(1f), (mouthH * 0.34f).coerceAtLeast(1f))
-                            )
-                            drawRect(
-                                color = phaseColor,
-                                topLeft = Offset(mouthLeft, mouthTop),
-                                size = Size(mouthW, mouthH),
-                                style = Stroke(px(1.9f))
-                            )
+                        val cornerXOffset = if (isCoach) 6.6f else 7.8f
+                        val leftX = px(32f - cornerXOffset)
+                        val rightX = px(32f + cornerXOffset)
+                        val cornerY = px(36.6f)
+                        val upperBowY = px(37.6f + talkAperture * 0.4f)
+                        val lowerDipY = px(38.2f + talkAperture * (if (isCoach) 4.4f else 5.8f))
+                        pathA.reset()
+                        pathA.moveTo(leftX, cornerY)
+                        pathA.cubicTo(
+                            px(28.0f), upperBowY,
+                            px(36.0f), upperBowY,
+                            rightX, cornerY
+                        )
+                        pathA.cubicTo(
+                            px(36.8f), lowerDipY,
+                            px(27.2f), lowerDipY,
+                            leftX, cornerY
+                        )
+                        pathA.close()
+                        val interiorColor = if (theme == UiTheme.TERMINAL_CLI) {
+                            Color(0xFF04140A)
                         } else {
-                            val cornerR = CornerRadius(mouthH * 0.48f, mouthH * 0.48f)
-                            drawRoundRect(
-                                color = Color(0xFF0C1018).copy(alpha = 0.88f),
-                                topLeft = Offset(mouthLeft, mouthTop),
-                                size = Size(mouthW, mouthH),
-                                cornerRadius = cornerR
+                            Color(0xFF0C121C).copy(alpha = 0.74f)
+                        }
+                        drawPath(pathA, interiorColor)
+                        if (talkAperture > 0.36f && !isCoach) {
+                            pathB.reset()
+                            val innerLeft = px(27.4f)
+                            val innerRight = px(36.6f)
+                            val innerMidY = (upperBowY + lowerDipY) * 0.56f
+                            pathB.moveTo(innerLeft, innerMidY)
+                            pathB.cubicTo(
+                                px(30.2f), lowerDipY - px(0.6f),
+                                px(33.8f), lowerDipY - px(0.6f),
+                                innerRight, innerMidY
                             )
-                            if (talkAperture > 0.42f && !isCoach) {
-                                drawRoundRect(
-                                    color = phaseColor.copy(alpha = 0.34f),
-                                    topLeft = Offset(mouthLeft + mouthW * 0.18f, mouthTop + mouthH * 0.52f),
-                                    size = Size(mouthW * 0.64f, mouthH * 0.36f),
-                                    cornerRadius = CornerRadius(mouthH * 0.25f)
-                                )
-                            }
-                            drawRoundRect(
-                                color = phaseColor,
-                                topLeft = Offset(mouthLeft, mouthTop),
-                                size = Size(mouthW, mouthH),
-                                cornerRadius = cornerR,
-                                style = Stroke(px(if (isCoach) 2.2f else 2.35f))
+                            drawPath(
+                                pathB,
+                                phaseColor.copy(alpha = 0.32f),
+                                style = Stroke(px(1.5f), cap = StrokeCap.Round)
                             )
                         }
+                        drawPath(
+                            pathA,
+                            phaseColor,
+                            style = Stroke(
+                                width = px(if (isCoach) 2.2f else 2.4f),
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
                     }
                     isCoach && eyeState.isPetting -> {
                         // Subtle stoic half-smile nod
@@ -1724,55 +1728,61 @@ fun TodayMascot(
         }
     }
 
-    // Character-by-character typewriter reveal synced to mouth animation; speaks voice only after completion
-    var revealedHeadlineLen by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
-    var revealedSublineLen by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
-    var isTypingSpeech by remember { mutableStateOf(false) }
+    // Smooth sequential fade-out -> fade-in text reveal (no typewriter characters or cursors)
+    var displayedLine by remember { mutableStateOf(mascot.activeLine) }
+    var lastRevealedEventId by remember { mutableIntStateOf(0) }
+    val textAlphaAnim = remember { Animatable(1f) }
+    var isRevealingSpeech by remember { mutableStateOf(false) }
 
     LaunchedEffect(mascot.speechEventId, tabActive, hideForTutorial, noAnim) {
-        val headline = mascot.activeLine.headline
-        val subline = mascot.activeLine.subline
+        val nextLine = mascot.activeLine
         val eventId = mascot.speechEventId
         val activeHere = tabActive && !hideForTutorial && orbVisibleAlpha() > 0.15f
         if (!activeHere || eventId <= 0) {
-            revealedHeadlineLen = headline.length
-            revealedSublineLen = subline.length
-            isTypingSpeech = false
+            displayedLine = nextLine
+            lastRevealedEventId = eventId
+            textAlphaAnim.snapTo(1f)
+            isRevealingSpeech = false
             return@LaunchedEffect
         }
         if (noAnim) {
-            revealedHeadlineLen = headline.length
-            revealedSublineLen = subline.length
-            isTypingSpeech = false
-            currentOnSpeechRevealFinished(eventId)
+            val isNewEvent = eventId != lastRevealedEventId
+            displayedLine = nextLine
+            lastRevealedEventId = eventId
+            textAlphaAnim.snapTo(1f)
+            isRevealingSpeech = false
+            if (isNewEvent) {
+                currentOnSpeechRevealFinished(eventId)
+            }
             return@LaunchedEffect
         }
-        revealedHeadlineLen = 0
-        revealedSublineLen = 0
-        isTypingSpeech = true
-        for (i in 1..headline.length) {
-            val ch = headline[i - 1]
-            delay(if (ch in ",.!?·:") 36L else 15L)
-            revealedHeadlineLen = i
+        if (eventId != lastRevealedEventId || displayedLine != nextLine) {
+            isRevealingSpeech = true
+            textAlphaAnim.animateTo(0f, tween(durationMillis = 110, easing = FastOutSlowInEasing))
+            displayedLine = nextLine
+            textAlphaAnim.animateTo(1f, tween(durationMillis = 150, easing = FastOutSlowInEasing))
+            lastRevealedEventId = eventId
+            isRevealingSpeech = false
+            currentOnSpeechRevealFinished(eventId)
+        } else {
+            textAlphaAnim.snapTo(1f)
+            isRevealingSpeech = false
         }
-        if (subline.isNotEmpty()) {
-            delay(50L)
-            for (i in 1..subline.length) {
-                val ch = subline[i - 1]
-                delay(if (ch in ",.!?·:") 32L else 12L)
-                revealedSublineLen = i
-            }
-        }
-        isTypingSpeech = false
-        currentOnSpeechRevealFinished(eventId)
     }
 
-    val visibleHeadline = mascot.activeLine.headline.take(revealedHeadlineLen.coerceIn(0, mascot.activeLine.headline.length))
-    val visibleSubline = mascot.activeLine.subline.take(revealedSublineLen.coerceIn(0, mascot.activeLine.subline.length))
-    val cursorChar = if (tokens.uiTheme == UiTheme.TERMINAL_CLI) "▌" else "|"
-    val typingHeadlineNow = isTypingSpeech && revealedHeadlineLen < mascot.activeLine.headline.length
-    val typingSublineNow = isTypingSpeech && !typingHeadlineNow && mascot.activeLine.subline.isNotEmpty()
-    val mascotIsTalking = (isTypingSpeech || (isVoiceSpeaking && orbVisibleAlpha() > 0.15f)) && !hideForTutorial
+    var isCoolingDown by remember { mutableStateOf(false) }
+    LaunchedEffect(mascot.speechCooldownUntilMs) {
+        val remaining = mascot.speechCooldownUntilMs - System.currentTimeMillis()
+        if (remaining > 0L) {
+            isCoolingDown = true
+            delay(remaining)
+            isCoolingDown = false
+        } else {
+            isCoolingDown = false
+        }
+    }
+
+    val mascotIsTalking = (isRevealingSpeech || (isVoiceSpeaking && orbVisibleAlpha() > 0.15f)) && !hideForTutorial
 
     Row(
         modifier = modifier
@@ -1846,29 +1856,52 @@ fun TodayMascot(
             )
         }
 
-        Column(modifier = Modifier.weight(1f)) {
-            if (mascot.personality == MascotPersonality.COACH) {
-                Text(
-                    text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
-                    fontSize = 9.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.8.sp,
-                    color = phaseColor
-                )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .graphicsLayer { alpha = textAlphaAnim.value }
+        ) {
+            if (mascot.personality == MascotPersonality.COACH || isCoolingDown) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (mascot.personality == MascotPersonality.COACH) {
+                        Text(
+                            text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.8.sp,
+                            color = phaseColor
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.size(1.dp))
+                    }
+                    if (isCoolingDown) {
+                        Text(
+                            text = tokens.lang.t("• • jeda", "• • pause"),
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = phaseColor.copy(alpha = 0.78f),
+                            modifier = Modifier.testTag("mascot_cooldown_indicator")
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(1.dp))
             }
             Text(
-                text = if (typingHeadlineNow) "$visibleHeadline$cursorChar" else visibleHeadline,
+                text = displayedLine.headline,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = tokens.palette.onSurface,
                 lineHeight = 18.sp,
                 modifier = Modifier.testTag("mascot_speech_headline")
             )
-            if (mascot.activeLine.subline.isNotEmpty()) {
+            if (displayedLine.subline.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = if (typingSublineNow) "$visibleSubline$cursorChar" else visibleSubline,
+                    text = displayedLine.subline,
                     fontSize = 12.sp,
                     color = tokens.mutedTextColor,
                     lineHeight = 16.sp,
@@ -1879,12 +1912,7 @@ fun TodayMascot(
 
         if (voiceEnabled) {
             IconButton(
-                onClick = {
-                    revealedHeadlineLen = mascot.activeLine.headline.length
-                    revealedSublineLen = mascot.activeLine.subline.length
-                    isTypingSpeech = false
-                    onReplayVoice()
-                },
+                onClick = { onReplayVoice() },
                 modifier = Modifier
                     .size(36.dp)
                     .tactilePress(disabledByPerf = tokens.performance.noAnimations)
@@ -1893,7 +1921,7 @@ fun TodayMascot(
                 ThemedIcon(
                     icon = IronPulseIcon.VOLUME,
                     contentDescription = "Speak mascot line",
-                    tint = phaseColor,
+                    tint = phaseColor.copy(alpha = if (isCoolingDown) 0.45f else 1f),
                     size = 18.dp
                 )
             }
@@ -1999,60 +2027,57 @@ fun FloatingMascotDock(
             TransformOrigin(pivotFractionX = if (anchorSideRight) 1f else 0f, pivotFractionY = 0.5f)
         }
 
-        // Typewriter reveal for FloatingMascotDock bubble + voice handoff
-        var revealedHeadlineLen by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
-        var revealedSublineLen by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
-        var isTypingBubble by remember { mutableStateOf(false) }
+        // Smooth fade-out -> fade-in reveal for FloatingMascotDock bubble + voice handoff
+        var displayedBubbleLine by remember { mutableStateOf(mascot.activeLine) }
+        var lastRevealedBubbleEventId by remember { mutableIntStateOf(mascot.speechEventId) }
+        val bubbleTextAlphaAnim = remember { Animatable(1f) }
+        var isRevealingBubble by remember { mutableStateOf(false) }
         LaunchedEffect(mascot.speechEventId, bubbleVisible, shouldFloat, noAnim) {
-            val headline = mascot.activeLine.headline
-            val subline = mascot.activeLine.subline
+            val nextLine = mascot.activeLine
             val eventId = mascot.speechEventId
             if (!shouldFloat || eventId <= 0) {
-                revealedHeadlineLen = headline.length
-                revealedSublineLen = subline.length
-                isTypingBubble = false
+                displayedBubbleLine = nextLine
+                lastRevealedBubbleEventId = eventId
+                bubbleTextAlphaAnim.snapTo(1f)
+                isRevealingBubble = false
                 return@LaunchedEffect
             }
             if (!bubbleVisible) {
-                revealedHeadlineLen = headline.length
-                revealedSublineLen = subline.length
+                displayedBubbleLine = nextLine
+                lastRevealedBubbleEventId = eventId
+                bubbleTextAlphaAnim.snapTo(1f)
                 if (mascot.shouldSpeakAfterReveal) {
                     if (!noAnim) {
-                        isTypingBubble = true
-                        delay(260L)
-                        isTypingBubble = false
+                        isRevealingBubble = true
+                        delay(220L)
+                        isRevealingBubble = false
                     }
                     currentOnSpeechRevealFinished(eventId)
                 } else {
-                    isTypingBubble = false
+                    isRevealingBubble = false
                 }
                 return@LaunchedEffect
             }
             if (noAnim) {
-                revealedHeadlineLen = headline.length
-                revealedSublineLen = subline.length
-                isTypingBubble = false
+                displayedBubbleLine = nextLine
+                lastRevealedBubbleEventId = eventId
+                bubbleTextAlphaAnim.snapTo(1f)
+                isRevealingBubble = false
                 currentOnSpeechRevealFinished(eventId)
                 return@LaunchedEffect
             }
-            revealedHeadlineLen = 0
-            revealedSublineLen = 0
-            isTypingBubble = true
-            for (i in 1..headline.length) {
-                val ch = headline[i - 1]
-                delay(if (ch in ",.!?·:") 36L else 15L)
-                revealedHeadlineLen = i
+            if (eventId != lastRevealedBubbleEventId || displayedBubbleLine != nextLine) {
+                isRevealingBubble = true
+                bubbleTextAlphaAnim.animateTo(0f, tween(durationMillis = 110, easing = FastOutSlowInEasing))
+                displayedBubbleLine = nextLine
+                bubbleTextAlphaAnim.animateTo(1f, tween(durationMillis = 150, easing = FastOutSlowInEasing))
+                lastRevealedBubbleEventId = eventId
+                isRevealingBubble = false
+                currentOnSpeechRevealFinished(eventId)
+            } else {
+                bubbleTextAlphaAnim.snapTo(1f)
+                isRevealingBubble = false
             }
-            if (subline.isNotEmpty()) {
-                delay(50L)
-                for (i in 1..subline.length) {
-                    val ch = subline[i - 1]
-                    delay(if (ch in ",.!?·:") 32L else 12L)
-                    revealedSublineLen = i
-                }
-            }
-            isTypingBubble = false
-            currentOnSpeechRevealFinished(eventId)
         }
 
         fun computeBezierControlX(p0x: Float, p1x: Float): Float {
@@ -2154,28 +2179,27 @@ fun FloatingMascotDock(
                     .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.BubbleSizeSpring))
                     .padding(13.dp)
             ) {
-                val visibleBubbleHeadline = mascot.activeLine.headline.take(revealedHeadlineLen.coerceIn(0, mascot.activeLine.headline.length))
-                val visibleBubbleSubline = mascot.activeLine.subline.take(revealedSublineLen.coerceIn(0, mascot.activeLine.subline.length))
-                val cursorChar = if (tokens.uiTheme == UiTheme.TERMINAL_CLI) "▌" else "|"
-                val typingHead = isTypingBubble && revealedHeadlineLen < mascot.activeLine.headline.length
-                val typingSub = isTypingBubble && !typingHead && mascot.activeLine.subline.isNotEmpty()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer { alpha = bubbleTextAlphaAnim.value }
+                    ) {
                         Text(
-                            text = if (typingHead) "$visibleBubbleHeadline$cursorChar" else visibleBubbleHeadline,
+                            text = displayedBubbleLine.headline,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = tokens.palette.onSurface,
                             lineHeight = 17.sp
                         )
-                        if (mascot.activeLine.subline.isNotEmpty()) {
+                        if (displayedBubbleLine.subline.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (typingSub) "$visibleBubbleSubline$cursorChar" else visibleBubbleSubline,
+                                text = displayedBubbleLine.subline,
                                 fontSize = 11.5.sp,
                                 lineHeight = 15.5.sp,
                                 color = tokens.mutedTextColor
@@ -2299,7 +2323,7 @@ fun FloatingMascotDock(
                     eyeStateFlow = eyeStateFlow,
                     size = 54.dp,
                     animActive = animActive,
-                    isTalking = isTypingBubble || (isVoiceSpeaking && shouldFloat)
+                    isTalking = isRevealingBubble || (isVoiceSpeaking && shouldFloat)
                 )
             }
         }

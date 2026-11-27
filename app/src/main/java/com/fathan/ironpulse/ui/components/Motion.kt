@@ -52,7 +52,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.fathan.ironpulse.model.ThemeAnimationStyle
-import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalSuppressTabCardFade
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import kotlinx.coroutines.CoroutineStart
@@ -146,10 +145,7 @@ object IronPulseMotion {
 @Immutable
 enum class TabChoreography {
     HORIZONTAL_GLIDE,
-    DEPTH_ZOOM,
-    PERSPECTIVE_FLIP_3D,
-    VERTICAL_ELASTIC,
-    INSTANT_SNAP
+    VERTICAL_ELASTIC
 }
 
 @Immutable
@@ -217,86 +213,20 @@ object MotionStyleCatalog {
             navIndicatorSpring = IronPulseMotion.IndicatorFloatSpring,
             navIconSpring = IronPulseMotion.PressSpring,
             navActiveScale = 1.07f,
-            sheenPeakAlpha = 0.18f,
-            sheenDurationMs = 2600,
-            heroBreathMs = 3600,
-            heroOrbitMs = 12000,
-            heroAuraSwing = 0.07f,
-            surfaceRimAlpha = 0.16f,
+            sheenPeakAlpha = 0.54f,
+            sheenDurationMs = 2100,
+            heroBreathMs = 3400,
+            heroOrbitMs = 11500,
+            heroAuraSwing = 0.08f,
+            surfaceRimAlpha = 0.18f,
             modalSpring = IronPulseMotion.ModalEntranceSpring,
             modalFadeMs = 110,
             modalStartScale = 0.94f,
             backdropCadenceScale = 0.95f,
-            backdropBreathAlpha = 0.07f,
+            backdropBreathAlpha = 0.08f,
             mascotMorphSpring = IronPulseMotion.MorphSpring,
             mascotReturnSpring = IronPulseMotion.ReturnMorphSpring,
             progressFillMs = 190
-        ),
-        ThemeAnimationStyle.DEPTH_ZOOM to ThemeMotionSpec(
-            style = ThemeAnimationStyle.DEPTH_ZOOM,
-            tabChoreography = TabChoreography.DEPTH_ZOOM,
-            tabSlideSpring = spring(dampingRatio = 0.84f, stiffness = 650f),
-            tabSlideFraction = 0.92f,
-            tabEnterScale = 0.84f,
-            tabExitScale = 0.84f,
-            tabPerspectiveDeg = 0f,
-            cardRevealSpring = spring(dampingRatio = 0.80f, stiffness = 600f),
-            cardFadeMs = 130,
-            cardSlideYDp = 10f,
-            cardSlideXDp = 0f,
-            cardStartScale = 0.90f,
-            pressSpring = spring(dampingRatio = 0.72f, stiffness = 680f),
-            pressDepthFactor = 1.15f,
-            navIndicatorSpring = spring(dampingRatio = 0.80f, stiffness = 620f),
-            navIconSpring = spring(dampingRatio = 0.68f, stiffness = 680f),
-            navActiveScale = 1.12f,
-            sheenPeakAlpha = 0.22f,
-            sheenDurationMs = 2400,
-            heroBreathMs = 3800,
-            heroOrbitMs = 13000,
-            heroAuraSwing = 0.095f,
-            surfaceRimAlpha = 0.24f,
-            modalSpring = spring(dampingRatio = 0.80f, stiffness = 620f),
-            modalFadeMs = 120,
-            modalStartScale = 0.84f,
-            backdropCadenceScale = 1.0f,
-            backdropBreathAlpha = 0.10f,
-            mascotMorphSpring = spring(dampingRatio = 0.74f, stiffness = 520f),
-            mascotReturnSpring = spring(dampingRatio = 0.78f, stiffness = 480f),
-            progressFillMs = 220
-        ),
-        ThemeAnimationStyle.FLIP_3D to ThemeMotionSpec(
-            style = ThemeAnimationStyle.FLIP_3D,
-            tabChoreography = TabChoreography.PERSPECTIVE_FLIP_3D,
-            tabSlideSpring = spring(dampingRatio = 0.82f, stiffness = 780f),
-            tabSlideFraction = 1.0f,
-            tabEnterScale = 0.92f,
-            tabExitScale = 0.91f,
-            tabPerspectiveDeg = 28f,
-            cardRevealSpring = spring(dampingRatio = 0.76f, stiffness = 720f),
-            cardFadeMs = 110,
-            cardSlideYDp = 12f,
-            cardSlideXDp = 14f,
-            cardStartScale = 0.93f,
-            pressSpring = spring(dampingRatio = 0.66f, stiffness = 800f),
-            pressDepthFactor = 1.06f,
-            navIndicatorSpring = spring(dampingRatio = 0.74f, stiffness = 760f),
-            navIconSpring = spring(dampingRatio = 0.64f, stiffness = 800f),
-            navActiveScale = 1.10f,
-            sheenPeakAlpha = 0.24f,
-            sheenDurationMs = 2200,
-            heroBreathMs = 3200,
-            heroOrbitMs = 9600,
-            heroAuraSwing = 0.085f,
-            surfaceRimAlpha = 0.26f,
-            modalSpring = spring(dampingRatio = 0.76f, stiffness = 740f),
-            modalFadeMs = 105,
-            modalStartScale = 0.90f,
-            backdropCadenceScale = 0.84f,
-            backdropBreathAlpha = 0.085f,
-            mascotMorphSpring = spring(dampingRatio = 0.70f, stiffness = 600f),
-            mascotReturnSpring = spring(dampingRatio = 0.76f, stiffness = 540f),
-            progressFillMs = 175
         ),
         ThemeAnimationStyle.ELASTIC_POP to ThemeMotionSpec(
             style = ThemeAnimationStyle.ELASTIC_POP,
@@ -316,53 +246,20 @@ object MotionStyleCatalog {
             navIndicatorSpring = spring(dampingRatio = 0.56f, stiffness = 660f),
             navIconSpring = spring(dampingRatio = 0.50f, stiffness = 720f),
             navActiveScale = 1.16f,
-            sheenPeakAlpha = 0.21f,
-            sheenDurationMs = 2400,
-            heroBreathMs = 3100,
-            heroOrbitMs = 10200,
+            sheenPeakAlpha = 0.58f,
+            sheenDurationMs = 1950,
+            heroBreathMs = 3000,
+            heroOrbitMs = 9800,
             heroAuraSwing = 0.11f,
             surfaceRimAlpha = 0.24f,
             modalSpring = spring(dampingRatio = 0.56f, stiffness = 660f),
             modalFadeMs = 105,
             modalStartScale = 0.88f,
             backdropCadenceScale = 0.88f,
-            backdropBreathAlpha = 0.09f,
+            backdropBreathAlpha = 0.095f,
             mascotMorphSpring = spring(dampingRatio = 0.56f, stiffness = 580f),
             mascotReturnSpring = spring(dampingRatio = 0.60f, stiffness = 520f),
             progressFillMs = 200
-        ),
-        ThemeAnimationStyle.INSTANT_SNAP to ThemeMotionSpec(
-            style = ThemeAnimationStyle.INSTANT_SNAP,
-            tabChoreography = TabChoreography.INSTANT_SNAP,
-            tabSlideSpring = spring(dampingRatio = 0.98f, stiffness = 1550f),
-            tabSlideFraction = 1.0f,
-            tabEnterScale = 1.0f,
-            tabExitScale = 1.0f,
-            tabPerspectiveDeg = 0f,
-            cardRevealSpring = spring(dampingRatio = 0.96f, stiffness = 1450f),
-            cardFadeMs = 65,
-            cardSlideYDp = 6f,
-            cardSlideXDp = 0f,
-            cardStartScale = 0.99f,
-            pressSpring = spring(dampingRatio = 0.92f, stiffness = 1400f),
-            pressDepthFactor = 0.72f,
-            navIndicatorSpring = spring(dampingRatio = 0.96f, stiffness = 1380f),
-            navIconSpring = spring(dampingRatio = 0.92f, stiffness = 1380f),
-            navActiveScale = 1.03f,
-            sheenPeakAlpha = 0.14f,
-            sheenDurationMs = 1900,
-            heroBreathMs = 2800,
-            heroOrbitMs = 8800,
-            heroAuraSwing = 0.05f,
-            surfaceRimAlpha = 0.15f,
-            modalSpring = spring(dampingRatio = 0.96f, stiffness = 1450f),
-            modalFadeMs = 65,
-            modalStartScale = 0.98f,
-            backdropCadenceScale = 0.78f,
-            backdropBreathAlpha = 0.05f,
-            mascotMorphSpring = spring(dampingRatio = 0.94f, stiffness = 1100f),
-            mascotReturnSpring = spring(dampingRatio = 0.96f, stiffness = 1040f),
-            progressFillMs = 80
         )
     )
 
@@ -376,7 +273,7 @@ val LocalThemeMotionSpec = staticCompositionLocalOf {
 
 /**
  * Pure GPU-layer sheen sweep rendered once via [drawWithCache] and translated exclusively in
- * [graphicsLayer] so active CTAs shimmer smoothly at 60–120 FPS with zero per-frame Canvas redraw.
+ * [graphicsLayer] so active CTAs shimmer clearly at 60–120 FPS even while scrolling.
  */
 @Composable
 fun GpuSheenOverlay(
@@ -388,13 +285,12 @@ fun GpuSheenOverlay(
 ) {
     val shouldSweep = active &&
         peakAlpha > 0.005f &&
-        LocalTabSettled.current &&
-        !LocalScrollActiveState.current.value
+        LocalTabSettled.current
     if (!shouldSweep) return
 
     val infinite = rememberInfiniteTransition(label = "gpuSheenInfinite")
-    val safeDuration = durationMs.coerceIn(1600, 6000)
-    val sweepStartMs = (safeDuration * 0.48f).toInt()
+    val safeDuration = durationMs.coerceIn(1400, 6000)
+    val sweepStartMs = (safeDuration * 0.36f).toInt()
     val progress = infinite.animateFloat(
         initialValue = -0.55f,
         targetValue = 1.55f,
@@ -415,22 +311,22 @@ fun GpuSheenOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = (progress.value - 0.5f) * size.width * 1.15f
+                    translationX = (progress.value - 0.5f) * size.width * 1.18f
                 }
                 .drawWithCache {
                     if (size.width <= 2f || size.height <= 2f) {
                         return@drawWithCache onDrawBehind {}
                     }
-                    val bandWidth = (size.width * 0.42f).coerceAtLeast(36f)
+                    val bandWidth = (size.width * 0.48f).coerceAtLeast(48f)
                     val cx = size.width * 0.5f
                     val sweepBrush = Brush.linearGradient(
                         0.0f to Color.Transparent,
-                        0.28f to tint.copy(alpha = peakAlpha * 0.45f),
-                        0.50f to tint.copy(alpha = peakAlpha),
-                        0.72f to tint.copy(alpha = peakAlpha * 0.45f),
+                        0.26f to tint.copy(alpha = (peakAlpha * 0.42f).coerceIn(0f, 1f)),
+                        0.50f to tint.copy(alpha = peakAlpha.coerceIn(0f, 1f)),
+                        0.74f to tint.copy(alpha = (peakAlpha * 0.42f).coerceIn(0f, 1f)),
                         1.0f to Color.Transparent,
-                        start = Offset(cx - bandWidth * 0.55f, 0f),
-                        end = Offset(cx + bandWidth * 0.55f, size.height)
+                        start = Offset(cx - bandWidth * 0.56f, 0f),
+                        end = Offset(cx + bandWidth * 0.56f, size.height)
                     )
                     onDrawBehind {
                         drawRect(sweepBrush)

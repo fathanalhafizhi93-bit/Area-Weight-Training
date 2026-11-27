@@ -95,7 +95,6 @@ import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseThemeTokens
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
-import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -425,33 +424,54 @@ fun TodayScreen(
                     else -> RoundedCornerShape(ctaRadius)
                 }
                 val isAero = tokens.uiTheme == UiTheme.FRUTIGER_AERO
-                IronPulseTonalSurface(
-                    onClick = { onOpenWorkout(null) },
-                    shape = ctaShape,
-                    baseColor = tokens.accentColor,
-                    isAccent = true,
-                    contentColor = tokens.onAccentColor,
-                    border = when {
-                        isCli -> BorderStroke(1.25.dp, Color(0xFF9BFFBE))
-                        isAero -> BorderStroke(
-                            1.dp,
-                            if (tokens.isAeroNight) Color(0x99BAE6FD) else Color.White.copy(alpha = 0.80f)
-                        )
-                        else -> null
-                    },
+                val ctaMotionSpec = LocalThemeMotionSpec.current
+                val pulseActive = tabActive && !noAnim && !tokens.performance.noAmbientGlow && LocalTabSettled.current
+                val pulseBorderFactor = if (pulseActive) {
+                    val pulseInf = rememberInfiniteTransition(label = "ctaPulseInfinite")
+                    pulseInf.animateFloat(
+                        initialValue = 0.25f,
+                        targetValue = 1.0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 1550, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "ctaBorderPulse"
+                    ).value
+                } else {
+                    0.4f
+                }
+                val pulseGlowTint = when {
+                    isCli -> Color(0xFF9BFFBE)
+                    isAero -> if (tokens.isAeroNight) Color(0xFFBAE6FD) else Color.White
+                    else -> Color.White
+                }
+                val ctaBorder = BorderStroke(
+                    width = (1.15f + pulseBorderFactor * 0.95f).dp,
+                    color = pulseGlowTint.copy(alpha = (0.36f + pulseBorderFactor * 0.56f).coerceIn(0f, 0.94f))
+                )
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
-                        .testTag("start_workout_cta")
                 ) {
-                    val ctaMotionSpec = LocalThemeMotionSpec.current
-                    GpuSheenOverlay(
-                        active = tabActive && !noAnim && !tokens.performance.noAmbientGlow,
-                        tint = if (tokens.uiTheme == UiTheme.AMOLED_STEALTH) tokens.accentColor else Color.White,
-                        peakAlpha = ctaMotionSpec.sheenPeakAlpha,
-                        durationMs = ctaMotionSpec.sheenDurationMs,
-                        modifier = Modifier.matchParentSize()
-                    )
+                    IronPulseTonalSurface(
+                        onClick = { onOpenWorkout(null) },
+                        shape = ctaShape,
+                        baseColor = tokens.accentColor,
+                        isAccent = true,
+                        contentColor = tokens.onAccentColor,
+                        border = ctaBorder,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("start_workout_cta")
+                    ) {
+                        GpuSheenOverlay(
+                            active = tabActive && !noAnim && !tokens.performance.noAmbientGlow,
+                            tint = Color.White,
+                            peakAlpha = ctaMotionSpec.sheenPeakAlpha,
+                            durationMs = ctaMotionSpec.sheenDurationMs,
+                            modifier = Modifier.matchParentSize()
+                        )
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -505,6 +525,7 @@ fun TodayScreen(
                                 size = 18.dp
                             )
                         }
+                    }
                     }
                 }
             }
@@ -1253,8 +1274,7 @@ internal fun HeroAnimatedAtmosphereLayer(
     val motionSpec = LocalThemeMotionSpec.current
     val tabActive = LocalTabActive.current
     val tabSettled = LocalTabSettled.current
-    val scrollActive = LocalScrollActiveState.current.value
-    val animate = !noAnim && tabActive && tabSettled && !scrollActive
+    val animate = !noAnim && tabActive && tabSettled
     val noAmbientGlow = tokens.performance.noAmbientGlow
 
     val breatheState: State<Float>

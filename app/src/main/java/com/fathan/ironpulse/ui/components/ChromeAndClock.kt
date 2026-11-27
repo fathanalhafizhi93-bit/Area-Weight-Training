@@ -104,7 +104,6 @@ import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
-import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
@@ -137,9 +136,8 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
     val tokens = LocalIronPulseTokens.current
     val motionSpec = LocalThemeMotionSpec.current
     val suppressGlow = tokens.performance.noAmbientGlow
-    val scrollActive = LocalScrollActiveState.current.value
     val tabSettled = LocalTabSettled.current
-    val runAnim = !tokens.performance.noAnimations && LocalTabActive.current && tabSettled && !scrollActive
+    val runAnim = !tokens.performance.noAnimations && LocalTabActive.current && tabSettled
 
     Box(modifier = modifier.fillMaxSize()) {
         // Static cached OS backdrop: shaders, base gradient, ambient glows, and nocturnal stars draw ONCE

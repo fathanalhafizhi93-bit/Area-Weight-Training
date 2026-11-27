@@ -166,7 +166,8 @@ data class MascotUiState(
     val activeLine: MascotSpeechLine = MascotSpeechLine("init", "Siap Latihan!", "Ayo bangun momentum hari ini."),
     val speechEventId: Int = 0,
     val isDialogueLocked: Boolean = false,
-    val shouldSpeakAfterReveal: Boolean = false
+    val shouldSpeakAfterReveal: Boolean = false,
+    val speechCooldownUntilMs: Long = 0L
 )
 
 @Immutable
@@ -372,6 +373,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private var initialGreetingFired = false
     private var lastMascotTapAtMs: Long = 0L
     private var mascotComboCount: Int = 0
+    private var speechCooldownUntilMs: Long = 0L
     private var pendingSpeakEventId: Int = -1
     private var lastSpokenEventId: Int = -1
 
@@ -2877,6 +2879,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val nextEventId = _mascotState.value.speechEventId + 1
         val willSpeak = speakTts && prefs.mascotVoiceEnabled
         pendingSpeakEventId = if (willSpeak) nextEventId else -1
+        val cooldownUntil = now + MASCOT_SPEECH_COOLDOWN_MS
+        speechCooldownUntilMs = cooldownUntil
         _mascotState.value = _mascotState.value.copy(
             mood = MascotMood.READY,
             timePhase = phase,
@@ -2886,14 +2890,18 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             activeLine = picked,
             speechEventId = nextEventId,
             isDialogueLocked = true,
-            shouldSpeakAfterReveal = willSpeak
+            shouldSpeakAfterReveal = willSpeak,
+            speechCooldownUntilMs = cooldownUntil
         )
         audioEngine.playMascotChirp("ready", vol, personality)
     }
 
     fun tapMascot() {
-        haptics.buttonTap()
         val now = System.currentTimeMillis()
+        if (now < speechCooldownUntilMs) {
+            return
+        }
+        haptics.buttonTap()
         val cal = Calendar.getInstance()
         val prefs = prefsStore.state.value
         val personality = prefs.mascotPersonality
@@ -2939,7 +2947,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         // Daytime (Morning & Afternoon): expressive combo pokes + organic automatic hype & quick tips
-        mascotComboCount = if (now - lastMascotTapAtMs <= 1650L) {
+        mascotComboCount = if (now - lastMascotTapAtMs <= 3800L) {
             (mascotComboCount + 1).coerceAtMost(99)
         } else {
             1
@@ -2967,13 +2975,16 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             val nextEventId = _mascotState.value.speechEventId + 1
             val willSpeak = prefs.mascotVoiceEnabled
             pendingSpeakEventId = if (willSpeak) nextEventId else -1
+            val cooldownUntil = now + MASCOT_SPEECH_COOLDOWN_MS
+            speechCooldownUntilMs = cooldownUntil
             _mascotState.value = _mascotState.value.copy(
                 activeTimePose = excitedPose,
                 personality = personality,
                 phaseColorHex = prefs.accentColorHex,
                 activeLine = picked,
                 speechEventId = nextEventId,
-                shouldSpeakAfterReveal = willSpeak
+                shouldSpeakAfterReveal = willSpeak,
+                speechCooldownUntilMs = cooldownUntil
             )
             val vol = (_profile.value?.volume ?: 0.85).toFloat()
             audioEngine.playMascotChirp(if (personality == MascotPersonality.COACH) "clap" else "celebrate", vol, personality)
@@ -3023,6 +3034,10 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             }
             return
         }
+        val now = System.currentTimeMillis()
+        if (now < speechCooldownUntilMs) {
+            return
+        }
         haptics.buttonTap()
         mascotReactionClearJob?.cancel()
         val prefs = prefsStore.state.value
@@ -3046,12 +3061,15 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val nextEventId = _mascotState.value.speechEventId + 1
         val willSpeak = prefs.mascotVoiceEnabled
         pendingSpeakEventId = if (willSpeak) nextEventId else -1
+        val cooldownUntil = now + MASCOT_SPEECH_COOLDOWN_MS
+        speechCooldownUntilMs = cooldownUntil
         _mascotState.value = _mascotState.value.copy(
             activeTimePose = if (personality == MascotPersonality.COACH) TimePhasePose.ZEN else TimePhasePose.COZY,
             personality = personality,
             activeLine = picked,
             speechEventId = nextEventId,
-            shouldSpeakAfterReveal = willSpeak
+            shouldSpeakAfterReveal = willSpeak,
+            speechCooldownUntilMs = cooldownUntil
         )
         val vol = ((_profile.value?.volume ?: 0.85) * 0.65).toFloat().coerceIn(0.2f, 0.72f)
         audioEngine.playMascotChirp("pet", vol, personality)
@@ -3083,14 +3101,21 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun replayMascotVoice() {
+        val now = System.currentTimeMillis()
+        if (now < speechCooldownUntilMs) {
+            return
+        }
         haptics.buttonTap()
         val prefs = prefsStore.state.value
         val cur = _mascotState.value
         pendingSpeakEventId = -1
         lastSpokenEventId = cur.speechEventId
-        if (cur.shouldSpeakAfterReveal) {
-            _mascotState.value = cur.copy(shouldSpeakAfterReveal = false)
-        }
+        val cooldownUntil = now + MASCOT_SPEECH_COOLDOWN_MS
+        speechCooldownUntilMs = cooldownUntil
+        _mascotState.value = cur.copy(
+            shouldSpeakAfterReveal = false,
+            speechCooldownUntilMs = cooldownUntil
+        )
         ttsSpeaker.stop()
         val line = cur.activeLine
         val text = "${line.headline}. ${line.subline}"
@@ -3173,6 +3198,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
         dialogueLockedUntilMs = if (lockDialogue) now + 14_000L else 0L
         lastAutoChatAtMs = now
+        val cooldownUntil = if (playChirp || speakTts || bypassLock) now + MASCOT_SPEECH_COOLDOWN_MS else speechCooldownUntilMs
+        speechCooldownUntilMs = cooldownUntil
 
         ttsSpeaker.stop()
         val nextEventId = _mascotState.value.speechEventId + 1
@@ -3189,7 +3216,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             activeLine = picked,
             speechEventId = nextEventId,
             isDialogueLocked = lockDialogue,
-            shouldSpeakAfterReveal = willSpeak
+            shouldSpeakAfterReveal = willSpeak,
+            speechCooldownUntilMs = cooldownUntil
         )
         _mascotState.value = nextState
 
@@ -3321,6 +3349,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
+        const val MASCOT_SPEECH_COOLDOWN_MS = 2000L
         private val MORNING_POSES = listOf(
             TimePhasePose.TEA,
             TimePhasePose.COFFEE,

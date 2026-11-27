@@ -116,6 +116,7 @@ import com.fathan.ironpulse.ui.components.AboutDialog
 import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.FloatingMascotDock
+import com.fathan.ironpulse.ui.components.GpuSheenOverlay
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
@@ -124,6 +125,7 @@ import com.fathan.ironpulse.ui.components.LocalThemeMotionSpec
 import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
 import com.fathan.ironpulse.ui.components.MotionStyleCatalog
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
+import com.fathan.ironpulse.ui.components.ProceduralMedalEmblem
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
 import com.fathan.ironpulse.ui.components.TabChoreography
 import com.fathan.ironpulse.ui.components.MascotOrbFace
@@ -215,9 +217,21 @@ class StartupSmokeTest {
         composeRule.onNodeWithTag("auth_mascot_greeting_card").assertIsDisplayed()
         composeRule.onNodeWithTag("auth_mascot_orb", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("Halo! Saya Pulse").assertIsDisplayed()
+        composeRule.onNodeWithText("300+ Gerakan & Anatomi").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Medali Bulanan").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Alarm & Ringtone").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("v1.0.0").assertDoesNotExist()
+        composeRule.onNodeWithText("1.0.0").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("auth_mascot_greeting_card").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Siap Bangun Kebiasaan!").assertIsDisplayed()
+
+        // Immediate second tap is blocked by 2s cooldown
         composeRule.onNodeWithTag("auth_mascot_greeting_card").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Siap Bangun Kebiasaan!").assertIsDisplayed()
+
         composeRule.onNodeWithTag("google_sign_in_button")
             .performScrollTo()
             .assertIsDisplayed()
@@ -388,7 +402,7 @@ class StartupSmokeTest {
         }
         composeRule.waitForIdle()
         composeRule.onNodeWithText("About IronPulse").assertIsDisplayed()
-        composeRule.onNodeWithText("v0.0.1 alpha").assertIsDisplayed()
+        composeRule.onNodeWithText("v1.0.0").assertIsDisplayed()
         composeRule.onNodeWithText("scripter").assertIsDisplayed()
         composeRule.onNodeWithText("Fathan, and Artificial intelligence").assertIsDisplayed()
         composeRule.onNodeWithText("concept").assertIsDisplayed()
@@ -2330,7 +2344,7 @@ class StartupSmokeTest {
             composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).performClick()
             composeRule.waitForIdle()
             composeRule.onNodeWithText("About IronPulse").performScrollTo().assertIsDisplayed()
-            composeRule.onNodeWithText("v0.0.1 alpha").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("v1.0.0").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Fathan, and Artificial intelligence").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("fathan.").performScrollTo().assertIsDisplayed()
 
@@ -2823,8 +2837,8 @@ class StartupSmokeTest {
         composeRule.onNode(
             hasText("Medali Perak") and hasAnyAncestor(hasTestTag("medal_unlock_celebration_overlay")),
             useUnmergedTree = true
-        ).performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("medal_save_to_history_button").performScrollTo().performClick()
+        ).assertIsDisplayed()
+        composeRule.onNodeWithTag("medal_save_to_history_button").performClick()
         composeRule.waitForIdle()
 
         assertNotNull(flightTriggeredSource)
@@ -3559,31 +3573,32 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun allFiveThemeAnimationStyles_resolveDistinctChoreographiesAndMigrateLegacyWireValues() {
-        assertEquals(5, ThemeAnimationStyle.entries.size)
-        assertEquals(5, ThemeAnimationStyle.entries.map { it.wireValue }.toSet().size)
+    fun twoThemeAnimationStyles_resolveDistinctChoreographiesAndMigrateLegacyWireValues() {
+        assertEquals(2, ThemeAnimationStyle.entries.size)
+        assertEquals(2, ThemeAnimationStyle.entries.map { it.wireValue }.toSet().size)
 
         val resolvedSpecs = ThemeAnimationStyle.entries.map { MotionStyleCatalog.resolve(it) }
-        assertEquals(5, resolvedSpecs.map { it.style }.toSet().size)
-        assertEquals(5, resolvedSpecs.map { it.tabChoreography }.toSet().size)
+        assertEquals(2, resolvedSpecs.map { it.style }.toSet().size)
+        assertEquals(2, resolvedSpecs.map { it.tabChoreography }.toSet().size)
         assertEquals(TabChoreography.HORIZONTAL_GLIDE, MotionStyleCatalog.resolve(ThemeAnimationStyle.SILK_GLIDE).tabChoreography)
-        assertEquals(TabChoreography.DEPTH_ZOOM, MotionStyleCatalog.resolve(ThemeAnimationStyle.DEPTH_ZOOM).tabChoreography)
-        assertEquals(TabChoreography.PERSPECTIVE_FLIP_3D, MotionStyleCatalog.resolve(ThemeAnimationStyle.FLIP_3D).tabChoreography)
         assertEquals(TabChoreography.VERTICAL_ELASTIC, MotionStyleCatalog.resolve(ThemeAnimationStyle.ELASTIC_POP).tabChoreography)
-        assertEquals(TabChoreography.INSTANT_SNAP, MotionStyleCatalog.resolve(ThemeAnimationStyle.INSTANT_SNAP).tabChoreography)
         assertEquals(IronPulseMotion.ReturnMorphSpring, MotionStyleCatalog.resolve(ThemeAnimationStyle.SILK_GLIDE).mascotReturnSpring)
 
-        // Legacy 10-style wire values map cleanly to the 5 distinct styles
+        // Legacy wire values map cleanly to the 2 curated styles
         assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("fluid-silk"))
         assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("zen-breath"))
-        assertEquals(ThemeAnimationStyle.DEPTH_ZOOM, ThemeAnimationStyle.fromWire("prismatic-bloom"))
-        assertEquals(ThemeAnimationStyle.DEPTH_ZOOM, ThemeAnimationStyle.fromWire("tactical-radar"))
-        assertEquals(ThemeAnimationStyle.FLIP_3D, ThemeAnimationStyle.fromWire("velocity-flip"))
-        assertEquals(ThemeAnimationStyle.FLIP_3D, ThemeAnimationStyle.fromWire("aero-crystal"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("depth-zoom"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("prismatic-bloom"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("tactical-radar"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("instant-snap"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("hyper-snap"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("carbon-mech"))
+        assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("elastic-pop"))
         assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("elastic-bounce"))
         assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("ubuntu-dock"))
-        assertEquals(ThemeAnimationStyle.INSTANT_SNAP, ThemeAnimationStyle.fromWire("hyper-snap"))
-        assertEquals(ThemeAnimationStyle.INSTANT_SNAP, ThemeAnimationStyle.fromWire("carbon-mech"))
+        assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("flip-3d"))
+        assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("velocity-flip"))
+        assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("aero-crystal"))
 
         val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
         val store = PreferencesStore(ctx)
@@ -3598,7 +3613,7 @@ class StartupSmokeTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun settingsThemeSubpage_displaysAllFiveAnimationStyleCardsAndUpdatesSelection() {
+    fun settingsConfigurationSubpage_displaysTwoAnimationStyleCardsAndThemeSubpageExcludesMotionControls() {
         val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
         if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
             com.google.firebase.FirebaseApp.initializeApp(ctx)
@@ -3610,8 +3625,11 @@ class StartupSmokeTest {
                 ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
             )[GymViewModel::class.java]
             viewModel.setThemeAnimationStyle(ThemeAnimationStyle.SILK_GLIDE)
+            var activeCatSetter: ((SettingsCategory) -> Unit)? = null
 
             composeRule.setContent {
+                var activeCat by remember { mutableStateOf(SettingsCategory.CONFIGURATION) }
+                activeCatSetter = { activeCat = it }
                 val vmState by viewModel.uiState.collectAsStateWithLifecycle()
                 val uiState = remember(vmState.appPrefs) {
                     vmState.copy(
@@ -3634,7 +3652,7 @@ class StartupSmokeTest {
                             onRequestNotificationPermission = {},
                             onOpenExactAlarmSettings = {},
                             onPickCustomRingtone = {},
-                            activeCategory = SettingsCategory.THEME
+                            activeCategory = activeCat
                         )
                     }
                 }
@@ -3652,17 +3670,24 @@ class StartupSmokeTest {
                     .assertIsDisplayed()
             }
 
-            composeRule.onNodeWithTag("anim_style_card_flip-3d")
-                .performScrollTo()
-                .performClick()
-            composeRule.waitForIdle()
-            assertEquals(ThemeAnimationStyle.FLIP_3D, viewModel.uiState.value.appPrefs.themeAnimationStyle)
-
             composeRule.onNodeWithTag("anim_style_card_elastic-pop")
                 .performScrollTo()
                 .performClick()
             composeRule.waitForIdle()
             assertEquals(ThemeAnimationStyle.ELASTIC_POP, viewModel.uiState.value.appPrefs.themeAnimationStyle)
+
+            composeRule.onNodeWithTag("anim_style_card_silk-glide")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+            assertEquals(ThemeAnimationStyle.SILK_GLIDE, viewModel.uiState.value.appPrefs.themeAnimationStyle)
+
+            // Switching to THEME category must NOT duplicate motion/animation controls
+            composeRule.runOnUiThread { activeCatSetter?.invoke(SettingsCategory.THEME) }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("theme_animation_style_card").assertDoesNotExist()
+            composeRule.onNodeWithTag("settings_theme_anim_quick_toggle").assertDoesNotExist()
+            composeRule.onNodeWithTag("settings_theme_medal_preview_shortcut").assertDoesNotExist()
 
             viewModel.setThemeAnimationStyle(ThemeAnimationStyle.SILK_GLIDE)
         } finally {
@@ -4094,7 +4119,7 @@ class StartupSmokeTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun todayMascot_typesOutDialogueBeforeTriggeringVoiceSpeech() {
+    fun todayMascot_fadesOutAndInWithoutTypewriterCursorBeforeVoiceSpeech() {
         val eyeFlow = MutableStateFlow(MascotEyeState())
         val finishedEvents = mutableListOf<Int>()
         val mascotState = MascotUiState(
@@ -4103,7 +4128,7 @@ class StartupSmokeTest {
             activeTimePose = TimePhasePose.SPARKLE,
             personality = MascotPersonality.PARTNER,
             activeLine = MascotSpeechLine(
-                id = "type_test_1",
+                id = "fade_test_1",
                 headline = "Siap gas!",
                 subline = "Ayo mulai pemanasan singkat.",
                 expression = MascotExpression.EXCITED
@@ -4136,19 +4161,106 @@ class StartupSmokeTest {
                 }
             }
 
-            // Immediately after composition (mid-typing), TTS trigger callback must NOT have fired yet
+            // Mid fade-out/fade-in (~260ms total), TTS trigger callback must NOT have fired yet
             composeRule.mainClock.advanceTimeBy(40)
-            assertTrue("Expected voice reveal callback to wait until typing completes", finishedEvents.isEmpty())
+            assertTrue("Expected voice reveal callback to wait until fade transition completes", finishedEvents.isEmpty())
 
-            // Advance enough clock time for all characters (9 + 30 chars at ~15ms + pause ~50ms < 1200ms)
-            composeRule.mainClock.advanceTimeBy(1500)
+            // Advance past 110ms fade-out + 150ms fade-in
+            composeRule.mainClock.advanceTimeBy(450)
             composeRule.waitForIdle()
 
-            assertEquals("Expected speech reveal callback to fire once after typing ends", listOf(1), finishedEvents)
+            assertEquals("Expected speech reveal callback to fire once after fade transition ends", listOf(1), finishedEvents)
             composeRule.onNodeWithTag("mascot_speech_headline", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithTag("mascot_speech_subline", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithText("Siap gas!", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithText("Ayo mulai pemanasan singkat.", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithText("Siap gas!|", useUnmergedTree = true).assertDoesNotExist()
+            composeRule.onNodeWithText("Siap gas!▌", useUnmergedTree = true).assertDoesNotExist()
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    fun gymViewModel_tapMascot_enforcesTwoSecondSpeechCooldownAgainstSpam() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(ctx)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            viewModel.tapMascot()
+            val afterFirstTap = viewModel.uiState.value.mascot
+            assertTrue(afterFirstTap.speechEventId >= 1)
+            assertTrue(afterFirstTap.speechCooldownUntilMs > System.currentTimeMillis())
+
+            val firstEventId = afterFirstTap.speechEventId
+            // Immediate spam tap within 2000ms must not emit a new speech event
+            viewModel.tapMascot()
+            assertEquals(firstEventId, viewModel.uiState.value.mascot.speechEventId)
+        } finally {
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun animationsContinueRunningWhileScrollingIsActive() {
+        val eyeFlow = MutableStateFlow(MascotEyeState())
+        val scrollActive = mutableStateOf(true)
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                IronPulseTheme(
+                    prefs = AppPreferences(
+                        uiTheme = UiTheme.MATERIAL_YOU,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                ) {
+                    CompositionLocalProvider(
+                        LocalTabActive provides true,
+                        LocalScrollActiveState provides scrollActive
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AmbientPhaseBackdrop()
+                            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                                HeroAnimatedAtmosphereLayer(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    noAnim = false
+                                )
+                                MascotOrbFace(
+                                    mascot = MascotUiState(),
+                                    eyeStateFlow = eyeFlow,
+                                    isTalking = true,
+                                    modifier = Modifier.testTag("scroll_anim_mascot")
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                        .testTag("scroll_anim_sheen")
+                                ) {
+                                    GpuSheenOverlay(enabled = true)
+                                }
+                                ProceduralMedalEmblem(
+                                    tier = MedalTier.GOLD,
+                                    size = 64.dp,
+                                    shineEnabled = true,
+                                    modifier = Modifier.testTag("scroll_anim_medal")
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            composeRule.mainClock.advanceTimeBy(480)
+            composeRule.onNodeWithTag("scroll_anim_mascot").assertIsDisplayed()
+            composeRule.onNodeWithTag("scroll_anim_medal").assertIsDisplayed()
         } finally {
             composeRule.mainClock.autoAdvance = true
         }
@@ -4253,7 +4365,7 @@ class StartupSmokeTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun settingsScreen_quickAnimationToggleAndMedalPreview_syncAndTriggerPreview() {
+    fun settingsConfigurationSubpage_singleAnimationToggleAndMedalPreview_syncAndTriggerBannerPreview() {
         val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
         if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
             com.google.firebase.FirebaseApp.initializeApp(ctx)
@@ -4302,28 +4414,29 @@ class StartupSmokeTest {
             composeRule.onNodeWithTag("settings_list")
                 .performScrollToNode(hasTestTag("medal_animation_preview_card"))
             composeRule.onNodeWithTag("medal_animation_preview_card").assertIsDisplayed()
-            composeRule.onNodeWithTag("settings_anim_quick_toggle")
-                .performScrollTo()
-                .assertIsOn()
+            // Duplicate quick toggle inside medal preview card was removed
+            composeRule.onNodeWithTag("settings_anim_quick_toggle").assertDoesNotExist()
 
-            // Toggle OFF animations via quick switch
-            composeRule.onNodeWithTag("settings_anim_quick_toggle").performClick()
-            composeRule.waitForIdle()
-            assertTrue(viewModel.uiState.value.appPrefs.performance.noAnimations)
-            composeRule.onNodeWithTag("settings_anim_quick_toggle").assertIsOff()
+            // Single performance animation disable toggle lives in PerformanceSettingsCard
+            composeRule.onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("settings_disable_animations_switch"))
             composeRule.onNodeWithTag("settings_disable_animations_switch")
                 .performScrollTo()
-                .assertIsOn()
-
-            // Toggle ON animations again
-            composeRule.onNodeWithTag("settings_anim_quick_toggle")
-                .performScrollTo()
+                .assertIsOff()
                 .performClick()
             composeRule.waitForIdle()
-            assertFalse(viewModel.uiState.value.appPrefs.performance.noAnimations)
-            composeRule.onNodeWithTag("settings_anim_quick_toggle").assertIsOn()
+            assertTrue(viewModel.uiState.value.appPrefs.performance.noAnimations)
+            composeRule.onNodeWithTag("settings_disable_animations_switch").assertIsOn()
 
-            // Pick Bronze tier and trigger medal celebration preview
+            // Re-enable animations via the same switch
+            composeRule.onNodeWithTag("settings_disable_animations_switch").performClick()
+            composeRule.waitForIdle()
+            assertFalse(viewModel.uiState.value.appPrefs.performance.noAnimations)
+            composeRule.onNodeWithTag("settings_disable_animations_switch").assertIsOff()
+
+            // Pick Bronze tier and trigger floating banner medal preview (without modal popup)
+            composeRule.onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("medal_animation_preview_card"))
             composeRule.onNodeWithTag("settings_medal_tier_bronze")
                 .performScrollTo()
                 .performClick()
@@ -4339,74 +4452,12 @@ class StartupSmokeTest {
             assertTrue(unlocked.isPreview)
 
             composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
-            composeRule.onNodeWithText("PRATINJAU ANIMASI MEDALI", useUnmergedTree = true).assertIsDisplayed()
-            composeRule.onNodeWithTag("medal_preview_close_button")
-                .performScrollTo()
-                .performClick()
+            composeRule.onNodeWithText("PRATINJAU MEDALI", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("medal_preview_close_button").performClick()
             composeRule.waitForIdle()
 
             assertNull(viewModel.uiState.value.pendingMedalUnlock)
             composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
-        } finally {
-            vmStore.clear()
-        }
-    }
-
-    @Test
-    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun settingsThemeSubpage_quickAnimationToggleAndMedalPreviewShortcut_workDirectly() {
-        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
-        if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
-            com.google.firebase.FirebaseApp.initializeApp(ctx)
-        }
-        val vmStore = ViewModelStore()
-        try {
-            val viewModel = ViewModelProvider(
-                vmStore,
-                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
-            )[GymViewModel::class.java]
-            viewModel.setPerformance(noAnimations = true, noAmbientGlow = false, staticMascot = false)
-
-            composeRule.setContent {
-                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
-                IronPulseTheme(prefs = vmState.appPrefs) {
-                    CompositionLocalProvider(LocalTabActive provides true) {
-                        SettingsScreen(
-                            state = vmState.copy(authReady = true, userUid = "u_theme_anim_toggle"),
-                            viewModel = viewModel,
-                            contentPadding = PaddingValues(0.dp),
-                            onBack = {},
-                            onRequestNotificationPermission = {},
-                            onOpenExactAlarmSettings = {},
-                            onPickCustomRingtone = {},
-                            activeCategory = SettingsCategory.THEME
-                        )
-                    }
-                }
-            }
-
-            composeRule.waitForIdle()
-            composeRule.onNodeWithTag("settings_list")
-                .performScrollToNode(hasTestTag("theme_animation_style_card"))
-            composeRule.onNodeWithTag("settings_theme_anim_quick_toggle")
-                .performScrollTo()
-                .assertIsOff()
-                .performClick()
-            composeRule.waitForIdle()
-
-            assertFalse(viewModel.uiState.value.appPrefs.performance.noAnimations)
-            composeRule.onNodeWithTag("settings_theme_anim_quick_toggle").assertIsOn()
-
-            composeRule.onNodeWithTag("settings_theme_medal_preview_shortcut")
-                .performScrollTo()
-                .performClick()
-            composeRule.waitForIdle()
-
-            val goldPreview = viewModel.uiState.value.pendingMedalUnlock
-            assertNotNull(goldPreview)
-            assertEquals(MedalTier.GOLD, goldPreview!!.tier)
-            assertTrue(goldPreview.isPreview)
-            viewModel.dismissMedalUnlockPreview()
         } finally {
             vmStore.clear()
         }

@@ -84,14 +84,16 @@ import androidx.compose.material3.TextButton
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
-import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -170,10 +172,9 @@ fun ProceduralMedalEmblem(
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
     val tabSettled = LocalTabSettled.current
-    val scrollActive = LocalScrollActiveState.current.value
     val noAnim = tokens.performance.noAnimations
     val suppressGlow = tokens.performance.noAmbientGlow
-    val runShine = shineEnabled && tier != MedalTier.NONE && !noAnim && tabActive && tabSettled && !scrollActive
+    val runShine = shineEnabled && tier != MedalTier.NONE && !noAnim && tabActive && tabSettled
 
     val staticSweep = remember { mutableFloatStateOf(0.35f) }
     val staticZero = remember { mutableFloatStateOf(0f) }
@@ -799,17 +800,46 @@ fun MedalUnlockCelebrationOverlay(
     val pal = remember(event.tier) { resolveMedalPalette(event.tier) }
     val sourceOffsetHolder = remember { mutableListOf(Offset.Zero) }
 
-    val popScale = remember { Animatable(if (noAnim) 1f else 0.45f) }
+    val bannerSlide = remember { Animatable(if (noAnim) 1f else 0f) }
+    val medalPopScale = remember { Animatable(if (noAnim) 1f else 0.55f) }
+    val hasTriggeredFlight = remember(event) { booleanArrayOf(false) }
+
+    val triggerFlight = {
+        if (!hasTriggeredFlight[0]) {
+            hasTriggeredFlight[0] = true
+            onStartFlightToHistory(sourceOffsetHolder.firstOrNull() ?: Offset.Zero)
+        }
+    }
+
     LaunchedEffect(event, noAnim) {
         if (!noAnim) {
-            popScale.snapTo(0.45f)
-            popScale.animateTo(
-                targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            bannerSlide.snapTo(0f)
+            medalPopScale.snapTo(0.55f)
+            coroutineScope {
+                launch {
+                    bannerSlide.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(
+                            dampingRatio = 0.76f,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                }
+                launch {
+                    medalPopScale.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+                }
+            }
+            delay(1900L)
+            triggerFlight()
+        } else {
+            bannerSlide.snapTo(1f)
+            medalPopScale.snapTo(1f)
         }
     }
 
@@ -819,7 +849,7 @@ fun MedalUnlockCelebrationOverlay(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 3600, easing = LinearEasing),
+                animation = tween(durationMillis = 3200, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
             label = "confettiTick"
@@ -835,182 +865,186 @@ fun MedalUnlockCelebrationOverlay(
         )
     }
 
-    val triggerSave = {
-        onStartFlightToHistory(sourceOffsetHolder.firstOrNull() ?: Offset.Zero)
-    }
-
     BackHandler(onBack = {
         if (event.isPreview && onDismissPreview != null) {
             onDismissPreview()
         } else {
-            triggerSave()
+            triggerFlight()
         }
     })
 
+    // Non-blocking celebration layer: zero dark modal scrim, lets the UI breathe underneath
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.76f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {}
-            )
             .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(20.dp)
-            .testTag("medal_unlock_celebration_overlay"),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Confetti & sparkle shower canvas behind card
-        if (!tokens.performance.noAmbientGlow) {
+        // Transparent full-viewport confetti & sparkle shower
+        if (!tokens.performance.noAmbientGlow && !noAnim) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val p = confettiPhase.value
-                val particles = 22
+                val particles = 30
                 for (i in 0 until particles) {
-                    val xFrac = ((i * 37 + 13) % 100) / 100f
-                    val yBase = ((i * 23) % 100) / 100f
-                    val yFrac = (yBase + p) % 1f
-                    val sway = sin((p * 2f * PI + i).toDouble()).toFloat() * 14.dp.toPx()
+                    val xFrac = ((i * 41 + 11) % 100) / 100f
+                    val yBase = ((i * 19) % 100) / 100f
+                    val yFrac = (yBase + p * (0.85f + (i % 3) * 0.15f)) % 1f
+                    val sway = sin((p * 2f * PI + i * 0.7).toDouble()).toFloat() * 18.dp.toPx()
                     val pos = Offset(size.width * xFrac + sway, size.height * yFrac)
-                    val col = when (i % 3) {
+                    val col = when (i % 4) {
                         0 -> pal.auraGlow
                         1 -> Color.White
-                        else -> tokens.accentColor
-                    }.copy(alpha = 0.72f)
-                    if (i % 2 == 0) {
-                        drawFourPointSparkle(pos, (4.5f + (i % 3) * 2f).dp.toPx(), col)
-                    } else {
-                        drawCircle(col, radius = (3f + (i % 2) * 1.5f).dp.toPx(), center = pos)
+                        2 -> tokens.accentColor
+                        else -> pal.rimHighlight
+                    }.copy(alpha = 0.82f)
+                    when (i % 3) {
+                        0 -> drawFourPointSparkle(pos, (4.8f + (i % 3) * 1.8f).dp.toPx(), col)
+                        1 -> rotate(degrees = (p * 360f + i * 24f), pivot = pos) {
+                            drawRect(
+                                color = col,
+                                topLeft = Offset(pos.x - 4.dp.toPx(), pos.y - 2.dp.toPx()),
+                                size = Size(8.dp.toPx(), 4.dp.toPx())
+                            )
+                        }
+                        else -> drawCircle(col, radius = (2.8f + (i % 2) * 1.4f).dp.toPx(), center = pos)
                     }
                 }
             }
         }
 
-        Column(
+        // Sleek floating top celebration banner (no popup dialog)
+        Row(
             modifier = Modifier
-                .widthIn(max = 420.dp)
+                .align(Alignment.TopCenter)
+                .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .ironGlassSurface(tokens, borderOverride = pal.auraGlow.copy(alpha = 0.55f))
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .graphicsLayer {
+                    val s = bannerSlide.value.coerceIn(0f, 1.08f)
+                    alpha = bannerSlide.value.coerceIn(0f, 1f)
+                    translationY = (1f - s) * (-84.dp.toPx())
+                }
+                .testTag("medal_unlock_celebration_overlay")
+                .ironGlassSurface(tokens, borderOverride = pal.auraGlow.copy(alpha = 0.74f))
+                .clickable(onClick = triggerFlight)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = if (event.isPreview) {
-                    lang.t("PRATINJAU ANIMASI MEDALI", "MEDAL ANIMATION PREVIEW")
-                } else {
-                    lang.t("PENCAPAIAN BULANAN TERBUKA!", "MONTHLY MILESTONE UNLOCKED!")
-                },
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.sp,
-                color = pal.auraGlow
-            )
-
-            // Medal + Celebrating Mascot Stage
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(176.dp),
+                    .graphicsLayer {
+                        scaleX = medalPopScale.value
+                        scaleY = medalPopScale.value
+                    }
+                    .onGloballyPositioned { coords ->
+                        val b = coords.boundsInRoot()
+                        sourceOffsetHolder.clear()
+                        sourceOffsetHolder.add(Offset(b.center.x, b.center.y))
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = popScale.value
-                            scaleY = popScale.value
-                        }
-                        .onGloballyPositioned { coords ->
-                            val b = coords.boundsInRoot()
-                            sourceOffsetHolder.clear()
-                            sourceOffsetHolder.add(Offset(b.center.x, b.center.y))
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    ProceduralMedalEmblem(
-                        tier = event.tier,
-                        size = 148.dp,
-                        shineEnabled = true
-                    )
-                }
-
-                // Pulse Mascot cheering beside the medal pedestal
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 18.dp, bottom = 2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    MascotOrbFace(
-                        mascot = celebrateMascot,
-                        eyeStateFlow = mascotEyeFlow,
-                        size = 68.dp,
-                        animActive = true
-                    )
-                }
-            }
-
-            Text(
-                text = event.tier.title(lang),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = tokens.palette.onSurface,
-                textAlign = TextAlign.Center
-            )
-
-            Text(
-                text = if (event.isPreview) {
-                    lang.t(
-                        "Pratinjau animasi perolehan ${event.tier.title(lang)} (${event.verifiedDays} hari sah). Progres latihan aslimu tidak berubah.",
-                        "Previewing ${event.tier.title(lang)} unlock animation (${event.verifiedDays} verified days). Your real progress is unchanged."
-                    )
-                } else {
-                    lang.t(
-                        "Pulse merayakan ${event.verifiedDays} hari gym terverifikasi di ${formatShortMonthLabel(event.monthKey, lang)}! Medali ini siap disimpan ke tab Riwayat.",
-                        "Pulse celebrates your ${event.verifiedDays} verified gym days in ${formatShortMonthLabel(event.monthKey, lang)}! Ready to dock in History."
-                    )
-                },
-                fontSize = 13.sp,
-                lineHeight = 19.sp,
-                color = tokens.palette.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-
-            IronPulseButton(
-                onClick = triggerSave,
-                shape = tokens.buttonShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = tokens.accentColor,
-                    contentColor = tokens.onAccentColor
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("medal_save_to_history_button")
-            ) {
-                ThemedIcon(IronPulseIcon.HISTORY, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (event.isPreview) {
-                        lang.t("Uji Terbang ke Tab Riwayat", "Preview Flight to History Tab")
-                    } else {
-                        lang.t("Simpan ke Tab Riwayat", "Save to History Tab")
-                    },
-                    fontWeight = FontWeight.ExtraBold
+                ProceduralMedalEmblem(
+                    tier = event.tier,
+                    size = 56.dp,
+                    shineEnabled = true
                 )
             }
 
-            if (event.isPreview && onDismissPreview != null) {
-                TextButton(
-                    onClick = onDismissPreview,
-                    modifier = Modifier.testTag("medal_preview_close_button")
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = lang.t("Tutup Pratinjau", "Close Preview"),
+                        text = if (event.isPreview) {
+                            lang.t("PRATINJAU MEDALI", "MEDAL PREVIEW")
+                        } else {
+                            lang.t("MEDALI BARU!", "NEW MEDAL!")
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.8.sp,
+                        color = pal.auraGlow
+                    )
+                    Text(
+                        text = "· ${formatShortMonthLabel(event.monthKey, lang)}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = tokens.mutedTextColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Text(
+                    text = event.tier.title(lang),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = tokens.palette.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = lang.t(
+                        "${event.verifiedDays} hari gym sah · meluncur ke Riwayat",
+                        "${event.verifiedDays} verified days · flying to History"
+                    ),
+                    fontSize = 11.sp,
+                    color = tokens.palette.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            MascotOrbFace(
+                mascot = celebrateMascot,
+                eyeStateFlow = mascotEyeFlow,
+                size = 38.dp,
+                animActive = !noAnim
+            )
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                IronPulseButton(
+                    onClick = triggerFlight,
+                    shape = tokens.buttonShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = tokens.accentColor,
+                        contentColor = tokens.onAccentColor
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier
+                        .height(34.dp)
+                        .testTag("medal_save_to_history_button")
+                ) {
+                    Text(
+                        text = if (event.isPreview) {
+                            lang.t("Terbang", "Fly")
+                        } else {
+                            lang.t("Simpan", "Save")
+                        },
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+
+                if (event.isPreview && onDismissPreview != null) {
+                    Text(
+                        text = lang.t("Tutup", "Close"),
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = tokens.mutedTextColor
+                        color = tokens.mutedTextColor,
+                        modifier = Modifier
+                            .clip(tokens.buttonShape)
+                            .clickable(onClick = onDismissPreview)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .testTag("medal_preview_close_button")
                     )
                 }
             }
@@ -1026,7 +1060,7 @@ fun FlyingMedalOverlay(
     onFlightFinished: () -> Unit
 ) {
     val density = LocalDensity.current
-    val startSizeDp = 148.dp
+    val startSizeDp = 58.dp
     val endSizeDp = 86.dp
     val progress = remember { Animatable(0f) }
 
@@ -1034,7 +1068,7 @@ fun FlyingMedalOverlay(
         progress.snapTo(0f)
         progress.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 620, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 680, easing = FastOutSlowInEasing)
         )
         onFlightFinished()
     }
