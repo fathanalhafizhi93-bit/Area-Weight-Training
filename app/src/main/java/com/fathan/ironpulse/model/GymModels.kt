@@ -130,95 +130,50 @@ enum class ThemeAnimationStyle(
     val tagId: String,
     val tagEn: String
 ) {
-    FLUID_SILK(
-        wireValue = "fluid-silk",
-        titleId = "Fluid Silk",
-        titleEn = "Fluid Silk",
-        subtitleId = "Pegas seimbang dan geseran halus yang nyaman di semua tema.",
-        subtitleEn = "Balanced damped spring with silky glides across every theme.",
-        tagId = "Standar",
-        tagEn = "Default"
+    SILK_GLIDE(
+        wireValue = "silk-glide",
+        titleId = "Silk Glide",
+        titleEn = "Silk Glide",
+        subtitleId = "Geser horizontal seimbang dan halus di seluruh layar.",
+        subtitleEn = "Balanced horizontal glide with silky damped settles.",
+        tagId = "Geser Halus",
+        tagEn = "Horizontal"
     ),
-    AERO_CRYSTAL_GLIDE(
-        wireValue = "aero-crystal",
-        titleId = "Aero Crystal Glide",
-        titleEn = "Aero Crystal Glide",
-        subtitleId = "Meluncur ringan ala kaca Y2K dengan kilau tombol lembut.",
-        subtitleEn = "Buoyant Y2K crystal slide with luminous button sheen sweep.",
-        tagId = "Kilau Kaca",
-        tagEn = "Crystal"
+    DEPTH_ZOOM(
+        wireValue = "depth-zoom",
+        titleId = "Depth Zoom",
+        titleEn = "Depth Zoom",
+        subtitleId = "Efek zoom sinematik: layar menyusut lalu mengembang ke fokus.",
+        subtitleEn = "Cinematic depth scale zoom pulling pages forward into focus.",
+        tagId = "Zoom Fokus",
+        tagEn = "Zoom Depth"
     ),
-    HYPER_SNAP(
-        wireValue = "hyper-snap",
-        titleId = "Hyper Snap",
-        titleEn = "Hyper Snap",
-        subtitleId = "Respon instan berkecepatan tinggi dengan jeda antarlayar minimal.",
-        subtitleEn = "High-stiffness instant snap with ultra-short settle time.",
-        tagId = "Instan",
+    FLIP_3D(
+        wireValue = "flip-3d",
+        titleId = "3D Flip",
+        titleEn = "3D Flip",
+        subtitleId = "Ayunan perspektif 3D berputar tajam bak lembaran kartu spasial.",
+        subtitleEn = "Crisp 3D perspective wing turn with spatial depth rotation.",
+        tagId = "Putar 3D",
+        tagEn = "3D Swing"
+    ),
+    ELASTIC_POP(
+        wireValue = "elastic-pop",
+        titleId = "Elastic Pop",
+        titleEn = "Elastic Pop",
+        subtitleId = "Naik-turun vertikal dengan pantulan pegas kenyal di UI & maskot.",
+        subtitleEn = "Vertical elevator slide with playful rubbery spring overshoot.",
+        tagId = "Vertikal Kenyal",
+        tagEn = "Vertical Pop"
+    ),
+    INSTANT_SNAP(
+        wireValue = "instant-snap",
+        titleId = "Instant Snap",
+        titleEn = "Instant Snap",
+        subtitleId = "Respon kilat super kencang tanpa ayunan untuk navigasi instan.",
+        subtitleEn = "Ultra-crisp high-stiffness snap with near-zero settle delay.",
+        tagId = "Kilat Instan",
         tagEn = "Instant"
-    ),
-    ELASTIC_BOUNCE(
-        wireValue = "elastic-bounce",
-        titleId = "Elastic Bounce",
-        titleEn = "Elastic Bounce",
-        subtitleId = "Pantulan pegas kenyal pada kartu, navigasi, dan maskot Pulse.",
-        subtitleEn = "Playful elastic overshoot on cards, nav bar, and Pulse mascot.",
-        tagId = "Kenyal",
-        tagEn = "Bouncy"
-    ),
-    CARBON_MECH(
-        wireValue = "carbon-mech",
-        titleId = "Carbon Mech",
-        titleEn = "Carbon Mech",
-        subtitleId = "Gerak mekanik presisi dengan hentakan solid tanpa ayunan berlebih.",
-        subtitleEn = "Tight mechanical detent with solid tactile press and zero wobble.",
-        tagId = "Presisi",
-        tagEn = "Mechanical"
-    ),
-    TACTICAL_RADAR(
-        wireValue = "tactical-radar",
-        titleId = "Tactical Radar",
-        titleEn = "Tactical Radar",
-        subtitleId = "Kunci HUD tajam dengan kedalaman fokus dan sapuan radar halus.",
-        subtitleEn = "Sharp HUD lock-in with crisp focus depth and radar sweep.",
-        tagId = "HUD Taktis",
-        tagEn = "Tactical"
-    ),
-    PRISMATIC_BLOOM(
-        wireValue = "prismatic-bloom",
-        titleId = "Prismatic Bloom",
-        titleEn = "Prismatic Bloom",
-        subtitleId = "Mekar lembut nan mewah dengan sorot tepi dan aura tenang.",
-        subtitleEn = "Calm luxury scale bloom highlighting rim sheen and ambient aura.",
-        tagId = "Mekar Halus",
-        tagEn = "Bloom"
-    ),
-    UBUNTU_DOCK_SPRING(
-        wireValue = "ubuntu-dock",
-        titleId = "Ubuntu Dock Spring",
-        titleEn = "Ubuntu Dock Spring",
-        subtitleId = "Geseran hangat bergaya desktop dengan pantulan ikon dok aktif.",
-        subtitleEn = "Warm desktop workspace slide with buoyant active dock pop.",
-        tagId = "Pegas Dock",
-        tagEn = "Dock Pop"
-    ),
-    ZEN_BREATH(
-        wireValue = "zen-breath",
-        titleId = "Zen Breath",
-        titleEn = "Zen Breath",
-        subtitleId = "Ritme tenang mengalir berjarak pendek untuk fokus minim distraksi.",
-        subtitleEn = "Gentle low-jolt cadence with calm ambient motion throughout.",
-        tagId = "Tenang",
-        tagEn = "Calm"
-    ),
-    VELOCITY_FLIP(
-        wireValue = "velocity-flip",
-        titleId = "Velocity Flip",
-        titleEn = "Velocity Flip",
-        subtitleId = "Paralaks geser dinamis dengan kemiringan perspektif 3D ringan.",
-        subtitleEn = "Brisk lateral parallax with subtle GPU 3D perspective bank.",
-        tagId = "3D Dinamis",
-        tagEn = "3D Parallax"
     );
 
     fun title(lang: AppLanguage): String = lang.t(titleId, titleEn)
@@ -226,8 +181,14 @@ enum class ThemeAnimationStyle(
     fun tag(lang: AppLanguage): String = lang.t(tagId, tagEn)
 
     companion object {
-        fun fromWire(raw: String?): ThemeAnimationStyle =
-            entries.firstOrNull { it.wireValue == raw } ?: FLUID_SILK
+        fun fromWire(raw: String?): ThemeAnimationStyle = when (raw) {
+            SILK_GLIDE.wireValue, "fluid-silk", "zen-breath" -> SILK_GLIDE
+            DEPTH_ZOOM.wireValue, "prismatic-bloom", "tactical-radar" -> DEPTH_ZOOM
+            FLIP_3D.wireValue, "velocity-flip", "aero-crystal" -> FLIP_3D
+            ELASTIC_POP.wireValue, "elastic-bounce", "ubuntu-dock" -> ELASTIC_POP
+            INSTANT_SNAP.wireValue, "hyper-snap", "carbon-mech" -> INSTANT_SNAP
+            else -> SILK_GLIDE
+        }
     }
 }
 

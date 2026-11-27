@@ -100,10 +100,10 @@ import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.components.AboutContentCards
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
-import com.fathan.ironpulse.ui.components.GpuSheenOverlay
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.MotionStyleCatalog
+import com.fathan.ironpulse.ui.components.TabChoreography
 import com.fathan.ironpulse.ui.components.ThemeBrandEmblem
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightTarget
@@ -1152,7 +1152,7 @@ private fun ThemeAnimationStyleCard(
             navDemoProgress.snapTo(navStepIndex.toFloat())
         } else {
             demoProgress.snapTo(0f)
-            demoProgress.animateTo(1f, previewSpec.cardRevealSpring)
+            demoProgress.animateTo(1f, previewSpec.tabSlideSpring)
         }
     }
     LaunchedEffect(navStepIndex, noAnim) {
@@ -1181,8 +1181,8 @@ private fun ThemeAnimationStyleCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = lang.t(
-                        "Gaya Animasi Tema (10 Pilihan)",
-                        "Theme Animation Style (10 Presets)"
+                        "Gaya Animasi Tema (5 Pilihan)",
+                        "Theme Animation Style (5 Presets)"
                     ),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -1190,17 +1190,17 @@ private fun ThemeAnimationStyleCard(
                 )
                 Text(
                     text = lang.t(
-                        "Pilih 1 gaya gerak untuk 10 elemen UI di seluruh 6 tema.",
-                        "Pick 1 motion preset for all 10 animated UI elements across 6 themes."
+                        "Pilih 1 dari 5 karakter gerak berbeda total untuk semua tema.",
+                        "Pick 1 of 5 totally distinct motion choreographies across all themes."
                     ),
                     fontSize = 11.5.sp,
                     color = tokens.palette.onSurfaceVariant
                 )
             }
-            if (selectedStyle != ThemeAnimationStyle.FLUID_SILK) {
+            if (selectedStyle != ThemeAnimationStyle.SILK_GLIDE) {
                 TextButton(
                     onClick = {
-                        onSelectStyle(ThemeAnimationStyle.FLUID_SILK)
+                        onSelectStyle(ThemeAnimationStyle.SILK_GLIDE)
                         replayTick += 1
                     }
                 ) {
@@ -1239,7 +1239,7 @@ private fun ThemeAnimationStyleCard(
             }
         }
 
-        // Interactive GPU Live Motion Sandbox
+        // Interactive GPU Live Motion Sandbox (distinct choreography preview, no moving sheen)
         IronPulseTonalSurface(
             onClick = { replayTick += 1 },
             shape = tokens.subtleCardShape,
@@ -1295,33 +1295,62 @@ private fun ThemeAnimationStyleCard(
                     }
                 }
 
-                // Animated demo row: sliding mini card + gliding indicator rail + shimmering mini CTA
+                // Animated demo row: mini page choreography card + gliding indicator rail
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // 1. Mini card demonstrating card reveal, tilt & bounce physics
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .graphicsLayer {
                                 val p = demoProgress.value
                                 val inv = 1f - p
-                                translationX = inv * previewSpec.cardSlideXDp.dp.toPx()
-                                translationY = inv * (previewSpec.cardSlideYDp * 0.45f).dp.toPx()
-                                val s = previewSpec.cardStartScale + (1f - previewSpec.cardStartScale) * p.coerceIn(0f, 1.08f)
-                                scaleX = s
-                                scaleY = s
-                                if (previewSpec.tabPerspectiveDeg > 0.01f) {
-                                    cameraDistance = 12f * density
-                                    rotationY = inv * previewSpec.tabPerspectiveDeg * 1.4f
-                                } else {
-                                    rotationY = 0f
+                                when (previewSpec.tabChoreography) {
+                                    TabChoreography.HORIZONTAL_GLIDE -> {
+                                        translationX = inv * 28.dp.toPx()
+                                        translationY = 0f
+                                        val s = 0.96f + 0.04f * p.coerceIn(0f, 1.04f)
+                                        scaleX = s
+                                        scaleY = s
+                                        rotationY = 0f
+                                    }
+                                    TabChoreography.DEPTH_ZOOM -> {
+                                        translationX = inv * 12.dp.toPx()
+                                        translationY = 0f
+                                        val s = 0.78f + 0.22f * p.coerceIn(0f, 1.05f)
+                                        scaleX = s
+                                        scaleY = s
+                                        rotationY = 0f
+                                    }
+                                    TabChoreography.PERSPECTIVE_FLIP_3D -> {
+                                        translationX = inv * 18.dp.toPx()
+                                        translationY = 0f
+                                        val s = 0.90f + 0.10f * p.coerceIn(0f, 1.04f)
+                                        scaleX = s
+                                        scaleY = s
+                                        cameraDistance = 10f * density
+                                        rotationY = inv * 32f
+                                    }
+                                    TabChoreography.VERTICAL_ELASTIC -> {
+                                        translationX = 0f
+                                        translationY = inv * 24.dp.toPx()
+                                        scaleX = 0.92f + 0.08f * p.coerceIn(0f, 1.12f)
+                                        scaleY = 1.06f - 0.06f * p.coerceIn(0f, 1.12f)
+                                        rotationY = 0f
+                                    }
+                                    TabChoreography.INSTANT_SNAP -> {
+                                        translationX = inv * 20.dp.toPx()
+                                        translationY = 0f
+                                        scaleX = 1f
+                                        scaleY = 1f
+                                        rotationY = 0f
+                                    }
                                 }
                             }
-                            .clip(RoundedCornerShape(10.dp))
                             .background(tokens.controlBg)
                             .border(1.dp, tokens.surfaceBorderColor, RoundedCornerShape(10.dp))
                             .padding(horizontal = 10.dp),
@@ -1329,18 +1358,18 @@ private fun ThemeAnimationStyleCard(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(18.dp)
-                                    .clip(RoundedCornerShape(5.dp))
+                                    .size(20.dp)
+                                    .clip(RoundedCornerShape(6.dp))
                                     .background(tokens.accentColor.copy(alpha = 0.22f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(7.dp)
+                                        .size(8.dp)
                                         .clip(CircleShape)
                                         .background(tokens.accentColor)
                                 )
@@ -1348,22 +1377,23 @@ private fun ThemeAnimationStyleCard(
                             Column {
                                 Text(
                                     text = selectedStyle.tag(lang),
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = tokens.palette.onSurface,
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = "10 UI Elements",
+                                    text = selectedStyle.subtitle(lang),
                                     fontSize = 9.5.sp,
                                     color = tokens.mutedTextColor,
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                     }
 
-                    // 2. Mini 3-slot gliding nav indicator preview
+                    // Mini 3-slot gliding nav indicator preview
                     Box(
                         modifier = Modifier
                             .width(84.dp)
@@ -1385,35 +1415,11 @@ private fun ThemeAnimationStyleCard(
                                 .background(tokens.accentColor)
                         )
                     }
-
-                    // 3. Mini shimmering CTA pill preview
-                    Box(
-                        modifier = Modifier
-                            .height(34.dp)
-                            .clip(tokens.buttonShape)
-                            .background(tokens.accentColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        GpuSheenOverlay(
-                            active = !noAnim && !tokens.performance.noAmbientGlow,
-                            tint = Color.White,
-                            peakAlpha = previewSpec.sheenPeakAlpha,
-                            durationMs = previewSpec.sheenDurationMs,
-                            modifier = Modifier.matchParentSize()
-                        )
-                        Text(
-                            text = "CTA",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = tokens.onAccentColor,
-                            modifier = Modifier.padding(horizontal = 10.dp)
-                        )
-                    }
                 }
             }
         }
 
-        // 10 Selectable Animation Style Cards (5 rows x 2 columns)
+        // 5 Selectable Animation Style Cards (2 + 2 + 1 full-width)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1507,9 +1513,6 @@ private fun ThemeAnimationStyleCard(
                                 )
                             }
                         }
-                    }
-                    if (pair.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }

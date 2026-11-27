@@ -720,13 +720,6 @@ fun IronPulseTopBar(
                         isXMaterial -> tokens.accentTextColor
                         else -> tokens.onAccentColor
                     }
-                    GpuSheenOverlay(
-                        active = !tokens.performance.noAnimations && !tokens.performance.noAmbientGlow && LocalTabActive.current,
-                        tint = if (isStealth || isXMaterial) ctaContentTint else Color.White,
-                        peakAlpha = motionSpec.sheenPeakAlpha * 0.85f,
-                        durationMs = motionSpec.sheenDurationMs,
-                        modifier = Modifier.matchParentSize()
-                    )
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,

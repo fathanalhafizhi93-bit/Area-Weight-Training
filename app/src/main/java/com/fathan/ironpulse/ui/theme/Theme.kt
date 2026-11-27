@@ -264,7 +264,7 @@ data class IronPulseThemeTokens(
     val performance: PerformancePreferences,
     val lang: AppLanguage,
     val clockFormat: ClockFormat,
-    val animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLUID_SILK
+    val animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.SILK_GLIDE
 )
 
 private val DefaultPalette = MaterialYouColorEngine.generateMaterialYouPalette(
@@ -306,6 +306,7 @@ val LocalIronPulseTokens = staticCompositionLocalOf {
 
 val LocalTabActive = compositionLocalOf { true }
 val LocalTabSettled = compositionLocalOf { true }
+val LocalSuppressTabCardFade = compositionLocalOf { false }
 val LocalScrollActiveState = staticCompositionLocalOf<State<Boolean>> { mutableStateOf(false) }
 
 /**

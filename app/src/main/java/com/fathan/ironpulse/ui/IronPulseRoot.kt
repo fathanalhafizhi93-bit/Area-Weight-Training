@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -55,19 +57,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +90,6 @@ import com.fathan.ironpulse.ui.components.FloatingMascotDock
 import com.fathan.ironpulse.ui.components.FlyingMedalOverlay
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseIcon
-import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
 import com.fathan.ironpulse.ui.components.LocalThemeMotionSpec
 import com.fathan.ironpulse.ui.components.LocalTutorialSpotlightRegistry
@@ -90,6 +97,7 @@ import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
 import com.fathan.ironpulse.ui.components.NamePromptModal
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
+import com.fathan.ironpulse.ui.components.TabChoreography
 import com.fathan.ironpulse.ui.components.ThemedIcon
 import com.fathan.ironpulse.ui.components.TutorialSpotlightRegistry
 import com.fathan.ironpulse.ui.screens.AuthScreen
@@ -103,6 +111,7 @@ import com.fathan.ironpulse.ui.screens.TodayScreen
 import com.fathan.ironpulse.ui.screens.WorkoutScreen
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
+import com.fathan.ironpulse.ui.theme.LocalSuppressTabCardFade
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.viewmodel.AppTab
@@ -110,9 +119,14 @@ import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
 import com.fathan.ironpulse.ui.viewmodel.MascotUiState
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun IronPulseRoot(
@@ -780,111 +794,248 @@ private fun MascotDockCoordinator(
     )
 }
 
+private class TabSlotController(initialOffset: Float) {
+    val offsetFraction: Animatable<Float, AnimationVector1D> = Animatable(initialOffset)
+}
+
 /**
- * Active + Outgoing-Only tab stage that keeps zero hidden inactive screens live at alpha=0f
- * while preserving scroll & form state via hoisted [LazyListState]s and [SaveableStateHolder].
+ * Fluid continuous tab stage:
+ * - Keeps visited & primary tabs warm in composition so switching tabs never stalls on cold
+ *   LazyColumn inflation and never drops frames of the slide animation.
+ * - Never fades tabs to alpha=0f or triggers conflicting card opacity wipes; the fluid
+ *   side-by-side GPU slide + subtle theme scale/tilt drives the entire transition.
+ * - Unplaced when settled offscreen, frozen state when inactive, and excluded from semantics
+ *   so hidden tabs burn zero GPU/animation CPU and zero TalkBack/test interference.
  */
 @Composable
-private fun PersistedTabStage(
+internal fun PersistedTabStage(
     activeTab: AppTab,
     state: IronPulseUiState,
     noAnim: Boolean,
     saveableStateHolder: SaveableStateHolder,
+    prewarmInBackground: Boolean = true,
+    onTabOffsetChanged: ((AppTab, Float) -> Unit)? = null,
     renderTab: @Composable (AppTab, IronPulseUiState) -> Unit
 ) {
     val motionSpec = LocalThemeMotionSpec.current
-    val tabTransition = updateTransition(
-        targetState = activeTab,
-        label = "persistedTabStage"
-    )
-    val transitionRunning = !noAnim && tabTransition.isRunning
-    val transitionDir = remember(tabTransition.currentState, tabTransition.targetState) {
-        if (tabTransition.targetState.ordinal >= tabTransition.currentState.ordinal) 1 else -1
-    }
-    val visibleTabs = remember(activeTab, tabTransition.currentState, transitionRunning) {
-        if (!transitionRunning || tabTransition.currentState == activeTab) {
-            listOf(activeTab)
-        } else {
-            listOf(tabTransition.currentState, activeTab)
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (transitionRunning) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(0.85f)
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                event.changes.forEach { it.consume() }
-                            }
-                        }
-                    }
+    val scope = rememberCoroutineScope()
+    val slotControllers = remember {
+        AppTab.entries.associateWith { tab ->
+            TabSlotController(
+                initialOffset = when {
+                    tab == activeTab -> 0f
+                    tab.ordinal > activeTab.ordinal -> 1f
+                    else -> -1f
+                }
             )
         }
+    }
+    val warmedTabs = remember { mutableStateListOf<AppTab>().apply { add(activeTab) } }
+    if (activeTab !in warmedTabs) {
+        warmedTabs.add(activeTab)
+    }
 
-        visibleTabs.forEach { tab ->
-            key(tab) {
-                val isCurrent = tab == activeTab
-                val tabWeightState = tabTransition.animateFloat(
-                    transitionSpec = {
-                        if (noAnim) snap() else motionSpec.tabSlideSpring
-                    },
-                    label = "tabWeight_${tab.name}"
-                ) { stateTab ->
-                    if (stateTab == tab) 1f else 0f
+    if (prewarmInBackground) {
+        LaunchedEffect(Unit) {
+            delay(if (noAnim) 80L else 320L)
+            val warmOrder = listOf(
+                AppTab.SCHEDULE,
+                AppTab.HISTORY,
+                AppTab.EXERCISES,
+                AppTab.WORKOUT,
+                AppTab.SETTINGS
+            )
+            for (candidate in warmOrder) {
+                if (candidate !in warmedTabs) {
+                    warmedTabs.add(candidate)
+                    withFrameNanos { }
+                    delay(50L)
                 }
-                var cachedTabState by remember { mutableStateOf(state) }
-                if (isCurrent) {
-                    cachedTabState = state
-                }
-                val z = if (isCurrent) 1f else 0.7f
-                val mod = Modifier
-                    .fillMaxSize()
-                    .zIndex(z)
-                    .graphicsLayer {
-                        if (noAnim || !transitionRunning) {
-                            alpha = if (isCurrent) 1f else 0f
-                            translationX = 0f
-                            scaleX = 1f
-                            scaleY = 1f
-                            rotationY = 0f
-                        } else {
-                            val weight = tabWeightState.value
-                            val persp = motionSpec.tabPerspectiveDeg
-                            if (persp > 0.01f) {
-                                cameraDistance = 14f * density
+            }
+        }
+    }
+
+    var lastActiveTab by remember { mutableStateOf(activeTab) }
+    var transitionSettled by remember { mutableStateOf(true) }
+    var transitionJob by remember { mutableStateOf<Job?>(null) }
+
+    SideEffect {
+        if (lastActiveTab != activeTab) {
+            val fromTab = lastActiveTab
+            lastActiveTab = activeTab
+            val dir = if (activeTab.ordinal >= fromTab.ordinal) 1f else -1f
+            transitionJob?.cancel()
+            if (noAnim) {
+                transitionSettled = true
+                transitionJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    slotControllers.forEach { (tab, ctrl) ->
+                        ctrl.offsetFraction.snapTo(
+                            when {
+                                tab == activeTab -> 0f
+                                tab.ordinal > activeTab.ordinal -> 1f
+                                else -> -1f
                             }
-                            if (isCurrent) {
-                                val clampedP = weight.coerceIn(0f, 1f)
-                                alpha = clampedP
-                                translationX = (1f - weight) * transitionDir * (size.width * motionSpec.tabSlideFraction)
-                                val s = lerp(motionSpec.tabEnterScale, 1f, clampedP)
-                                scaleX = s
-                                scaleY = s
-                                rotationY = if (persp > 0.01f) (1f - clampedP) * transitionDir * persp else 0f
-                            } else {
-                                val p = (1f - weight).coerceIn(0f, 1f)
-                                alpha = (1f - p * 1.15f).coerceIn(0f, 1f)
-                                translationX = -p * transitionDir * (size.width * (motionSpec.tabSlideFraction * 0.72f))
-                                val s = lerp(1f, motionSpec.tabExitScale, p)
-                                scaleX = s
-                                scaleY = s
-                                rotationY = if (persp > 0.01f) -p * transitionDir * (persp * 0.75f) else 0f
+                        )
+                    }
+                }
+            } else {
+                transitionSettled = false
+                transitionJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    val incoming = slotControllers.getValue(activeTab)
+                    // Snap incoming to the entry edge only if it was settled offscreen;
+                    // if interrupted mid-flight, continue smoothly from its live position.
+                    if (!incoming.offsetFraction.isRunning && abs(incoming.offsetFraction.value) >= 0.99f) {
+                        incoming.offsetFraction.snapTo(dir)
+                    }
+                    coroutineScope {
+                        slotControllers.forEach { (tab, ctrl) ->
+                            when {
+                                tab == activeTab -> launch(start = CoroutineStart.UNDISPATCHED) {
+                                    ctrl.offsetFraction.animateTo(0f, motionSpec.tabSlideSpring)
+                                }
+                                tab == fromTab || ctrl.offsetFraction.isRunning || abs(ctrl.offsetFraction.value) < 0.995f -> {
+                                    launch(start = CoroutineStart.UNDISPATCHED) {
+                                        ctrl.offsetFraction.animateTo(-dir, motionSpec.tabSlideSpring)
+                                    }
+                                }
                             }
                         }
                     }
+                    transitionSettled = true
+                }
+            }
+        }
+    }
 
-                Box(modifier = mod) {
-                    CompositionLocalProvider(
-                        LocalTabActive provides isCurrent,
-                        LocalTabSettled provides (!transitionRunning)
-                    ) {
-                        saveableStateHolder.SaveableStateProvider(key = tab) {
-                            renderTab(tab, cachedTabState)
+    CompositionLocalProvider(LocalSuppressTabCardFade provides true) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clipToBounds()
+        ) {
+            warmedTabs.forEach { tab ->
+                key(tab) {
+                    val isCurrent = tab == activeTab
+                    val slot = slotControllers.getValue(tab)
+                    var cachedTabState by remember { mutableStateOf(state) }
+                    if (isCurrent) {
+                        cachedTabState = state
+                    }
+                    val z = if (isCurrent) 1f else 0.7f
+                    val slotModifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(z)
+                        .then(
+                            if (isCurrent) {
+                                Modifier
+                            } else {
+                                Modifier
+                                    .clearAndSetSemantics {}
+                                    .pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                                event.changes.forEach { it.consume() }
+                                            }
+                                        }
+                                    }
+                            }
+                        )
+                        .layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            val gapPx = 12.dp.toPx()
+                            layout(placeable.width, placeable.height) {
+                                val off = slot.offsetFraction.value
+                                val running = slot.offsetFraction.isRunning
+                                onTabOffsetChanged?.invoke(tab, off)
+                                val settledHidden = !isCurrent && !running && abs(off) >= 0.995f
+                                if (!settledHidden) {
+                                    val w = placeable.width.toFloat().coerceAtLeast(1f)
+                                    val h = placeable.height.toFloat().coerceAtLeast(1f)
+                                    val absOff = abs(off).coerceIn(0f, 1f)
+                                    val scaleTarget = if (isCurrent) {
+                                        motionSpec.tabEnterScale
+                                    } else {
+                                        motionSpec.tabExitScale
+                                    }
+                                    val s = lerp(1f, scaleTarget, absOff)
+                                    val settledAtRest = isCurrent &&
+                                        !running &&
+                                        abs(off) < 0.001f &&
+                                        abs(s - 1f) < 0.001f
+                                    if (settledAtRest) {
+                                        placeable.place(0, 0)
+                                    } else {
+                                        placeable.placeWithLayer(0, 0) {
+                                            alpha = 1f
+                                            when (motionSpec.tabChoreography) {
+                                                TabChoreography.HORIZONTAL_GLIDE -> {
+                                                    translationX = off * (w + gapPx)
+                                                    translationY = 0f
+                                                    scaleX = s
+                                                    scaleY = s
+                                                    rotationY = 0f
+                                                    transformOrigin = if (off >= 0f) {
+                                                        TransformOrigin(0f, 0.5f)
+                                                    } else {
+                                                        TransformOrigin(1f, 0.5f)
+                                                    }
+                                                }
+                                                TabChoreography.DEPTH_ZOOM -> {
+                                                    translationX = off * (w * motionSpec.tabSlideFraction + gapPx)
+                                                    translationY = 0f
+                                                    scaleX = s
+                                                    scaleY = s
+                                                    rotationY = 0f
+                                                    transformOrigin = TransformOrigin.Center
+                                                }
+                                                TabChoreography.PERSPECTIVE_FLIP_3D -> {
+                                                    translationX = off * (w + gapPx * 1.4f)
+                                                    translationY = 0f
+                                                    scaleX = s
+                                                    scaleY = s
+                                                    cameraDistance = 10f * density
+                                                    rotationY = (off * motionSpec.tabPerspectiveDeg).coerceIn(-34f, 34f)
+                                                    transformOrigin = if (off >= 0f) {
+                                                        TransformOrigin(0f, 0.5f)
+                                                    } else {
+                                                        TransformOrigin(1f, 0.5f)
+                                                    }
+                                                }
+                                                TabChoreography.VERTICAL_ELASTIC -> {
+                                                    translationX = 0f
+                                                    translationY = off * (h + gapPx)
+                                                    scaleX = lerp(1f, 0.94f, absOff)
+                                                    scaleY = lerp(1f, 1.04f, absOff)
+                                                    rotationY = 0f
+                                                    transformOrigin = if (off >= 0f) {
+                                                        TransformOrigin(0.5f, 0f)
+                                                    } else {
+                                                        TransformOrigin(0.5f, 1f)
+                                                    }
+                                                }
+                                                TabChoreography.INSTANT_SNAP -> {
+                                                    translationX = off * (w + gapPx)
+                                                    translationY = 0f
+                                                    scaleX = 1f
+                                                    scaleY = 1f
+                                                    rotationY = 0f
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    Box(modifier = slotModifier) {
+                        CompositionLocalProvider(
+                            LocalTabActive provides isCurrent,
+                            LocalTabSettled provides (isCurrent && transitionSettled)
+                        ) {
+                            saveableStateHolder.SaveableStateProvider(key = tab) {
+                                renderTab(tab, cachedTabState)
+                            }
                         }
                     }
                 }
@@ -892,3 +1043,4 @@ private fun PersistedTabStage(
         }
     }
 }
+

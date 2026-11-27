@@ -230,15 +230,6 @@ fun TodayScreen(
                     noAnim = noAnim
                 )
 
-                val todayMotionSpec = LocalThemeMotionSpec.current
-                GpuSheenOverlay(
-                    active = tabActive && !noAnim && !tokens.performance.noAmbientGlow,
-                    tint = tokens.phaseTokens.accentBright,
-                    peakAlpha = todayMotionSpec.surfaceRimAlpha * 0.36f,
-                    durationMs = (todayMotionSpec.sheenDurationMs * 1.55f).toInt(),
-                    modifier = Modifier.matchParentSize()
-                )
-
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)

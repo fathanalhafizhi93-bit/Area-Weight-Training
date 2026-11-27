@@ -22,7 +22,7 @@ data class AppPreferences(
     val clockFormat: ClockFormat = ClockFormat.H24,
     val todayThemeMode: DayTimeMode = DayTimeMode.AUTO,
     val uiTheme: UiTheme = UiTheme.MATERIAL_YOU,
-    val themeAnimationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLUID_SILK,
+    val themeAnimationStyle: ThemeAnimationStyle = ThemeAnimationStyle.SILK_GLIDE,
     val accentColorHex: String = MaterialYouColorEngine.DEFAULT_ACCENT_COLOR,
     val materialTintColorHex: String? = null,
     val hapticsEnabled: Boolean = true,
@@ -49,7 +49,7 @@ class PreferencesStore(context: Context) {
             todayThemeMode = DayTimeMode.fromWire(prefs.getString(KEY_TODAY_THEME_MODE, "auto")),
             uiTheme = UiTheme.fromWire(prefs.getString(KEY_UI_THEME, "material-you")),
             themeAnimationStyle = ThemeAnimationStyle.fromWire(
-                prefs.getString(KEY_THEME_ANIMATION_STYLE, ThemeAnimationStyle.FLUID_SILK.wireValue)
+                prefs.getString(KEY_THEME_ANIMATION_STYLE, ThemeAnimationStyle.SILK_GLIDE.wireValue)
             ),
             accentColorHex = MaterialYouColorEngine.normalizeHexColor(
                 prefs.getString(KEY_ACCENT_COLOR, MaterialYouColorEngine.DEFAULT_ACCENT_COLOR)

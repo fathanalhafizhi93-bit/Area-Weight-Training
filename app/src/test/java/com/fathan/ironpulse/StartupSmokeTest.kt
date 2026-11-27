@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
@@ -116,6 +119,7 @@ import com.fathan.ironpulse.ui.components.MedalUnlockCelebrationOverlay
 import com.fathan.ironpulse.ui.components.MotionStyleCatalog
 import com.fathan.ironpulse.ui.components.OrbBoundsHolder
 import com.fathan.ironpulse.ui.components.PulseMascotTutorialOverlay
+import com.fathan.ironpulse.ui.components.TabChoreography
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.PhaseLogoEmblem
 import com.fathan.ironpulse.ui.components.SaveCustomScheduleDialog
@@ -128,6 +132,7 @@ import com.fathan.ironpulse.ui.components.VisualColorPickerMode
 import com.fathan.ironpulse.ui.components.isClosedEyeExpression
 import com.fathan.ironpulse.ui.components.resolveMascotOrbPalette
 import com.fathan.ironpulse.ui.components.staggeredCardEntrance
+import com.fathan.ironpulse.ui.PersistedTabStage
 import com.fathan.ironpulse.ui.screens.AccentAndTintSettingsCard
 import com.fathan.ironpulse.ui.screens.AuthScreen
 import com.fathan.ironpulse.ui.screens.ClockCornerOrbPalette
@@ -3521,13 +3526,31 @@ class StartupSmokeTest {
     }
 
     @Test
-    fun allTenThemeAnimationStyles_resolveDistinctMotionSpecsAndPersistAcrossRestarts() {
-        assertEquals(10, ThemeAnimationStyle.entries.size)
-        assertEquals(10, ThemeAnimationStyle.entries.map { it.wireValue }.toSet().size)
+    fun allFiveThemeAnimationStyles_resolveDistinctChoreographiesAndMigrateLegacyWireValues() {
+        assertEquals(5, ThemeAnimationStyle.entries.size)
+        assertEquals(5, ThemeAnimationStyle.entries.map { it.wireValue }.toSet().size)
 
         val resolvedSpecs = ThemeAnimationStyle.entries.map { MotionStyleCatalog.resolve(it) }
-        assertEquals(10, resolvedSpecs.map { it.style }.toSet().size)
-        assertEquals(IronPulseMotion.ReturnMorphSpring, MotionStyleCatalog.resolve(ThemeAnimationStyle.FLUID_SILK).mascotReturnSpring)
+        assertEquals(5, resolvedSpecs.map { it.style }.toSet().size)
+        assertEquals(5, resolvedSpecs.map { it.tabChoreography }.toSet().size)
+        assertEquals(TabChoreography.HORIZONTAL_GLIDE, MotionStyleCatalog.resolve(ThemeAnimationStyle.SILK_GLIDE).tabChoreography)
+        assertEquals(TabChoreography.DEPTH_ZOOM, MotionStyleCatalog.resolve(ThemeAnimationStyle.DEPTH_ZOOM).tabChoreography)
+        assertEquals(TabChoreography.PERSPECTIVE_FLIP_3D, MotionStyleCatalog.resolve(ThemeAnimationStyle.FLIP_3D).tabChoreography)
+        assertEquals(TabChoreography.VERTICAL_ELASTIC, MotionStyleCatalog.resolve(ThemeAnimationStyle.ELASTIC_POP).tabChoreography)
+        assertEquals(TabChoreography.INSTANT_SNAP, MotionStyleCatalog.resolve(ThemeAnimationStyle.INSTANT_SNAP).tabChoreography)
+        assertEquals(IronPulseMotion.ReturnMorphSpring, MotionStyleCatalog.resolve(ThemeAnimationStyle.SILK_GLIDE).mascotReturnSpring)
+
+        // Legacy 10-style wire values map cleanly to the 5 distinct styles
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("fluid-silk"))
+        assertEquals(ThemeAnimationStyle.SILK_GLIDE, ThemeAnimationStyle.fromWire("zen-breath"))
+        assertEquals(ThemeAnimationStyle.DEPTH_ZOOM, ThemeAnimationStyle.fromWire("prismatic-bloom"))
+        assertEquals(ThemeAnimationStyle.DEPTH_ZOOM, ThemeAnimationStyle.fromWire("tactical-radar"))
+        assertEquals(ThemeAnimationStyle.FLIP_3D, ThemeAnimationStyle.fromWire("velocity-flip"))
+        assertEquals(ThemeAnimationStyle.FLIP_3D, ThemeAnimationStyle.fromWire("aero-crystal"))
+        assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("elastic-bounce"))
+        assertEquals(ThemeAnimationStyle.ELASTIC_POP, ThemeAnimationStyle.fromWire("ubuntu-dock"))
+        assertEquals(ThemeAnimationStyle.INSTANT_SNAP, ThemeAnimationStyle.fromWire("hyper-snap"))
+        assertEquals(ThemeAnimationStyle.INSTANT_SNAP, ThemeAnimationStyle.fromWire("carbon-mech"))
 
         val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
         val store = PreferencesStore(ctx)
@@ -3537,12 +3560,12 @@ class StartupSmokeTest {
             val freshStore = PreferencesStore(ctx)
             assertEquals(style, freshStore.state.value.themeAnimationStyle)
         }
-        store.setThemeAnimationStyle(ThemeAnimationStyle.FLUID_SILK)
+        store.setThemeAnimationStyle(ThemeAnimationStyle.SILK_GLIDE)
     }
 
     @Test
     @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun settingsThemeSubpage_displaysAllTenAnimationStyleCardsAndUpdatesSelection() {
+    fun settingsThemeSubpage_displaysAllFiveAnimationStyleCardsAndUpdatesSelection() {
         val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
         if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
             com.google.firebase.FirebaseApp.initializeApp(ctx)
@@ -3553,7 +3576,7 @@ class StartupSmokeTest {
                 vmStore,
                 ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
             )[GymViewModel::class.java]
-            viewModel.setThemeAnimationStyle(ThemeAnimationStyle.FLUID_SILK)
+            viewModel.setThemeAnimationStyle(ThemeAnimationStyle.SILK_GLIDE)
 
             composeRule.setContent {
                 val vmState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -3595,21 +3618,205 @@ class StartupSmokeTest {
                     .assertIsDisplayed()
             }
 
-            composeRule.onNodeWithTag("anim_style_card_velocity-flip")
+            composeRule.onNodeWithTag("anim_style_card_flip-3d")
                 .performScrollTo()
                 .performClick()
             composeRule.waitForIdle()
-            assertEquals(ThemeAnimationStyle.VELOCITY_FLIP, viewModel.uiState.value.appPrefs.themeAnimationStyle)
+            assertEquals(ThemeAnimationStyle.FLIP_3D, viewModel.uiState.value.appPrefs.themeAnimationStyle)
 
-            composeRule.onNodeWithTag("anim_style_card_aero-crystal")
+            composeRule.onNodeWithTag("anim_style_card_elastic-pop")
                 .performScrollTo()
                 .performClick()
             composeRule.waitForIdle()
-            assertEquals(ThemeAnimationStyle.AERO_CRYSTAL_GLIDE, viewModel.uiState.value.appPrefs.themeAnimationStyle)
+            assertEquals(ThemeAnimationStyle.ELASTIC_POP, viewModel.uiState.value.appPrefs.themeAnimationStyle)
 
-            viewModel.setThemeAnimationStyle(ThemeAnimationStyle.FLUID_SILK)
+            viewModel.setThemeAnimationStyle(ThemeAnimationStyle.SILK_GLIDE)
         } finally {
             vmStore.clear()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun persistedTabStage_fluidHorizontalSlide_neverFadesOutAndHandlesRapidReversal() {
+        var activeTabSetter: ((AppTab) -> Unit)? = null
+        var scheduleLeftPx = Float.NaN
+        var todayOffset = Float.NaN
+        var scheduleOffset = Float.NaN
+        var todayTabActive = false
+        var scheduleTabActive = false
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                var activeTab by remember { mutableStateOf(AppTab.TODAY) }
+                activeTabSetter = { activeTab = it }
+                val saveableStateHolder = rememberSaveableStateHolder()
+                val uiState = IronPulseUiState(
+                    authReady = true,
+                    userUid = "u_stage_fluid",
+                    activeTab = activeTab,
+                    appPrefs = AppPreferences(
+                        uiTheme = UiTheme.MATERIAL_YOU,
+                        themeAnimationStyle = ThemeAnimationStyle.SILK_GLIDE,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                )
+
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    PersistedTabStage(
+                        activeTab = activeTab,
+                        state = uiState,
+                        noAnim = false,
+                        saveableStateHolder = saveableStateHolder,
+                        prewarmInBackground = false,
+                        onTabOffsetChanged = { tab, off ->
+                            when (tab) {
+                                AppTab.TODAY -> todayOffset = off
+                                AppTab.SCHEDULE -> scheduleOffset = off
+                                else -> Unit
+                            }
+                        }
+                    ) { tab, _ ->
+                        val active = LocalTabActive.current
+                        when (tab) {
+                            AppTab.TODAY -> {
+                                todayTabActive = active
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .staggeredCardEntrance(0, active = active, disabledByPerf = false)
+                                        .testTag("stage_tab_today")
+                                ) {
+                                    Text("Tab Today")
+                                }
+                            }
+                            AppTab.SCHEDULE -> {
+                                scheduleTabActive = active
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .onGloballyPositioned { coords ->
+                                            if (coords.isAttached) {
+                                                scheduleLeftPx = coords.boundsInRoot().left
+                                            }
+                                        }
+                                        .staggeredCardEntrance(0, active = active, disabledByPerf = false)
+                                        .testTag("stage_tab_schedule")
+                                ) {
+                                    Text("Tab Schedule")
+                                }
+                            }
+                            else -> Box(Modifier.fillMaxSize())
+                        }
+                    }
+                }
+            }
+
+            composeRule.mainClock.advanceTimeBy(32)
+            composeRule.onNodeWithTag("stage_tab_today").assertIsDisplayed()
+            assertTrue(todayTabActive)
+            assertEquals(0f, todayOffset, 0.001f)
+
+            // Switch TODAY -> SCHEDULE
+            composeRule.runOnUiThread {
+                activeTabSetter?.invoke(AppTab.SCHEDULE)
+                androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            }
+            composeRule.mainClock.advanceTimeBy(64)
+
+            assertFalse(todayTabActive)
+            assertTrue(scheduleTabActive)
+            // Schedule must be gliding in from the right (0 < offset < 1), Today gliding left (-1 < offset < 0)
+            assertTrue("Expected SCHEDULE mid-slide offset in (0.05, 0.99), got $scheduleOffset", scheduleOffset in 0.05f..0.99f)
+            assertTrue("Expected TODAY sliding out offset in (-0.99, -0.05), got $todayOffset", todayOffset in -0.99f..-0.05f)
+            assertTrue("Expected SCHEDULE mid-slide positive X > 20f, got $scheduleLeftPx", scheduleLeftPx > 20f)
+            composeRule.onNodeWithTag("stage_tab_schedule").assertIsDisplayed()
+
+            // Rapidly reverse back SCHEDULE -> TODAY mid-flight
+            composeRule.runOnUiThread {
+                activeTabSetter?.invoke(AppTab.TODAY)
+                androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            }
+            composeRule.mainClock.advanceTimeBy(1200)
+            composeRule.waitForIdle()
+
+            assertTrue(todayTabActive)
+            assertFalse(scheduleTabActive)
+            assertEquals(0f, todayOffset, 0.01f)
+            assertEquals(1f, scheduleOffset, 0.02f)
+            composeRule.onNodeWithTag("stage_tab_today").assertIsDisplayed()
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun persistedTabStage_elasticPop_glidesVerticallyAlongYAxis() {
+        var activeTabSetter: ((AppTab) -> Unit)? = null
+        var scheduleTopPx = Float.NaN
+        var scheduleLeftPx = Float.NaN
+
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                var activeTab by remember { mutableStateOf(AppTab.TODAY) }
+                activeTabSetter = { activeTab = it }
+                val saveableStateHolder = rememberSaveableStateHolder()
+                val uiState = IronPulseUiState(
+                    authReady = true,
+                    userUid = "u_stage_vertical",
+                    activeTab = activeTab,
+                    appPrefs = AppPreferences(
+                        uiTheme = UiTheme.MATERIAL_YOU,
+                        themeAnimationStyle = ThemeAnimationStyle.ELASTIC_POP,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = false, staticMascot = false)
+                    )
+                )
+
+                IronPulseTheme(prefs = uiState.appPrefs) {
+                    PersistedTabStage(
+                        activeTab = activeTab,
+                        state = uiState,
+                        noAnim = false,
+                        saveableStateHolder = saveableStateHolder,
+                        prewarmInBackground = false
+                    ) { tab, _ ->
+                        when (tab) {
+                            AppTab.TODAY -> Box(Modifier.fillMaxSize().testTag("vert_tab_today")) { Text("Today") }
+                            AppTab.SCHEDULE -> Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .onGloballyPositioned { coords ->
+                                        if (coords.isAttached) {
+                                            val rect = coords.boundsInRoot()
+                                            scheduleTopPx = rect.top
+                                            scheduleLeftPx = rect.left
+                                        }
+                                    }
+                                    .testTag("vert_tab_schedule")
+                            ) { Text("Schedule") }
+                            else -> Box(Modifier.fillMaxSize())
+                        }
+                    }
+                }
+            }
+
+            composeRule.mainClock.advanceTimeBy(32)
+            composeRule.runOnUiThread {
+                activeTabSetter?.invoke(AppTab.SCHEDULE)
+                androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            }
+            composeRule.mainClock.advanceTimeBy(64)
+
+            assertTrue("Expected ELASTIC_POP vertical slide top > 40f, got $scheduleTopPx", scheduleTopPx > 40f)
+            assertTrue("Expected ELASTIC_POP vertical slide horizontal drift minimal, got $scheduleLeftPx", scheduleLeftPx < 80f)
+            composeRule.onNodeWithTag("vert_tab_schedule").assertIsDisplayed()
+        } finally {
+            composeRule.mainClock.autoAdvance = true
         }
     }
 }
