@@ -132,7 +132,8 @@ data class MonthlyMedalSummary(
 data class MedalUnlockEvent(
     val monthKey: String,
     val tier: MedalTier,
-    val verifiedDays: Int
+    val verifiedDays: Int,
+    val isPreview: Boolean = false
 )
 
 object WorkoutIntegrityEvaluator {

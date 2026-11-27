@@ -1,11 +1,29 @@
 package com.fathan.ironpulse.data
 
+import com.fathan.ironpulse.model.AppLanguage
 import com.fathan.ironpulse.model.DayKey
 import com.fathan.ironpulse.model.DaySchedule
 import com.fathan.ironpulse.model.ExerciseItem
 import com.fathan.ironpulse.model.ExerciseTrackingMode
+import com.fathan.ironpulse.model.MuscleAnatomyResolver
+import com.fathan.ironpulse.model.MuscleAnatomySpec
 import com.fathan.ironpulse.model.MuscleGroup
 import com.fathan.ironpulse.model.TimerDirection
+import java.util.Locale
+
+data class ExerciseSearchEntry(
+    val template: PresetExerciseTemplate,
+    val anatomy: MuscleAnatomySpec,
+    val normalizedName: String,
+    val searchTextId: String,
+    val searchTextEn: String
+) {
+    fun matchesQuery(normalizedQuery: String, lang: AppLanguage): Boolean {
+        if (normalizedQuery.isEmpty()) return true
+        val haystack = if (lang == AppLanguage.EN) searchTextEn else searchTextId
+        return haystack.contains(normalizedQuery)
+    }
+}
 
 data class PresetExerciseTemplate(
     val name: String,
@@ -1832,6 +1850,28 @@ object GymPresets {
 
     val EXERCISE_LIBRARY: List<PresetExerciseTemplate> =
         BASE_EXERCISE_LIBRARY + ExerciseLibraryExtended.EXTRA_EXERCISES
+
+    val EXERCISE_SEARCH_INDEX: List<ExerciseSearchEntry> by lazy {
+        EXERCISE_LIBRARY.map { item ->
+            val anatomy = MuscleAnatomyResolver.resolve(item.name, item.muscleGroup, item.equipment)
+            val basePrefix = buildString {
+                append(item.name)
+                append(' ')
+                append(item.equipment)
+                append(' ')
+                append(item.notes)
+            }.lowercase(Locale.ROOT)
+            val idText = "$basePrefix ${item.muscleGroup.labelId.lowercase(Locale.ROOT)} ${anatomy.searchableKeywords(AppLanguage.ID).lowercase(Locale.ROOT)}"
+            val enText = "$basePrefix ${item.muscleGroup.labelEn.lowercase(Locale.ROOT)} ${anatomy.searchableKeywords(AppLanguage.EN).lowercase(Locale.ROOT)}"
+            ExerciseSearchEntry(
+                template = item,
+                anatomy = anatomy,
+                normalizedName = item.name.lowercase(Locale.ROOT),
+                searchTextId = idText,
+                searchTextEn = enText
+            )
+        }
+    }
 
     private fun makeEx(name: String, prefix: String, idx: Int): ExerciseItem {
         val tmpl = EXERCISE_LIBRARY.firstOrNull { it.name == name } ?: EXERCISE_LIBRARY.first()

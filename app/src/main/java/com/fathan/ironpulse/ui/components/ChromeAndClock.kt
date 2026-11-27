@@ -104,7 +104,9 @@ import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
 import com.fathan.ironpulse.ui.theme.ironGlassBar
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
@@ -135,7 +137,9 @@ fun AmbientPhaseBackdrop(modifier: Modifier = Modifier) {
     val tokens = LocalIronPulseTokens.current
     val motionSpec = LocalThemeMotionSpec.current
     val suppressGlow = tokens.performance.noAmbientGlow
-    val runAnim = !tokens.performance.noAnimations && LocalTabActive.current
+    val scrollActive = LocalScrollActiveState.current.value
+    val tabSettled = LocalTabSettled.current
+    val runAnim = !tokens.performance.noAnimations && LocalTabActive.current && tabSettled && !scrollActive
 
     Box(modifier = modifier.fillMaxSize()) {
         // Static cached OS backdrop: shaders, base gradient, ambient glows, and nocturnal stars draw ONCE
@@ -671,7 +675,33 @@ fun IronPulseTopBar(
 
                 val ctaShape = tokens.buttonShape
                 val isYaru = theme == UiTheme.UBUNTU_YARU
-                val motionSpec = LocalThemeMotionSpec.current
+                val xMaterialBgBrush = remember {
+                    Brush.verticalGradient(
+                        0.0f to Color(0xFF1A1C26),
+                        0.55f to Color(0xFF111319),
+                        1.0f to Color(0xFF0C0D12)
+                    )
+                }
+                val xMaterialBorderBrush = remember(tokens.phaseTokens.accentBright, tokens.phaseTokens.accent) {
+                    Brush.verticalGradient(
+                        listOf(
+                            tokens.phaseTokens.accentBright.copy(alpha = 0.78f),
+                            tokens.phaseTokens.accent.copy(alpha = 0.44f)
+                        )
+                    )
+                }
+                val carbonCtaBrush = remember(tokens.accentColor) {
+                    Brush.verticalGradient(
+                        0.0f to tokens.accentColor,
+                        1.0f to tokens.accentColor.copy(alpha = 0.82f)
+                    )
+                }
+                val yaruCtaBrush = remember {
+                    Brush.verticalGradient(
+                        0.0f to Color(0xFFF06332),
+                        1.0f to Color(0xFFD14517)
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .height(38.dp)
@@ -693,24 +723,8 @@ fun IronPulseTopBar(
                                         ctaShape
                                     )
                                 isXMaterial -> Modifier
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color(0xFF1A1C26),
-                                            0.55f to Color(0xFF111319),
-                                            1.0f to Color(0xFF0C0D12)
-                                        ),
-                                        ctaShape
-                                    )
-                                    .border(
-                                        0.95.dp,
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                tokens.phaseTokens.accentBright.copy(alpha = 0.78f),
-                                                tokens.phaseTokens.accent.copy(alpha = 0.44f)
-                                            )
-                                        ),
-                                        ctaShape
-                                    )
+                                    .background(xMaterialBgBrush, ctaShape)
+                                    .border(0.95.dp, xMaterialBorderBrush, ctaShape)
                                 isStealth -> Modifier
                                     .background(Color(0xFF000000), ctaShape)
                                     .border(1.15.dp, tokens.accentColor.copy(alpha = 0.90f), ctaShape)
@@ -718,22 +732,10 @@ fun IronPulseTopBar(
                                     .background(Color(0xFF08110C), ctaShape)
                                     .border(1.15.dp, tokens.accentColor.copy(alpha = 0.88f), ctaShape)
                                 isCarbon -> Modifier
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to tokens.accentColor,
-                                            1.0f to tokens.accentColor.copy(alpha = 0.82f)
-                                        ),
-                                        ctaShape
-                                    )
+                                    .background(carbonCtaBrush, ctaShape)
                                     .border(1.dp, Color.White.copy(alpha = 0.36f), ctaShape)
                                 isYaru -> Modifier
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color(0xFFF06332),
-                                            1.0f to Color(0xFFD14517)
-                                        ),
-                                        ctaShape
-                                    )
+                                    .background(yaruCtaBrush, ctaShape)
                                     .border(1.dp, Color.White.copy(alpha = 0.24f), ctaShape)
                                 else -> Modifier
                                     .background(tokens.accentColor, ctaShape)
@@ -836,27 +838,23 @@ private fun TopBarIconButton(
         modifier = modifier,
         visualModifier = Modifier.size(38.dp)
     ) {
+        val iconSheenBrush = remember(tokens.uiTheme) {
+            when (tokens.uiTheme) {
+                UiTheme.UBUNTU_YARU, UiTheme.CARBON_FORGE -> Brush.verticalGradient(
+                    0.0f to Color.White.copy(alpha = 0.09f),
+                    0.45f to Color.Transparent
+                )
+                UiTheme.XMATERIAL_YOU -> Brush.verticalGradient(
+                    0.0f to Color.White.copy(alpha = 0.03f),
+                    0.5f to Color.Transparent
+                )
+                else -> null
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    when (tokens.uiTheme) {
-                        UiTheme.FRUTIGER_AERO -> Modifier
-                        UiTheme.UBUNTU_YARU, UiTheme.CARBON_FORGE -> Modifier.background(
-                            Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = 0.09f),
-                                0.45f to Color.Transparent
-                            )
-                        )
-                        UiTheme.XMATERIAL_YOU -> Modifier.background(
-                            Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = 0.03f),
-                                0.5f to Color.Transparent
-                            )
-                        )
-                        else -> Modifier
-                    }
-                ),
+                .then(if (iconSheenBrush != null) Modifier.background(iconSheenBrush) else Modifier),
             contentAlignment = Alignment.Center
         ) {
             ThemedIcon(
@@ -1012,16 +1010,17 @@ fun IronPulseBottomNav(
                     when {
                         isYaru -> {
                             // Ubuntu Dock tile highlight + warm inner sheen + orange dock indicator pip
+                            val yaruTileBrush = remember {
+                                Brush.verticalGradient(
+                                    0.0f to Color.White.copy(alpha = 0.12f),
+                                    1.0f to Color(0xFFE95420).copy(alpha = 0.08f)
+                                )
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(RoundedCornerShape(11.dp))
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color.White.copy(alpha = 0.12f),
-                                            1.0f to Color(0xFFE95420).copy(alpha = 0.08f)
-                                        )
-                                    )
+                                    .background(yaruTileBrush)
                                     .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(11.dp)),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
@@ -1057,16 +1056,17 @@ fun IronPulseBottomNav(
                         }
                         isCarbon -> {
                             // Industrial Rocker Plate + sleek top LED bar safely clear of icon
+                            val carbonPodBrush = remember(tokens.accentColor) {
+                                Brush.verticalGradient(
+                                    0.0f to tokens.accentColor.copy(alpha = 0.20f),
+                                    1.0f to tokens.accentColor.copy(alpha = 0.08f)
+                                )
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CutCornerShape(6.dp))
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to tokens.accentColor.copy(alpha = 0.20f),
-                                            1.0f to tokens.accentColor.copy(alpha = 0.08f)
-                                        )
-                                    )
+                                    .background(carbonPodBrush)
                                     .border(1.dp, tokens.accentColor.copy(alpha = 0.52f), CutCornerShape(6.dp)),
                                 contentAlignment = Alignment.TopCenter
                             ) {
@@ -1122,26 +1122,30 @@ fun IronPulseBottomNav(
                         isXMaterial -> {
                             // Luxury Dark Obsidian capsule nav pod with brushed phase-metal gradient rim & jewel dash
                             val obsidianPodShape = RoundedCornerShape(999.dp)
+                            val obsidianBgBrush = remember {
+                                Brush.verticalGradient(
+                                    0.0f to Color(0xFF1F222C),
+                                    1.0f to Color(0xFF0E1015)
+                                )
+                            }
+                            val obsidianBorderBrush = remember(tokens.phaseTokens.accentBright, tokens.phaseTokens.accent) {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        tokens.phaseTokens.accentBright.copy(alpha = 0.65f),
+                                        tokens.phaseTokens.accent.copy(alpha = 0.35f)
+                                    )
+                                )
+                            }
                             Box(
                                 modifier = Modifier
                                     .padding(top = 8.dp)
                                     .width(62.dp)
                                     .height(32.dp)
                                     .clip(obsidianPodShape)
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color(0xFF1F222C),
-                                            1.0f to Color(0xFF0E1015)
-                                        )
-                                    )
+                                    .background(obsidianBgBrush)
                                     .border(
                                         0.95.dp,
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                tokens.phaseTokens.accentBright.copy(alpha = 0.65f),
-                                                tokens.phaseTokens.accent.copy(alpha = 0.35f)
-                                            )
-                                        ),
+                                        obsidianBorderBrush,
                                         obsidianPodShape
                                     ),
                                 contentAlignment = Alignment.TopCenter

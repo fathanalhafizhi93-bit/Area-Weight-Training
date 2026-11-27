@@ -93,6 +93,7 @@ import com.fathan.ironpulse.model.DayTimeMode
 import com.fathan.ironpulse.model.DayTimePhase
 import com.fathan.ironpulse.model.GymModelHelpers
 import com.fathan.ironpulse.model.MascotPersonality
+import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.PerformancePreferences
 import com.fathan.ironpulse.model.PerformancePresetId
 import com.fathan.ironpulse.model.RingtoneStorageMode
@@ -104,6 +105,7 @@ import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.MascotOrbFace
 import com.fathan.ironpulse.ui.components.MotionStyleCatalog
+import com.fathan.ironpulse.ui.components.ProceduralMedalEmblem
 import com.fathan.ironpulse.ui.components.TabChoreography
 import com.fathan.ironpulse.ui.components.ThemeBrandEmblem
 import com.fathan.ironpulse.ui.components.ThemedIcon
@@ -315,6 +317,11 @@ fun SettingsScreen(
                             ThemeAnimationStyleCard(
                                 selectedStyle = state.appPrefs.themeAnimationStyle,
                                 onSelectStyle = { viewModel.setThemeAnimationStyle(it) },
+                                animationsEnabled = !state.appPrefs.performance.noAnimations,
+                                onToggleAnimations = { enabled ->
+                                    viewModel.setPerformance(noAnimations = !enabled)
+                                },
+                                onPreviewMedal = { tier -> viewModel.previewMedalUnlock(tier) },
                                 modifier = Modifier
                                     .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
@@ -370,6 +377,18 @@ fun SettingsScreen(
                                 },
                                 modifier = Modifier
                                     .staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
+                                    .then(if (noAnim) itemAnimMod else Modifier.animateItem())
+                            )
+                        }
+                        item(key = "medal_animation_preview_card", contentType = "medal_animation_preview_card") {
+                            MedalAnimationPreviewCard(
+                                perf = state.appPrefs.performance,
+                                onToggleAnimations = { enabled ->
+                                    viewModel.setPerformance(noAnimations = !enabled)
+                                },
+                                onPreviewMedal = { tier -> viewModel.previewMedalUnlock(tier) },
+                                modifier = Modifier
+                                    .staggeredCardEntrance(2, active = tabActive, disabledByPerf = noAnim)
                                     .then(if (noAnim) itemAnimMod else Modifier.animateItem())
                             )
                         }
@@ -1211,6 +1230,9 @@ private fun ThemesGridCard(
 private fun ThemeAnimationStyleCard(
     selectedStyle: ThemeAnimationStyle,
     onSelectStyle: (ThemeAnimationStyle) -> Unit,
+    animationsEnabled: Boolean,
+    onToggleAnimations: (Boolean) -> Unit,
+    onPreviewMedal: (MedalTier) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -1289,6 +1311,30 @@ private fun ThemeAnimationStyleCard(
             }
         }
 
+        // Quick UI Animation Switch right inside Theme -> Animation Style
+        IronPulseTonalSurface(
+            shape = tokens.subtleCardShape,
+            baseColor = tokens.wellBg,
+            border = BorderStroke(
+                1.dp,
+                if (animationsEnabled) tokens.accentColor.copy(alpha = 0.34f) else tokens.warningColor.copy(alpha = 0.42f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                PerformanceSwitchRow(
+                    title = lang.t("Animasi UI Aktif", "UI Animations Enabled"),
+                    subtitle = lang.t(
+                        "Nyalakan atau jedakan gerak transisi, maskot & medali secara langsung.",
+                        "Toggle screen transitions, mascot motion & medal celebrations live."
+                    ),
+                    checked = animationsEnabled,
+                    onCheckedChange = onToggleAnimations,
+                    switchModifier = Modifier.testTag("settings_theme_anim_quick_toggle")
+                )
+            }
+        }
+
         if (noAnim) {
             IronPulseTonalSurface(
                 shape = tokens.subtleCardShape,
@@ -1306,8 +1352,8 @@ private fun ThemeAnimationStyleCard(
                     ThemedIcon(IronPulseIcon.INFO, contentDescription = null, tint = tokens.warningColor, size = 16.dp)
                     Text(
                         text = lang.t(
-                            "Mode Tanpa Animasi aktif — gaya tetap disimpan dan langsung aktif saat animasi dinyalakan.",
-                            "Disable Animations is active — your preset is saved and takes effect when re-enabled."
+                            "Mode Tanpa Animasi aktif — nyalakan sakelar Animasi UI Aktif di atas untuk melihat gaya gerak penuh.",
+                            "Disable Animations is active — flip UI Animations Enabled above to preview full motion."
                         ),
                         fontSize = 11.sp,
                         lineHeight = 15.sp,
@@ -1594,6 +1640,25 @@ private fun ThemeAnimationStyleCard(
                     }
                 }
             }
+        }
+
+        IronPulseOutlinedButton(
+            onClick = { onPreviewMedal(MedalTier.GOLD) },
+            shape = tokens.buttonShape,
+            border = BorderStroke(1.dp, tokens.accentColor.copy(alpha = 0.45f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 48.dp)
+                .testTag("settings_theme_medal_preview_shortcut")
+        ) {
+            ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentTextColor, size = 16.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = lang.t("Lihat Animasi Dapat Medali", "Preview Medal Unlock Animation"),
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = tokens.accentTextColor
+            )
         }
     }
 }
@@ -2510,20 +2575,184 @@ private fun PerformanceSettingsCard(
             title = lang.t("Tanpa Animasi Gerak", "Disable Animations"),
             subtitle = lang.t("Transisi layar instan tanpa efek denyut.", "Instant screen transitions without pulse animations."),
             checked = perf.noAnimations,
-            onCheckedChange = { onUpdatePerf(it, null, null) }
+            onCheckedChange = { onUpdatePerf(it, null, null) },
+            switchModifier = Modifier.testTag("settings_disable_animations_switch")
         )
         PerformanceSwitchRow(
             title = lang.t("Tanpa Cahaya Ambient", "Disable Ambient Glow"),
             subtitle = lang.t("Latar belakang solid bersih tanpa sorot radial.", "Clean solid background without radial glows."),
             checked = perf.noAmbientGlow,
-            onCheckedChange = { onUpdatePerf(null, it, null) }
+            onCheckedChange = { onUpdatePerf(null, it, null) },
+            switchModifier = Modifier.testTag("settings_disable_ambient_glow_switch")
         )
         PerformanceSwitchRow(
             title = lang.t("Maskot Statis", "Static Mascot"),
             subtitle = lang.t("Hentikan gerakan mengambang & kedipan maskot Pulse.", "Pause Pulse mascot floating & blinking motion."),
             checked = perf.staticMascot,
-            onCheckedChange = { onUpdatePerf(null, null, it) }
+            onCheckedChange = { onUpdatePerf(null, null, it) },
+            switchModifier = Modifier.testTag("settings_static_mascot_switch")
         )
+    }
+}
+
+@Composable
+private fun MedalAnimationPreviewCard(
+    perf: PerformancePreferences,
+    onToggleAnimations: (Boolean) -> Unit,
+    onPreviewMedal: (MedalTier) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = LocalIronPulseTokens.current
+    val lang = tokens.lang
+    val animationsEnabled = !perf.noAnimations
+    var selectedTier by remember { mutableStateOf(MedalTier.GOLD) }
+    val tiers = remember { listOf(MedalTier.BRONZE, MedalTier.SILVER, MedalTier.GOLD) }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .ironGlassSurface(tokens)
+            .padding(16.dp)
+            .testTag("medal_animation_preview_card"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ThemedIcon(IronPulseIcon.SPARKLE, contentDescription = null, tint = tokens.accentTextColor, size = 18.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = lang.t("Toggle Animasi & Pratinjau Medali", "Animation Toggle & Medal Preview"),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.onSurface
+                )
+                Text(
+                    text = lang.t(
+                        "Nyalakan animasi lalu uji perayaan dapat medali & terbang ke Riwayat.",
+                        "Toggle UI motion and test the medal unlock celebration & History flight."
+                    ),
+                    fontSize = 11.5.sp,
+                    color = tokens.palette.onSurfaceVariant
+                )
+            }
+        }
+
+        IronPulseTonalSurface(
+            shape = tokens.subtleCardShape,
+            baseColor = tokens.wellBg,
+            border = BorderStroke(
+                1.dp,
+                if (animationsEnabled) tokens.accentColor.copy(alpha = 0.34f) else tokens.warningColor.copy(alpha = 0.42f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                PerformanceSwitchRow(
+                    title = lang.t("Animasi UI Aktif", "UI Animations Enabled"),
+                    subtitle = lang.t(
+                        "Aktifkan animasi layar, confetti & penerbangan medali.",
+                        "Enable screen transitions, confetti & medal flight animations."
+                    ),
+                    checked = animationsEnabled,
+                    onCheckedChange = onToggleAnimations,
+                    switchModifier = Modifier.testTag("settings_anim_quick_toggle")
+                )
+            }
+        }
+
+        if (!animationsEnabled) {
+            Text(
+                text = lang.t(
+                    "Catatan: Mode Tanpa Animasi sedang aktif — aktifkan sakelar di atas untuk melihat animasi penuh.",
+                    "Note: Disable Animations is currently on — enable the toggle above to see full motion."
+                ),
+                fontSize = 11.sp,
+                color = tokens.warningColor
+            )
+        }
+
+        Text(
+            text = lang.t("Pilih Tier Medali Uji", "Select Preview Medal Tier"),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = tokens.palette.onSurfaceVariant
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            tiers.forEach { tier ->
+                val isSelected = selectedTier == tier
+                IronPulseTonalSurface(
+                    onClick = { selectedTier = tier },
+                    shape = tokens.subtleCardShape,
+                    baseColor = if (isSelected) lerp(tokens.controlBg, tokens.accentColor, 0.16f) else tokens.wellBg,
+                    pressedScale = 0.96f,
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) tokens.accentColor else tokens.subtleBorderColor
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 56.dp)
+                        .testTag("settings_medal_tier_${tier.wireValue}")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        ProceduralMedalEmblem(
+                            tier = tier,
+                            size = 28.dp,
+                            shineEnabled = false
+                        )
+                        Text(
+                            text = tier.shortLabel(lang),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) tokens.accentTextColor else tokens.palette.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = lang.t("${tier.thresholdDays} hr", "${tier.thresholdDays}d"),
+                            fontFamily = tokens.fontPack.monoFont,
+                            fontSize = 10.sp,
+                            color = tokens.mutedTextColor
+                        )
+                    }
+                }
+            }
+        }
+
+        IronPulseButton(
+            onClick = { onPreviewMedal(selectedTier) },
+            shape = tokens.buttonShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = tokens.accentColor,
+                contentColor = tokens.onAccentColor
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .testTag("settings_medal_preview_button")
+        ) {
+            ThemedIcon(IronPulseIcon.PLAY, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = lang.t(
+                    "Putar Animasi Medali ${selectedTier.shortLabel(lang)}",
+                    "Preview ${selectedTier.shortLabel(lang)} Medal Animation"
+                ),
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
     }
 }
 

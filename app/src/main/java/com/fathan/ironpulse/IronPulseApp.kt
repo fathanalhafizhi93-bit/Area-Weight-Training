@@ -6,7 +6,9 @@ import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
+import com.fathan.ironpulse.data.GymPresets
 import com.fathan.ironpulse.ui.components.ScaledBackdropCache
+import com.fathan.ironpulse.ui.theme.ThemeMaterialShaderCache
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,15 @@ class IronPulseApp : Application() {
         appScope.launch {
             runCatching {
                 ScaledBackdropCache.preload(applicationContext, R.drawable.gym_arena_backdrop, 1024)
+            }
+        }
+        appScope.launch(Dispatchers.Default) {
+            runCatching {
+                GymPresets.EXERCISE_SEARCH_INDEX.size
+                val densityScale = resources.displayMetrics.density.toInt().coerceIn(1, 3)
+                ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = 6, subtle = true)
+                ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = densityScale, subtle = true)
+                ThemeMaterialShaderCache.getCliScanlineBrush(linePx = 4, subtle = true)
             }
         }
     }

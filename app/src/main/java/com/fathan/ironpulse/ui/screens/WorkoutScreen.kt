@@ -83,6 +83,9 @@ import com.fathan.ironpulse.model.WorkoutLogEntry
 import com.fathan.ironpulse.ui.components.IronPulseIcon
 import com.fathan.ironpulse.ui.components.TactileStepperControl
 import com.fathan.ironpulse.ui.components.ThemedIcon
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.fathan.ironpulse.ui.components.staggeredCardEntrance
 import com.fathan.ironpulse.ui.components.tactilePress
 import com.fathan.ironpulse.ui.theme.IronPulseButton
@@ -96,7 +99,6 @@ import com.fathan.ironpulse.ui.viewmodel.ExerciseTimerUiState
 import com.fathan.ironpulse.ui.viewmodel.GymViewModel
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
 import com.fathan.ironpulse.ui.viewmodel.RestTimerDisplayState
-import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 
 @Composable
@@ -355,7 +357,8 @@ fun WorkoutScreen(
                     if (hasExercises) {
                         WorkoutMedalVerificationStrip(
                             verification = state.todayVerification,
-                            liveElapsedSec = state.liveSessionElapsedSeconds
+                            liveElapsedSec = state.liveSessionElapsedSeconds,
+                            liveElapsedSecondsFlow = viewModel.liveSessionElapsedSecondsFlow
                         )
                     }
                 }
@@ -633,7 +636,11 @@ private fun ExerciseSwitcherRail(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxWidth()
     ) {
-        itemsIndexed(entries, key = { _, e -> e.exerciseId }) { idx, entry ->
+        itemsIndexed(
+            items = entries,
+            key = { _, e -> e.exerciseId },
+            contentType = { _, _ -> "exercise_switcher_pill" }
+        ) { idx, entry ->
             val isSelected = entry.exerciseId == selectedExerciseId
             val allDone = entry.sets.isNotEmpty() && entry.sets.all { it.completed }
             val timerRunning = exerciseTimers[entry.exerciseId]?.running == true
@@ -1774,11 +1781,21 @@ private fun SummaryStatPill(
 @Composable
 private fun WorkoutMedalVerificationStrip(
     verification: SessionVerificationResult,
-    liveElapsedSec: Int
+    liveElapsedSec: Int,
+    liveElapsedSecondsFlow: StateFlow<Int>? = null
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
-    val effectiveSec = maxOf(verification.effectiveDurationSeconds, liveElapsedSec)
+    val tabActive = LocalTabActive.current
+    val minuteFlow = remember(liveElapsedSecondsFlow) {
+        liveElapsedSecondsFlow?.map { (it / 60) * 60 }?.distinctUntilChanged()
+    }
+    val collectedElapsedSec = if (tabActive && minuteFlow != null) {
+        minuteFlow.collectAsStateWithLifecycle(initialValue = liveElapsedSec).value
+    } else {
+        liveElapsedSec
+    }
+    val effectiveSec = maxOf(verification.effectiveDurationSeconds, collectedElapsedSec)
     val mins = effectiveSec / 60
     val verified = verification.isVerified
 

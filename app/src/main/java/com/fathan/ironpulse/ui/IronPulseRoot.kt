@@ -376,6 +376,7 @@ fun IronPulseRoot(
                                             onStartTodayWorkout = { viewModel.openWorkout(null) },
                                             listState = historyListState,
                                             landingBurstTick = state.medalLandingBurstTick,
+                                            liveSessionElapsedSecondsFlow = viewModel.liveSessionElapsedSecondsFlow,
                                             onMedalSlotPositioned = { medalSlotTargetCenter = it }
                                         )
 
@@ -690,7 +691,10 @@ fun IronPulseRoot(
                                             historyListState.scrollToItem(0)
                                         }
                                     }
-                                }
+                                },
+                                onDismissPreview = if (unlockEvent.isPreview) {
+                                    { viewModel.dismissMedalUnlockPreview() }
+                                } else null
                             )
                         }
 
@@ -848,6 +852,7 @@ internal fun PersistedTabStage(
     }
 
     if (prewarmInBackground) {
+        val scrollActiveState = LocalScrollActiveState.current
         LaunchedEffect(Unit) {
             delay(if (noAnim) 50L else 180L)
             val warmOrder = listOf(
@@ -858,10 +863,13 @@ internal fun PersistedTabStage(
                 AppTab.SETTINGS
             )
             for (candidate in warmOrder) {
+                while (scrollActiveState.value) {
+                    delay(60L)
+                }
                 if (candidate !in warmedTabs) {
                     warmedTabs.add(candidate)
                     withFrameNanos { }
-                    delay(25L)
+                    delay(28L)
                 }
             }
         }

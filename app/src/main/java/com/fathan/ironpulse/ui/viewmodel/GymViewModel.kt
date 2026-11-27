@@ -308,6 +308,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     val clockSecondsFlow: StateFlow<Long> = _clockSeconds.asStateFlow()
     val exerciseTimersFlow: StateFlow<Map<String, ExerciseTimerUiState>> = _exerciseTimers.asStateFlow()
     val cooldownSecondsFlow: StateFlow<Int> = _cooldownSeconds.asStateFlow()
+    val liveSessionElapsedSecondsFlow: StateFlow<Int> = _liveSessionElapsedSeconds.asStateFlow()
     val mascotEyeFlow: StateFlow<MascotEyeState> = _mascotEyeState.asStateFlow()
     val mascotTtsSpeakingFlow: StateFlow<Boolean> = ttsSpeaker.isSpeakingFlow
 
@@ -394,8 +395,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val timePhase: DayTimePhase,
         val todayLog: WorkoutLog?,
         val workoutHistory: List<WorkoutLog>,
-        val weeklyStreak: Int,
-        val liveSessionElapsedSec: Int
+        val weeklyStreak: Int
     )
 
     private data class ShellUiState(
@@ -451,7 +451,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         _workoutHistory
     ) { d, dt, phase, tl, wh ->
         arrayOf(d, dt, phase, tl, wh)
-    }.combine(combine(_weeklyStreak, _liveSessionElapsedSeconds) { s, l -> s to l }) { arr, (streak, liveElapsed) ->
+    }.combine(_weeklyStreak) { arr, streak ->
         @Suppress("UNCHECKED_CAST")
         WorkoutRuntimeState(
             todayDayKey = arr[0] as DayKey,
@@ -459,8 +459,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             timePhase = arr[2] as DayTimePhase,
             todayLog = arr[3] as WorkoutLog?,
             workoutHistory = arr[4] as List<WorkoutLog>,
-            weeklyStreak = streak,
-            liveSessionElapsedSec = liveElapsed
+            weeklyStreak = streak
         )
     }
 
@@ -632,14 +631,14 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             focusTitle = todaySched?.focusTitle ?: run.todayLog?.focusTitle ?: "Latihan",
             entries = entries,
             completed = run.todayLog?.completed ?: false,
-            activeDurationSeconds = maxOf(run.todayLog?.activeDurationSeconds ?: 0, run.liveSessionElapsedSec),
+            activeDurationSeconds = run.todayLog?.activeDurationSeconds ?: 0,
             firstSetElapsedMs = run.todayLog?.firstSetElapsedMs ?: 0L,
             serverCreatedAtMs = run.todayLog?.serverCreatedAtMs ?: 0L,
             serverUpdatedAtMs = run.todayLog?.serverUpdatedAtMs ?: 0L
         )
         val todayVerif = WorkoutIntegrityEvaluator.evaluate(
             syntheticTodayLog,
-            liveElapsedSecondsOverride = run.liveSessionElapsedSec
+            liveElapsedSecondsOverride = 0
         )
         val currentMonthKey = run.todayDateKey.takeIf { it.length >= 7 }?.substring(0, 7) ?: ""
         val mergedLogsForMedal = rememberMergedLogsForMedal(run.workoutHistory, run.todayLog, run.todayDateKey)
@@ -648,7 +647,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
                 monthKey = currentMonthKey,
                 logs = mergedLogsForMedal,
                 todayDateKey = run.todayDateKey,
-                liveTodayElapsedSec = run.liveSessionElapsedSec
+                liveTodayElapsedSec = 0
             )
         } else null
 
@@ -696,7 +695,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             currentMonthMedal = monthMedalSummary,
             pendingMedalUnlock = shell.pendingMedalUnlock,
             medalLandingBurstTick = shell.medalLandingBurstTick,
-            liveSessionElapsedSeconds = run.liveSessionElapsedSec
+            liveSessionElapsedSeconds = 0
         )
     }.stateIn(
         scope = viewModelScope,
@@ -1468,15 +1467,37 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun previewMedalUnlock(tier: MedalTier) {
+        val safeTier = if (tier == MedalTier.NONE) MedalTier.BRONZE else tier
+        val curDate = _todayDateKey.value
+        val monthKey = curDate.takeIf { it.length >= 7 }?.substring(0, 7) ?: "2026-11"
+        _pendingMedalUnlock.value = MedalUnlockEvent(
+            monthKey = monthKey,
+            tier = safeTier,
+            verifiedDays = safeTier.thresholdDays,
+            isPreview = true
+        )
+        haptics.workoutComplete()
+    }
+
+    fun dismissMedalUnlockPreview() {
+        val event = _pendingMedalUnlock.value ?: return
+        if (event.isPreview) {
+            _pendingMedalUnlock.value = null
+        }
+    }
+
     fun confirmMedalUnlockAndFlyToHistory() {
         val uid = _user.value?.uid
         val event = _pendingMedalUnlock.value ?: return
-        if (uid != null) {
+        if (!event.isPreview && uid != null) {
             prefsStore.setSeenMedalTier(uid, event.monthKey, event.tier)
         }
         _pendingMedalUnlock.value = null
         haptics.workoutComplete()
-        updateMascotSpeech(forceMood = MascotMood.CELEBRATE, playChirp = true, speakTts = false, bypassLock = true)
+        if (!event.isPreview) {
+            updateMascotSpeech(forceMood = MascotMood.CELEBRATE, playChirp = true, speakTts = false, bypassLock = true)
+        }
     }
 
     fun triggerMedalLandingBurst() {

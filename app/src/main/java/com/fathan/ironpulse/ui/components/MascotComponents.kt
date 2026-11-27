@@ -96,6 +96,7 @@ import com.fathan.ironpulse.model.MascotPersonality
 import com.fathan.ironpulse.model.TimePhasePose
 import com.fathan.ironpulse.model.UiTheme
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
@@ -428,8 +429,10 @@ fun MascotOrbFace(
 ) {
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
+    val tabSettled = LocalTabSettled.current
+    val scrollActive = LocalScrollActiveState.current.value
     val staticMode = tokens.performance.staticMascot || tokens.performance.noAnimations
-    val runAnim = !staticMode && animActive && tabActive
+    val runAnim = !staticMode && animActive && tabActive && tabSettled && !scrollActive
     val eyeState = if (eyeStateFlow != null && runAnim) {
         eyeStateFlow.collectAsStateWithLifecycle().value
     } else {

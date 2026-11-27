@@ -39,6 +39,8 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.down
 import androidx.compose.ui.test.hasAnyAncestor
@@ -154,7 +156,9 @@ import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseTheme
 import com.fathan.ironpulse.ui.theme.JetBrainsMonoFamily
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.MaterialYouColorEngine
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
@@ -4187,5 +4191,245 @@ class StartupSmokeTest {
         composeRule.onNodeWithText("[JADWAL]", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("[RIWAYAT]", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("[GERAKAN]", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun gymViewModel_previewMedalUnlock_isNonDestructiveAndClearsCleanly() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(ctx)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            var latestState: IronPulseUiState? = null
+            composeRule.setContent {
+                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
+                latestState = vmState
+            }
+            composeRule.waitForIdle()
+
+            composeRule.runOnUiThread {
+                viewModel.previewMedalUnlock(MedalTier.GOLD)
+            }
+            composeRule.waitForIdle()
+            val goldPreview = latestState?.pendingMedalUnlock
+            assertNotNull(goldPreview)
+            assertEquals(MedalTier.GOLD, goldPreview!!.tier)
+            assertEquals(MedalTier.GOLD.thresholdDays, goldPreview.verifiedDays)
+            assertTrue(goldPreview.isPreview)
+
+            composeRule.runOnUiThread {
+                viewModel.dismissMedalUnlockPreview()
+            }
+            composeRule.waitForIdle()
+            assertNull(latestState?.pendingMedalUnlock)
+
+            composeRule.runOnUiThread {
+                viewModel.previewMedalUnlock(MedalTier.SILVER)
+            }
+            composeRule.waitForIdle()
+            val silverPreview = latestState?.pendingMedalUnlock
+            assertNotNull(silverPreview)
+            assertEquals(MedalTier.SILVER, silverPreview!!.tier)
+            assertTrue(silverPreview.isPreview)
+
+            composeRule.runOnUiThread {
+                viewModel.confirmMedalUnlockAndFlyToHistory()
+            }
+            composeRule.waitForIdle()
+            assertNull(latestState?.pendingMedalUnlock)
+            assertEquals(
+                MedalTier.NONE,
+                PreferencesStore(ctx).getSeenMedalTier("unauthenticated_preview_test", silverPreview.monthKey)
+            )
+        } finally {
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun settingsScreen_quickAnimationToggleAndMedalPreview_syncAndTriggerPreview() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(ctx)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            viewModel.setPerformance(noAnimations = false, noAmbientGlow = false, staticMascot = false)
+
+            composeRule.setContent {
+                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
+                IronPulseTheme(prefs = vmState.appPrefs) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            SettingsScreen(
+                                state = vmState.copy(authReady = true, userUid = "u_medal_preview"),
+                                viewModel = viewModel,
+                                contentPadding = PaddingValues(0.dp),
+                                onBack = {},
+                                onRequestNotificationPermission = {},
+                                onOpenExactAlarmSettings = {},
+                                onPickCustomRingtone = {},
+                                activeCategory = SettingsCategory.CONFIGURATION
+                            )
+                            val previewEvent = vmState.pendingMedalUnlock
+                            if (previewEvent != null) {
+                                MedalUnlockCelebrationOverlay(
+                                    event = previewEvent,
+                                    mascot = vmState.mascot,
+                                    mascotEyeFlow = viewModel.mascotEyeFlow,
+                                    onStartFlightToHistory = {
+                                        viewModel.confirmMedalUnlockAndFlyToHistory()
+                                    },
+                                    onDismissPreview = { viewModel.dismissMedalUnlockPreview() }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("medal_animation_preview_card"))
+            composeRule.onNodeWithTag("medal_animation_preview_card").assertIsDisplayed()
+            composeRule.onNodeWithTag("settings_anim_quick_toggle")
+                .performScrollTo()
+                .assertIsOn()
+
+            // Toggle OFF animations via quick switch
+            composeRule.onNodeWithTag("settings_anim_quick_toggle").performClick()
+            composeRule.waitForIdle()
+            assertTrue(viewModel.uiState.value.appPrefs.performance.noAnimations)
+            composeRule.onNodeWithTag("settings_anim_quick_toggle").assertIsOff()
+            composeRule.onNodeWithTag("settings_disable_animations_switch")
+                .performScrollTo()
+                .assertIsOn()
+
+            // Toggle ON animations again
+            composeRule.onNodeWithTag("settings_anim_quick_toggle")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+            assertFalse(viewModel.uiState.value.appPrefs.performance.noAnimations)
+            composeRule.onNodeWithTag("settings_anim_quick_toggle").assertIsOn()
+
+            // Pick Bronze tier and trigger medal celebration preview
+            composeRule.onNodeWithTag("settings_medal_tier_bronze")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("settings_medal_preview_button")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+
+            val unlocked = viewModel.uiState.value.pendingMedalUnlock
+            assertNotNull(unlocked)
+            assertEquals(MedalTier.BRONZE, unlocked!!.tier)
+            assertTrue(unlocked.isPreview)
+
+            composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
+            composeRule.onNodeWithText("PRATINJAU ANIMASI MEDALI", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("medal_preview_close_button")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+
+            assertNull(viewModel.uiState.value.pendingMedalUnlock)
+            composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
+        } finally {
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xxhdpi")
+    fun settingsThemeSubpage_quickAnimationToggleAndMedalPreviewShortcut_workDirectly() {
+        val ctx = ApplicationProvider.getApplicationContext<android.app.Application>()
+        if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
+            com.google.firebase.FirebaseApp.initializeApp(ctx)
+        }
+        val vmStore = ViewModelStore()
+        try {
+            val viewModel = ViewModelProvider(
+                vmStore,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
+            )[GymViewModel::class.java]
+            viewModel.setPerformance(noAnimations = true, noAmbientGlow = false, staticMascot = false)
+
+            composeRule.setContent {
+                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
+                IronPulseTheme(prefs = vmState.appPrefs) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        SettingsScreen(
+                            state = vmState.copy(authReady = true, userUid = "u_theme_anim_toggle"),
+                            viewModel = viewModel,
+                            contentPadding = PaddingValues(0.dp),
+                            onBack = {},
+                            onRequestNotificationPermission = {},
+                            onOpenExactAlarmSettings = {},
+                            onPickCustomRingtone = {},
+                            activeCategory = SettingsCategory.THEME
+                        )
+                    }
+                }
+            }
+
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("settings_list")
+                .performScrollToNode(hasTestTag("theme_animation_style_card"))
+            composeRule.onNodeWithTag("settings_theme_anim_quick_toggle")
+                .performScrollTo()
+                .assertIsOff()
+                .performClick()
+            composeRule.waitForIdle()
+
+            assertFalse(viewModel.uiState.value.appPrefs.performance.noAnimations)
+            composeRule.onNodeWithTag("settings_theme_anim_quick_toggle").assertIsOn()
+
+            composeRule.onNodeWithTag("settings_theme_medal_preview_shortcut")
+                .performScrollTo()
+                .performClick()
+            composeRule.waitForIdle()
+
+            val goldPreview = viewModel.uiState.value.pendingMedalUnlock
+            assertNotNull(goldPreview)
+            assertEquals(MedalTier.GOLD, goldPreview!!.tier)
+            assertTrue(goldPreview.isPreview)
+            viewModel.dismissMedalUnlockPreview()
+        } finally {
+            vmStore.clear()
+        }
+    }
+
+    @Test
+    fun exerciseSearchIndex_coversAllLibraryMovementsAndFiltersFast() {
+        assertTrue(GymPresets.EXERCISE_LIBRARY.size >= 300)
+        assertEquals(GymPresets.EXERCISE_LIBRARY.size, GymPresets.EXERCISE_SEARCH_INDEX.size)
+        assertTrue(GymPresets.EXERCISE_SEARCH_INDEX.all { entry ->
+            entry.searchTextId.isNotBlank() &&
+                entry.searchTextEn.isNotBlank() &&
+                entry.anatomy.primary.isNotEmpty()
+        })
+
+        val benchMatches = GymPresets.EXERCISE_SEARCH_INDEX.filter {
+            it.matchesQuery("bench", AppLanguage.EN)
+        }
+        assertTrue(benchMatches.any { it.template.name == "Barbell Bench Press" })
+
+        val chestMatchesId = GymPresets.EXERCISE_SEARCH_INDEX.filter {
+            it.matchesQuery("dada", AppLanguage.ID)
+        }
+        assertTrue(chestMatchesId.isNotEmpty())
     }
 }

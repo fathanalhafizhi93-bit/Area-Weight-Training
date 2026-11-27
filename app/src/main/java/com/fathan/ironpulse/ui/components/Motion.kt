@@ -52,7 +52,9 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.fathan.ironpulse.model.ThemeAnimationStyle
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalSuppressTabCardFade
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -384,7 +386,11 @@ fun GpuSheenOverlay(
     durationMs: Int = LocalThemeMotionSpec.current.sheenDurationMs,
     modifier: Modifier = Modifier
 ) {
-    if (!active || peakAlpha <= 0.005f) return
+    val shouldSweep = active &&
+        peakAlpha > 0.005f &&
+        LocalTabSettled.current &&
+        !LocalScrollActiveState.current.value
+    if (!shouldSweep) return
 
     val infinite = rememberInfiniteTransition(label = "gpuSheenInfinite")
     val safeDuration = durationMs.coerceIn(1600, 6000)

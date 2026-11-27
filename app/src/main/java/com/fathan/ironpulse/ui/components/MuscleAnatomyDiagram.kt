@@ -76,6 +76,13 @@ private object AnatomyVectorCache {
     const val FIG_W = 100f
     const val FIG_H = 176f
 
+    val detailSilhouetteStroke = Stroke(width = 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    val thumbSilhouetteStroke = Stroke(width = 2.4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    val detailSecondaryStroke = Stroke(width = 1.0f, join = StrokeJoin.Round)
+    val thumbSecondaryStroke = Stroke(width = 1.4f, join = StrokeJoin.Round)
+    val primaryHaloStroke = Stroke(width = 3.8f, join = StrokeJoin.Round)
+    val primaryDetailStroke = Stroke(width = 0.9f, join = StrokeJoin.Round)
+
     private fun mirroredPolygon(vararg pts: Pair<Float, Float>): Path = Path().apply {
         // Left side
         pts.forEachIndexed { idx, (x, y) ->
@@ -280,7 +287,7 @@ private fun DrawScope.drawAnatomyFigure(
         drawPath(
             path = AnatomyVectorCache.bodySilhouette,
             color = silhouetteStroke,
-            style = Stroke(width = if (detailed) 1.6f else 2.4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            style = if (detailed) AnatomyVectorCache.detailSilhouetteStroke else AnatomyVectorCache.thumbSilhouetteStroke
         )
 
         // Subtle anatomy guide lines in detailed mode (collarbone / spine)
@@ -315,7 +322,7 @@ private fun DrawScope.drawAnatomyFigure(
             drawPath(
                 path = path,
                 color = secondaryStroke,
-                style = Stroke(width = if (detailed) 1.0f else 1.4f, join = StrokeJoin.Round)
+                style = if (detailed) AnatomyVectorCache.detailSecondaryStroke else AnatomyVectorCache.thumbSecondaryStroke
             )
         }
 
@@ -326,7 +333,7 @@ private fun DrawScope.drawAnatomyFigure(
                 drawPath(
                     path = path,
                     color = primaryGlow,
-                    style = Stroke(width = 3.8f, join = StrokeJoin.Round)
+                    style = AnatomyVectorCache.primaryHaloStroke
                 )
             }
             drawPath(path = path, color = primaryFill, style = Fill)
@@ -334,7 +341,7 @@ private fun DrawScope.drawAnatomyFigure(
                 drawPath(
                     path = path,
                     color = primaryFill,
-                    style = Stroke(width = 0.9f, join = StrokeJoin.Round)
+                    style = AnatomyVectorCache.primaryDetailStroke
                 )
             }
         }
@@ -353,11 +360,13 @@ fun MuscleAnatomyThumbnail(
 ) {
     val tokens = LocalIronPulseTokens.current
     val shape = tokens.subtleCardShape
-    val silhouetteFill = tokens.palette.onSurfaceVariant.copy(alpha = 0.14f)
-    val silhouetteStroke = tokens.palette.onSurfaceVariant.copy(alpha = 0.34f)
-    val primaryFill = tokens.accentColor.copy(alpha = 0.96f)
-    val secondaryFill = tokens.accentColor.copy(alpha = 0.34f)
-    val secondaryStroke = tokens.accentColor.copy(alpha = 0.58f)
+    val onSurfaceVar = tokens.palette.onSurfaceVariant
+    val accent = tokens.accentColor
+    val silhouetteFill = remember(onSurfaceVar) { onSurfaceVar.copy(alpha = 0.14f) }
+    val silhouetteStroke = remember(onSurfaceVar) { onSurfaceVar.copy(alpha = 0.34f) }
+    val primaryFill = remember(accent) { accent.copy(alpha = 0.96f) }
+    val secondaryFill = remember(accent) { accent.copy(alpha = 0.34f) }
+    val secondaryStroke = remember(accent) { accent.copy(alpha = 0.58f) }
 
     Box(
         modifier = modifier
@@ -413,12 +422,14 @@ fun MuscleAnatomyDualView(
     diagramHeight: Dp = 212.dp
 ) {
     val tokens = LocalIronPulseTokens.current
-    val silhouetteFill = tokens.palette.onSurfaceVariant.copy(alpha = 0.13f)
-    val silhouetteStroke = tokens.palette.onSurfaceVariant.copy(alpha = 0.36f)
-    val primaryFill = tokens.accentColor
-    val primaryGlow = tokens.accentColor.copy(alpha = 0.24f)
-    val secondaryFill = tokens.accentColor.copy(alpha = 0.34f)
-    val secondaryStroke = tokens.accentColor.copy(alpha = 0.62f)
+    val onSurfaceVar = tokens.palette.onSurfaceVariant
+    val accent = tokens.accentColor
+    val silhouetteFill = remember(onSurfaceVar) { onSurfaceVar.copy(alpha = 0.13f) }
+    val silhouetteStroke = remember(onSurfaceVar) { onSurfaceVar.copy(alpha = 0.36f) }
+    val primaryFill = accent
+    val primaryGlow = remember(accent) { accent.copy(alpha = 0.24f) }
+    val secondaryFill = remember(accent) { accent.copy(alpha = 0.34f) }
+    val secondaryStroke = remember(accent) { accent.copy(alpha = 0.62f) }
 
     Column(
         modifier = modifier

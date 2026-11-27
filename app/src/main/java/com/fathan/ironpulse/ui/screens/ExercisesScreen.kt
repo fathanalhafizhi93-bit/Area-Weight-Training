@@ -272,7 +272,7 @@ fun ExercisesScreen(
                     horizontalArrangement = Arrangement.spacedBy(7.dp),
                     modifier = Modifier.staggeredCardEntrance(1, active = tabActive, disabledByPerf = noAnim)
                 ) {
-                    items(DayKey.entries, key = { it.key }) { day ->
+                    items(DayKey.entries, key = { it.key }, contentType = { "day_chip" }) { day ->
                         val daySched = state.schedules[day]
                         val count = daySched?.exercises?.size ?: 0
                         val isSelected = day == selectedDay
@@ -707,18 +707,11 @@ fun ExerciseLibraryFullScreen(
     val filtered by remember(lang) {
         derivedStateOf {
             val q = query.trim().lowercase(Locale.ROOT)
-            GymPresets.EXERCISE_LIBRARY.filter { item ->
+            GymPresets.EXERCISE_SEARCH_INDEX.filter { entry ->
+                val item = entry.template
                 val matchMuscle = selectedMuscle == null || item.muscleGroup == selectedMuscle
                 val matchBucket = selectedBucket.matches(item.equipment)
-                val matchQuery = q.isEmpty() ||
-                    item.name.lowercase(Locale.ROOT).contains(q) ||
-                    item.equipment.lowercase(Locale.ROOT).contains(q) ||
-                    item.muscleGroup.label(lang).lowercase(Locale.ROOT).contains(q) ||
-                    item.notes.lowercase(Locale.ROOT).contains(q) ||
-                    MuscleAnatomyResolver.resolve(item.name, item.muscleGroup, item.equipment)
-                        .searchableKeywords(lang)
-                        .lowercase(Locale.ROOT)
-                        .contains(q)
+                val matchQuery = entry.matchesQuery(q, lang)
                 matchMuscle && matchBucket && matchQuery
             }
         }
@@ -851,14 +844,14 @@ fun ExerciseLibraryFullScreen(
 
                     // Muscle Filters
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        item {
+                        item(key = "muscle_all", contentType = "filter_pill") {
                             FilterPill(
                                 label = lang.t("Semua Otot", "All Muscles"),
                                 selected = selectedMuscle == null,
                                 onClick = { selectedMuscle = null }
                             )
                         }
-                        items(MuscleGroup.entries) { mg ->
+                        items(MuscleGroup.entries, key = { it.name }, contentType = { "filter_pill" }) { mg ->
                             FilterPill(
                                 label = mg.label(lang),
                                 selected = selectedMuscle == mg,
@@ -869,7 +862,7 @@ fun ExerciseLibraryFullScreen(
 
                     // Equipment Filters
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(EquipmentBucket.entries) { bucket ->
+                        items(EquipmentBucket.entries, key = { it.name }, contentType = { "filter_pill" }) { bucket ->
                             FilterPill(
                                 label = bucket.label(lang),
                                 selected = selectedBucket == bucket,
@@ -981,12 +974,15 @@ fun ExerciseLibraryFullScreen(
                             }
                         }
                     } else {
-                        itemsIndexed(filtered, key = { _, it -> it.name }) { _, tmpl ->
-                            val isAlreadyInDay = existingNames.contains(tmpl.name.lowercase(Locale.ROOT))
+                        itemsIndexed(
+                            items = filtered,
+                            key = { _, entry -> entry.template.name },
+                            contentType = { _, _ -> "library_exercise_row" }
+                        ) { _, entry ->
+                            val tmpl = entry.template
+                            val isAlreadyInDay = existingNames.contains(entry.normalizedName)
                             val isChecked = selectedNames.contains(tmpl.name)
-                            val anatomy = remember(tmpl.name, tmpl.muscleGroup, tmpl.equipment) {
-                                MuscleAnatomyResolver.resolve(tmpl.name, tmpl.muscleGroup, tmpl.equipment)
-                            }
+                            val anatomy = entry.anatomy
 
                             IronPulseTonalSurface(
                                 onClick = {

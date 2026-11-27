@@ -95,7 +95,9 @@ import com.fathan.ironpulse.ui.theme.IronPulseOutlinedButton
 import com.fathan.ironpulse.ui.theme.IronPulseThemeTokens
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
@@ -1250,7 +1252,9 @@ internal fun HeroAnimatedAtmosphereLayer(
     val tokens = LocalIronPulseTokens.current
     val motionSpec = LocalThemeMotionSpec.current
     val tabActive = LocalTabActive.current
-    val animate = !noAnim && tabActive
+    val tabSettled = LocalTabSettled.current
+    val scrollActive = LocalScrollActiveState.current.value
+    val animate = !noAnim && tabActive && tabSettled && !scrollActive
     val noAmbientGlow = tokens.performance.noAmbientGlow
 
     val breatheState: State<Float>

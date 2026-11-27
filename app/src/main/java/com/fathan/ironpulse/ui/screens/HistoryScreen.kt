@@ -69,7 +69,11 @@ import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
 import com.fathan.ironpulse.ui.theme.LocalTabActive
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.ui.viewmodel.IronPulseUiState
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -88,6 +92,7 @@ fun HistoryScreen(
     onStartTodayWorkout: () -> Unit,
     listState: LazyListState = rememberLazyListState(),
     landingBurstTick: Int = 0,
+    liveSessionElapsedSecondsFlow: StateFlow<Int>? = null,
     onMedalSlotPositioned: (Offset) -> Unit = {}
 ) {
     val tokens = LocalIronPulseTokens.current
@@ -101,6 +106,15 @@ fun HistoryScreen(
     var viewYear by remember(currentYear, currentMonth) { mutableIntStateOf(currentYear) }
     var viewMonth by remember(currentYear, currentMonth) { mutableIntStateOf(currentMonth) }
     var selectedDateKey by remember(state.todayDateKey) { mutableStateOf(state.todayDateKey) }
+    val isViewingCurrentMonth = viewYear == currentYear && viewMonth == currentMonth
+    val liveElapsedMinuteFlow = remember(liveSessionElapsedSecondsFlow) {
+        liveSessionElapsedSecondsFlow?.map { (it / 60) * 60 }?.distinctUntilChanged()
+    }
+    val liveElapsedSec = if (tabActive && isViewingCurrentMonth && liveElapsedMinuteFlow != null) {
+        liveElapsedMinuteFlow.collectAsStateWithLifecycle(initialValue = state.liveSessionElapsedSeconds).value
+    } else {
+        state.liveSessionElapsedSeconds
+    }
 
     val mergedLogs = remember(state.workoutHistory, state.todayLog) {
         val byDate = LinkedHashMap<String, WorkoutLog>(state.workoutHistory.size + 1)
@@ -163,26 +177,26 @@ fun HistoryScreen(
         mergedLogs,
         state.currentMonthMedal,
         state.todayDateKey,
-        state.liveSessionElapsedSeconds
+        liveElapsedSec
     ) {
         val vmMedal = state.currentMonthMedal
-        if (vmMedal != null && vmMedal.monthKey == monthPrefix) {
+        if (vmMedal != null && vmMedal.monthKey == monthPrefix && liveElapsedSec == 0) {
             vmMedal
         } else {
             MonthlyMedalEvaluator.summarizeMonth(
                 monthKey = monthPrefix,
                 logs = mergedLogs,
                 todayDateKey = state.todayDateKey,
-                liveTodayElapsedSec = state.liveSessionElapsedSeconds
+                liveTodayElapsedSec = liveElapsedSec
             )
         }
     }
 
-    val archiveMedals = remember(mergedLogs, state.todayDateKey, state.liveSessionElapsedSeconds) {
+    val archiveMedals = remember(mergedLogs, state.todayDateKey, liveElapsedSec) {
         MonthlyMedalEvaluator.earnedMonthlyMedalsArchive(
             logs = mergedLogs,
             todayDateKey = state.todayDateKey,
-            liveTodayElapsedSec = state.liveSessionElapsedSeconds
+            liveTodayElapsedSec = liveElapsedSec
         )
     }
 
@@ -191,7 +205,6 @@ fun HistoryScreen(
     }
 
     val selectedLog: WorkoutLog? = logsByDate[selectedDateKey]
-    val isViewingCurrentMonth = viewYear == currentYear && viewMonth == currentMonth
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -603,12 +616,12 @@ fun HistoryScreen(
                             selectedDateKey,
                             viewedMonthMedal,
                             state.todayDateKey,
-                            state.liveSessionElapsedSeconds
+                            liveElapsedSec
                         ) {
                             viewedMonthMedal.dayVerifications[selectedDateKey]
                                 ?: WorkoutIntegrityEvaluator.evaluate(
                                     log = selectedLog,
-                                    liveElapsedSecondsOverride = if (selectedDateKey == state.todayDateKey) state.liveSessionElapsedSeconds else 0
+                                    liveElapsedSecondsOverride = if (selectedDateKey == state.todayDateKey) liveElapsedSec else 0
                                 )
                         }
 

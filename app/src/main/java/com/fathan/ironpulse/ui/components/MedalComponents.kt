@@ -80,10 +80,13 @@ import com.fathan.ironpulse.model.MascotMood
 import com.fathan.ironpulse.model.MedalTier
 import com.fathan.ironpulse.model.MedalUnlockEvent
 import com.fathan.ironpulse.model.MonthlyMedalSummary
+import androidx.compose.material3.TextButton
 import com.fathan.ironpulse.ui.theme.IronPulseButton
 import com.fathan.ironpulse.ui.theme.IronPulseTonalSurface
 import com.fathan.ironpulse.ui.theme.LocalIronPulseTokens
+import com.fathan.ironpulse.ui.theme.LocalScrollActiveState
 import com.fathan.ironpulse.ui.theme.LocalTabActive
+import com.fathan.ironpulse.ui.theme.LocalTabSettled
 import com.fathan.ironpulse.ui.theme.ironGlassSurface
 import com.fathan.ironpulse.ui.theme.ironTonalControl
 import com.fathan.ironpulse.ui.viewmodel.MascotEyeState
@@ -166,9 +169,11 @@ fun ProceduralMedalEmblem(
 ) {
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
+    val tabSettled = LocalTabSettled.current
+    val scrollActive = LocalScrollActiveState.current.value
     val noAnim = tokens.performance.noAnimations
     val suppressGlow = tokens.performance.noAmbientGlow
-    val runShine = shineEnabled && tier != MedalTier.NONE && !noAnim && tabActive
+    val runShine = shineEnabled && tier != MedalTier.NONE && !noAnim && tabActive && tabSettled && !scrollActive
 
     val staticSweep = remember { mutableFloatStateOf(0.35f) }
     val staticZero = remember { mutableFloatStateOf(0f) }
@@ -785,7 +790,8 @@ fun MedalUnlockCelebrationOverlay(
     event: MedalUnlockEvent,
     mascot: MascotUiState,
     mascotEyeFlow: StateFlow<MascotEyeState>,
-    onStartFlightToHistory: (sourceCenter: Offset) -> Unit
+    onStartFlightToHistory: (sourceCenter: Offset) -> Unit,
+    onDismissPreview: (() -> Unit)? = null
 ) {
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
@@ -833,7 +839,13 @@ fun MedalUnlockCelebrationOverlay(
         onStartFlightToHistory(sourceOffsetHolder.firstOrNull() ?: Offset.Zero)
     }
 
-    BackHandler(onBack = triggerSave)
+    BackHandler(onBack = {
+        if (event.isPreview && onDismissPreview != null) {
+            onDismissPreview()
+        } else {
+            triggerSave()
+        }
+    })
 
     Box(
         modifier = Modifier
@@ -886,7 +898,11 @@ fun MedalUnlockCelebrationOverlay(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                text = lang.t("PENCAPAIAN BULANAN TERBUKA!", "MONTHLY MILESTONE UNLOCKED!"),
+                text = if (event.isPreview) {
+                    lang.t("PRATINJAU ANIMASI MEDALI", "MEDAL ANIMATION PREVIEW")
+                } else {
+                    lang.t("PENCAPAIAN BULANAN TERBUKA!", "MONTHLY MILESTONE UNLOCKED!")
+                },
                 fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.sp,
@@ -945,10 +961,17 @@ fun MedalUnlockCelebrationOverlay(
             )
 
             Text(
-                text = lang.t(
-                    "Pulse merayakan ${event.verifiedDays} hari gym terverifikasi di ${formatShortMonthLabel(event.monthKey, lang)}! Medali ini siap disimpan ke tab Riwayat.",
-                    "Pulse celebrates your ${event.verifiedDays} verified gym days in ${formatShortMonthLabel(event.monthKey, lang)}! Ready to dock in History."
-                ),
+                text = if (event.isPreview) {
+                    lang.t(
+                        "Pratinjau animasi perolehan ${event.tier.title(lang)} (${event.verifiedDays} hari sah). Progres latihan aslimu tidak berubah.",
+                        "Previewing ${event.tier.title(lang)} unlock animation (${event.verifiedDays} verified days). Your real progress is unchanged."
+                    )
+                } else {
+                    lang.t(
+                        "Pulse merayakan ${event.verifiedDays} hari gym terverifikasi di ${formatShortMonthLabel(event.monthKey, lang)}! Medali ini siap disimpan ke tab Riwayat.",
+                        "Pulse celebrates your ${event.verifiedDays} verified gym days in ${formatShortMonthLabel(event.monthKey, lang)}! Ready to dock in History."
+                    )
+                },
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 color = tokens.palette.onSurfaceVariant,
@@ -970,9 +993,26 @@ fun MedalUnlockCelebrationOverlay(
                 ThemedIcon(IronPulseIcon.HISTORY, contentDescription = null, tint = tokens.onAccentColor, size = 18.dp)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = lang.t("Simpan ke Tab Riwayat", "Save to History Tab"),
+                    text = if (event.isPreview) {
+                        lang.t("Uji Terbang ke Tab Riwayat", "Preview Flight to History Tab")
+                    } else {
+                        lang.t("Simpan ke Tab Riwayat", "Save to History Tab")
+                    },
                     fontWeight = FontWeight.ExtraBold
                 )
+            }
+
+            if (event.isPreview && onDismissPreview != null) {
+                TextButton(
+                    onClick = onDismissPreview,
+                    modifier = Modifier.testTag("medal_preview_close_button")
+                ) {
+                    Text(
+                        text = lang.t("Tutup Pratinjau", "Close Preview"),
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.mutedTextColor
+                    )
+                }
             }
         }
     }
