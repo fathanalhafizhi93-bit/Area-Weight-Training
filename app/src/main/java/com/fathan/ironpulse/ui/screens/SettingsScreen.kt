@@ -1675,11 +1675,11 @@ fun AccentAndTintSettingsCard(
         if (tokens.accentLocked) {
             val isXMaterialLocked = tokens.uiTheme == UiTheme.XMATERIAL_YOU
             val isYaruLocked = tokens.uiTheme == UiTheme.UBUNTU_YARU
-            val isCliLocked = tokens.uiTheme == UiTheme.TERMINAL_CLI
+            val isNougatLocked = tokens.uiTheme == UiTheme.ANDROID_NOUGAT
             val lockBadgeShape = when {
                 isXMaterialLocked -> CircleShape
                 isYaruLocked -> RoundedCornerShape(10.dp)
-                isCliLocked -> RoundedCornerShape(4.dp)
+                isNougatLocked -> RoundedCornerShape(4.dp)
                 else -> CircleShape
             }
             val lockBadgeBrush = when {
@@ -1697,8 +1697,8 @@ fun AccentAndTintSettingsCard(
                 isYaruLocked -> Brush.linearGradient(
                     listOf(Color(0xFFE95420), Color(0xFF77216F))
                 )
-                isCliLocked -> Brush.linearGradient(
-                    listOf(Color(0xFF00FF66), Color(0xFF0B4F28))
+                isNougatLocked -> Brush.linearGradient(
+                    listOf(Color(0xFF00BFA5), Color(0xFF263238))
                 )
                 else -> Brush.verticalGradient(
                     0.0f to Color(0xFF66DAFF),
@@ -1709,7 +1709,7 @@ fun AccentAndTintSettingsCard(
             val lockedTitle = when {
                 isXMaterialLocked -> lang.t("Palet Obsidian XMaterial You Terkunci", "XMaterial You Obsidian Palette Locked")
                 isYaruLocked -> lang.t("Jingga Yaru & Aubergine Terkunci", "Yaru Orange & Aubergine Locked")
-                isCliLocked -> lang.t("Palet Phosphor Terminal CLI Terkunci", "Terminal CLI Phosphor Palette Locked")
+                isNougatLocked -> lang.t("Palet Material Android Nougat Terkunci", "Android Nougat Material Palette Locked")
                 else -> lang.t("Biru Aero Terkunci", "Aero Sky Blue Locked")
             }
             val lockedDesc = when {
@@ -1721,9 +1721,9 @@ fun AccentAndTintSettingsCard(
                     "Ubuntu Yaru mengunci aksen jingga Yaru dan permukaan aubergine matte agar karakter visualnya tetap utuh. Warna kustommu tetap aman untuk tema standar.",
                     "Ubuntu Yaru locks Yaru orange and warm aubergine matte surfaces to preserve its signature visual character. Your custom color stays saved for standard themes."
                 )
-                isCliLocked -> lang.t(
-                    "Terminal CLI mengunci aksen hijau fosfor CRT (#00FF66) dan latar konsol gelap (#050806) agar nuansa terminal tetap autentik. Warna kustommu tetap aman untuk tema standar.",
-                    "Terminal CLI locks classic CRT phosphor green (#00FF66) and dark console obsidian (#050806) to preserve its authentic terminal look. Your custom color stays saved for standard themes."
+                isNougatLocked -> lang.t(
+                    "Android Nougat mengunci aksen teal klasik (#00BFA5) dan panel slate gelap (#21272B) khas Android 7 agar nuansa klasiknya tetap autentik. Warna kustommu tetap aman untuk tema standar.",
+                    "Android Nougat locks classic Android 7 teal (#00BFA5) and dark slate panels (#21272B) to preserve its retro Material look. Your custom color stays saved for standard themes."
                 )
                 else -> lang.t(
                     "Tema Frutiger Aero mengunci warna aksen biru langit khas Y2K agar nuansa kaca glossy tetap serasi. Pilihan warna kustommu tetap aman untuk tema lainnya.",
@@ -1734,13 +1734,13 @@ fun AccentAndTintSettingsCard(
             val lockedBannerShape = when {
                 isXMaterialLocked -> tokens.subtleCardShape
                 isYaruLocked -> RoundedCornerShape(12.dp)
-                isCliLocked -> RoundedCornerShape(4.dp)
+                isNougatLocked -> RoundedCornerShape(4.dp)
                 else -> RoundedCornerShape(14.dp)
             }
             val lockedBannerBg = when {
                 isXMaterialLocked -> Color(0xFF101218)
                 isYaruLocked -> Color(0xFF2B2029)
-                isCliLocked -> Color(0xFF09100C)
+                isNougatLocked -> Color(0xFF263238)
                 else -> tokens.accentColor.copy(alpha = 0.14f)
             }
             IronPulseTonalSurface(
@@ -1766,7 +1766,7 @@ fun AccentAndTintSettingsCard(
                             .background(lockBadgeBrush)
                             .border(
                                 1.dp,
-                                Color.White.copy(alpha = if (isXMaterialLocked || isYaruLocked || isCliLocked) 0.35f else 0.80f),
+                                Color.White.copy(alpha = if (isXMaterialLocked || isYaruLocked || isNougatLocked) 0.35f else 0.80f),
                                 lockBadgeShape
                             ),
                         contentAlignment = Alignment.Center
@@ -1774,7 +1774,7 @@ fun AccentAndTintSettingsCard(
                         ThemedIcon(
                             icon = IronPulseIcon.LOCK,
                             contentDescription = lang.t("Warna aksen terkunci", "Accent color locked"),
-                            tint = if (isXMaterialLocked || isCliLocked) tokens.onAccentColor else Color.White,
+                            tint = if (isXMaterialLocked) tokens.onAccentColor else Color.White,
                             size = 18.dp
                         )
                     }
@@ -2559,8 +2559,8 @@ private fun MedalAnimationPreviewCard(
                 )
                 Text(
                     text = lang.t(
-                        "Uji banner perayaan medali, hujan konfeti & penerbangan ke Riwayat.",
-                        "Test the top medal celebration banner, confetti & History flight."
+                        "Uji medali 3D berputar 5 detik, kilau cahaya, konfeti & melesat ke Riwayat.",
+                        "Test the 5-second 3D spinning medal, light rays, confetti & flight to History."
                     ),
                     fontSize = 11.5.sp,
                     color = tokens.palette.onSurfaceVariant
@@ -2688,7 +2688,7 @@ private fun ThemePreviewCard(
         UiTheme.CARBON_FORGE -> CutCornerShape(8.dp)
         UiTheme.UBUNTU_YARU -> RoundedCornerShape(12.dp)
         UiTheme.AMOLED_STEALTH -> RoundedCornerShape(6.dp)
-        UiTheme.TERMINAL_CLI -> RectangleShape
+        UiTheme.ANDROID_NOUGAT -> RoundedCornerShape(4.dp)
         UiTheme.FRUTIGER_AERO -> RoundedCornerShape(18.dp)
         UiTheme.XMATERIAL_YOU -> RoundedCornerShape(28.dp)
         UiTheme.MATERIAL_YOU -> RoundedCornerShape(18.dp)
@@ -2742,7 +2742,7 @@ private fun ThemePreviewCard(
                 UiTheme.CARBON_FORGE -> CutCornerShape(6.dp)
                 UiTheme.UBUNTU_YARU -> RoundedCornerShape(8.dp)
                 UiTheme.AMOLED_STEALTH -> RoundedCornerShape(4.dp)
-                UiTheme.TERMINAL_CLI -> RectangleShape
+                UiTheme.ANDROID_NOUGAT -> RoundedCornerShape(4.dp)
                 UiTheme.FRUTIGER_AERO -> RoundedCornerShape(14.dp)
                 UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
             }
@@ -2768,13 +2768,12 @@ private fun ThemePreviewCard(
                         val grainScale = density.roundToInt().coerceIn(1, 3)
                         val matrixCellPx = (3.dp.toPx()).roundToInt().coerceIn(5, 10)
                         val facetCellPx = (12.dp.toPx()).roundToInt().coerceIn(18, 36)
-                        val cliLinePx = (1.5.dp.toPx()).roundToInt().coerceIn(3, 6)
                         val baseBg = when (theme) {
                             UiTheme.MATERIAL_YOU -> Color(0xFF221E2A)
                             UiTheme.CARBON_FORGE -> Color(0xFF0E1218)
                             UiTheme.UBUNTU_YARU -> Color(0xFF2D1729)
                             UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
-                            UiTheme.TERMINAL_CLI -> Color(0xFF030604)
+                            UiTheme.ANDROID_NOUGAT -> Color(0xFF21272B)
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xFF162A52) else Color(0xFFD6F3FF)
                             UiTheme.XMATERIAL_YOU -> Color(0xFF0A0B10)
                         }
@@ -2783,8 +2782,7 @@ private fun ThemePreviewCard(
                             UiTheme.UBUNTU_YARU -> ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = grainScale, subtle = false)
                             UiTheme.AMOLED_STEALTH -> ThemeMaterialShaderCache.getAmoledStealthMatrixBrush(cellPx = matrixCellPx, subtle = false)
                             UiTheme.XMATERIAL_YOU -> ThemeMaterialShaderCache.getPrismaticFacetBrush(cellPx = facetCellPx, isNight = isXMaterialNightPreview)
-                            UiTheme.TERMINAL_CLI -> ThemeMaterialShaderCache.getCliScanlineBrush(linePx = cliLinePx, subtle = false)
-                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO -> null
+                            UiTheme.MATERIAL_YOU, UiTheme.FRUTIGER_AERO, UiTheme.ANDROID_NOUGAT -> null
                         }
                         val finishBrush = when (theme) {
                             UiTheme.MATERIAL_YOU -> Brush.radialGradient(
@@ -2806,10 +2804,10 @@ private fun ThemePreviewCard(
                                 0.0f to previewAccent.copy(alpha = 0.14f),
                                 0.45f to Color.Transparent
                             )
-                            UiTheme.TERMINAL_CLI -> Brush.verticalGradient(
-                                0.0f to Color(0xFF00FF66).copy(alpha = 0.12f),
-                                0.50f to Color.Transparent,
-                                1.0f to Color(0xFF00FF66).copy(alpha = 0.05f)
+                            UiTheme.ANDROID_NOUGAT -> Brush.verticalGradient(
+                                0.0f to Color(0xFF2B3338),
+                                0.55f to Color(0xFF21272B),
+                                1.0f to Color(0xFF1B2024)
                             )
                             UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) {
                                 Brush.linearGradient(
@@ -2943,19 +2941,13 @@ private fun ThemePreviewCard(
                                     strokeWidth = 2.dp.toPx(),
                                     cap = StrokeCap.Round
                                 )
-                            } else if (theme == UiTheme.TERMINAL_CLI) {
-                                val tLen = 5.dp.toPx()
-                                val tPad = 2.dp.toPx()
-                                val tColor = Color(0xFF00FF66)
-                                val tSw = 1.25.dp.toPx()
-                                drawLine(tColor, Offset(tPad, tPad), Offset(tPad + tLen, tPad), tSw)
-                                drawLine(tColor, Offset(tPad, tPad), Offset(tPad, tPad + tLen), tSw)
-                                drawLine(tColor, Offset(size.width - tPad, tPad), Offset(size.width - tPad - tLen, tPad), tSw)
-                                drawLine(tColor, Offset(size.width - tPad, tPad), Offset(size.width - tPad, tPad + tLen), tSw)
-                                drawLine(tColor, Offset(tPad, size.height - tPad), Offset(tPad + tLen, size.height - tPad), tSw)
-                                drawLine(tColor, Offset(tPad, size.height - tPad), Offset(tPad, size.height - tPad - tLen), tSw)
-                                drawLine(tColor, Offset(size.width - tPad, size.height - tPad), Offset(size.width - tPad - tLen, size.height - tPad), tSw)
-                                drawLine(tColor, Offset(size.width - tPad, size.height - tPad), Offset(size.width - tPad, size.height - tPad - tLen), tSw)
+                            } else if (theme == UiTheme.ANDROID_NOUGAT) {
+                                drawLine(
+                                    color = Color(0xFF00BFA5),
+                                    start = Offset(0f, 14.dp.toPx()),
+                                    end = Offset(size.width, 14.dp.toPx()),
+                                    strokeWidth = 1.5.dp.toPx()
+                                )
                             }
                         }
                     }
@@ -2969,7 +2961,7 @@ private fun ThemePreviewCard(
                                     UiTheme.CARBON_FORGE -> Color.White.copy(alpha = 0.26f)
                                     UiTheme.UBUNTU_YARU -> Color(0xFF141414)
                                     UiTheme.AMOLED_STEALTH -> previewAccent.copy(alpha = 0.52f)
-                                    UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.78f)
+                                    UiTheme.ANDROID_NOUGAT -> Color(0xFF455A64)
                                     UiTheme.FRUTIGER_AERO -> if (isAeroNightPreview) Color(0xB45BC6FA) else Color(0xC20082C8)
                                     else -> previewAccent.copy(alpha = 0.36f)
                                 },
@@ -2989,7 +2981,7 @@ private fun ThemePreviewCard(
                                 UiTheme.XMATERIAL_YOU -> Color(0xFF101218)
                                 UiTheme.UBUNTU_YARU -> Color(0xCC1E1920)
                                 UiTheme.AMOLED_STEALTH -> Color(0xFF06080B)
-                                UiTheme.TERMINAL_CLI -> Color(0xFF08110C)
+                                UiTheme.ANDROID_NOUGAT -> Color(0xFF263238)
                                 UiTheme.CARBON_FORGE -> Color(0xCC181E28)
                                 UiTheme.MATERIAL_YOU -> Color.White.copy(alpha = 0.08f)
                             }
@@ -3002,7 +2994,7 @@ private fun ThemePreviewCard(
                         modifier = Modifier
                             .width(24.dp)
                             .height(3.5.dp)
-                            .clip(if (theme == UiTheme.TERMINAL_CLI) RectangleShape else RoundedCornerShape(2.dp))
+                            .clip(RoundedCornerShape(2.dp))
                             .background(
                                 when {
                                     isAeroNightPreview -> Color(0xFF7DD3FC).copy(alpha = 0.85f)
@@ -3032,7 +3024,11 @@ private fun ThemePreviewCard(
                             }
                             Box(Modifier.size(4.dp).clip(CircleShape).background(dotMetal))
                         }
-                        UiTheme.AMOLED_STEALTH, UiTheme.TERMINAL_CLI -> Box(Modifier.size(4.dp).background(previewAccent))
+                        UiTheme.AMOLED_STEALTH -> Box(Modifier.size(4.dp).background(previewAccent))
+                        UiTheme.ANDROID_NOUGAT -> Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Box(Modifier.size(4.dp).clip(RoundedCornerShape(1.dp)).background(Color(0xFF00BFA5)))
+                            Box(Modifier.size(4.dp).clip(RoundedCornerShape(1.dp)).background(Color(0xFF4FC3F7)))
+                        }
                         else -> Box(Modifier.size(4.dp).clip(CircleShape).background(previewAccent.copy(alpha = 0.75f)))
                     }
                 }
@@ -3042,7 +3038,7 @@ private fun ThemePreviewCard(
                         isAeroNightPreview -> Color(0x667DD3FC)
                         isAeroPreview -> Color(0x550082C8)
                         isXMaterialPreview -> previewAccent.copy(alpha = 0.28f)
-                        theme == UiTheme.TERMINAL_CLI -> Color(0xFF1F8A4C)
+                        theme == UiTheme.ANDROID_NOUGAT -> Color(0xFF37474F)
                         else -> Color.White.copy(alpha = 0.10f)
                     }
                 )

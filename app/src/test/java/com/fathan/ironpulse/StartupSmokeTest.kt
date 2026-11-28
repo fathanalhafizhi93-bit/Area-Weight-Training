@@ -61,6 +61,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
@@ -424,7 +425,8 @@ class StartupSmokeTest {
         assertEquals(UiTheme.AMOLED_STEALTH, UiTheme.fromWire("amoled-stealth"))
         assertEquals(UiTheme.FRUTIGER_AERO, UiTheme.fromWire("frutiger-aero"))
         assertEquals(UiTheme.XMATERIAL_YOU, UiTheme.fromWire("xmaterial-you"))
-        assertEquals(UiTheme.TERMINAL_CLI, UiTheme.fromWire("terminal-cli"))
+        assertEquals(UiTheme.ANDROID_NOUGAT, UiTheme.fromWire("android-nougat"))
+        assertEquals(UiTheme.ANDROID_NOUGAT, UiTheme.fromWire("terminal-cli"))
     }
 
     @Test
@@ -1155,6 +1157,10 @@ class StartupSmokeTest {
 
         store.setWorkoutFocusHudEnabled(false)
         assertFalse(PreferencesStore(context).state.value.workoutFocusHudEnabled)
+
+        // Restore default Focus HUD enabled
+        store.setWorkoutFocusHudEnabled(true)
+        assertTrue(PreferencesStore(context).state.value.workoutFocusHudEnabled)
     }
 
     @Test
@@ -1298,7 +1304,9 @@ class StartupSmokeTest {
         composeRule.onNodeWithTag("gym_focus_hud_stage").assertIsDisplayed()
         composeRule.onNodeWithTag("hud_exercise_title").assertIsDisplayed()
         composeRule.onNodeWithText("Bench Press").assertIsDisplayed()
-        composeRule.onNodeWithTag("hud_rest_idle_strip").assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_summary_line").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_notes_toggle").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_rest_idle_strip").performScrollTo().assertIsDisplayed()
 
         // Adjust weight (+2.5 kg) and reps (+1) via giant steppers
         composeRule.onNodeWithTag("hud_weight_inc").performScrollTo().performClick()
@@ -1315,9 +1323,9 @@ class StartupSmokeTest {
         // Start Rest Timer via recommended preset pill (90d) -> large countdown ring appears with -15d / +15d
         composeRule.onNodeWithTag("hud_rest_preset_90").performScrollTo().performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag("hud_rest_ring_card").assertIsDisplayed()
-        composeRule.onNodeWithTag("hud_rest_ring_visual").assertIsDisplayed()
-        composeRule.onNodeWithText("01:30").assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_rest_ring_card").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("hud_rest_ring_visual").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("01:30").performScrollTo().assertIsDisplayed()
 
         composeRule.onNodeWithTag("hud_rest_minus_15").performScrollTo().performClick()
         composeRule.onNodeWithTag("hud_rest_plus_15").performScrollTo().performClick()
@@ -2371,7 +2379,7 @@ class StartupSmokeTest {
             standard
         )
         assertEquals(
-            listOf(UiTheme.UBUNTU_YARU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU, UiTheme.TERMINAL_CLI),
+            listOf(UiTheme.UBUNTU_YARU, UiTheme.FRUTIGER_AERO, UiTheme.XMATERIAL_YOU, UiTheme.ANDROID_NOUGAT),
             exclusive
         )
 
@@ -2790,62 +2798,79 @@ class StartupSmokeTest {
         var flightTriggeredSource: Offset? = null
         val eyeFlow = MutableStateFlow(MascotEyeState())
 
-        composeRule.setContent {
-            var showUnlock by remember { mutableStateOf(true) }
-            IronPulseTheme(
-                prefs = AppPreferences(
-                    uiTheme = UiTheme.MATERIAL_YOU,
-                    lang = AppLanguage.ID,
-                    performance = PerformancePreferences(noAnimations = true, staticMascot = true)
-                )
-            ) {
-                CompositionLocalProvider(LocalTabActive provides true) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        HistoryScreen(
-                            state = IronPulseUiState(
-                                userUid = "u1",
-                                authReady = true,
-                                historyLoading = false,
-                                todayDateKey = "2026-11-16",
-                                workoutHistory = silverLogs,
-                                currentMonthMedal = summary
-                            ),
-                            contentPadding = PaddingValues(0.dp),
-                            onStartTodayWorkout = {}
-                        )
-                        if (showUnlock) {
-                            MedalUnlockCelebrationOverlay(
-                                event = MedalUnlockEvent(
-                                    monthKey = "2026-11",
-                                    tier = MedalTier.SILVER,
-                                    verifiedDays = 16
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.setContent {
+                var showUnlock by remember { mutableStateOf(true) }
+                IronPulseTheme(
+                    prefs = AppPreferences(
+                        uiTheme = UiTheme.MATERIAL_YOU,
+                        lang = AppLanguage.ID,
+                        performance = PerformancePreferences(noAnimations = true, staticMascot = true)
+                    )
+                ) {
+                    CompositionLocalProvider(LocalTabActive provides true) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            HistoryScreen(
+                                state = IronPulseUiState(
+                                    userUid = "u1",
+                                    authReady = true,
+                                    historyLoading = false,
+                                    todayDateKey = "2026-11-16",
+                                    workoutHistory = silverLogs,
+                                    currentMonthMedal = summary
                                 ),
-                                mascot = MascotUiState(urgentMood = MascotMood.CELEBRATE),
-                                mascotEyeFlow = eyeFlow,
-                                onStartFlightToHistory = { src ->
-                                    flightTriggeredSource = src
-                                    showUnlock = false
-                                }
+                                contentPadding = PaddingValues(0.dp),
+                                onStartTodayWorkout = {}
                             )
+                            if (showUnlock) {
+                                MedalUnlockCelebrationOverlay(
+                                    event = MedalUnlockEvent(
+                                        monthKey = "2026-11",
+                                        tier = MedalTier.SILVER,
+                                        verifiedDays = 16
+                                    ),
+                                    mascot = MascotUiState(urgentMood = MascotMood.CELEBRATE),
+                                    mascotEyeFlow = eyeFlow,
+                                    onStartFlightToHistory = { src ->
+                                        flightTriggeredSource = src
+                                        showUnlock = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            composeRule.mainClock.advanceTimeBy(100L)
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
+            composeRule.onNodeWithTag("medal_3d_spinning_emblem", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("medal_countdown_text", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNode(
+                hasText("Medali Perak") and hasAnyAncestor(hasTestTag("medal_unlock_celebration_overlay")),
+                useUnmergedTree = true
+            ).assertIsDisplayed()
+            composeRule.onNodeWithText("Pulse ikut bersorak!", useUnmergedTree = true).assertIsDisplayed()
+
+            // Normal unlock must remain locked for the full 5 seconds even if tapped
+            composeRule.onNodeWithTag("medal_unlock_celebration_overlay").performClick()
+            composeRule.mainClock.advanceTimeBy(4700L)
+            composeRule.waitForIdle()
+            assertNull(flightTriggeredSource)
+            composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
+
+            // Once 5000ms elapses, curved flight to History triggers automatically
+            composeRule.mainClock.advanceTimeBy(400L)
+            composeRule.waitForIdle()
+            assertNotNull(flightTriggeredSource)
+            composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
+            composeRule.onNodeWithTag("history_monthly_medal_card").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithTag("history_medal_emblem_slot").performScrollTo().assertIsDisplayed()
+        } finally {
+            composeRule.mainClock.autoAdvance = true
         }
-
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
-        composeRule.onNode(
-            hasText("Medali Perak") and hasAnyAncestor(hasTestTag("medal_unlock_celebration_overlay")),
-            useUnmergedTree = true
-        ).assertIsDisplayed()
-        composeRule.onNodeWithTag("medal_save_to_history_button").performClick()
-        composeRule.waitForIdle()
-
-        assertNotNull(flightTriggeredSource)
-        composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
-        composeRule.onNodeWithTag("history_monthly_medal_card").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("history_medal_emblem_slot").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -3550,8 +3575,8 @@ class StartupSmokeTest {
                 Triple(UiTheme.XMATERIAL_YOU, DayTimePhase.NIGHT, false),
                 Triple(UiTheme.XMATERIAL_YOU, DayTimePhase.MORNING, true),
                 Triple(UiTheme.AMOLED_STEALTH, DayTimePhase.NIGHT, true),
-                Triple(UiTheme.TERMINAL_CLI, DayTimePhase.AFTERNOON, false),
-                Triple(UiTheme.TERMINAL_CLI, DayTimePhase.NIGHT, true)
+                Triple(UiTheme.ANDROID_NOUGAT, DayTimePhase.AFTERNOON, false),
+                Triple(UiTheme.ANDROID_NOUGAT, DayTimePhase.NIGHT, true)
             ).forEach { (theme, phase, noGlow) ->
                 composeRule.runOnUiThread {
                     themeSetter?.invoke(theme)
@@ -3883,18 +3908,18 @@ class StartupSmokeTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun terminalCliTheme_locksPhosphorPaletteUsesMonoFontSharpRadiiAndSettingsBanner() {
-        assertTrue(UiTheme.TERMINAL_CLI.isExclusive)
+    fun androidNougatTheme_locksMaterialSlateTealPaletteUsesRobotoFontAndSettingsBanner() {
+        assertTrue(UiTheme.ANDROID_NOUGAT.isExclusive)
         var resolvedAccentLocked = false
         var resolvedAccent: Color? = null
         var resolvedTint: Color? = null
         var resolvedCardRadius: androidx.compose.ui.unit.Dp? = null
-        val fontPack = resolveThemeFontPack(UiTheme.TERMINAL_CLI)
+        val fontPack = resolveThemeFontPack(UiTheme.ANDROID_NOUGAT)
 
         composeRule.setContent {
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.TERMINAL_CLI,
+                    uiTheme = UiTheme.ANDROID_NOUGAT,
                     accentColorHex = "#FF4D8D",
                     materialTintColorHex = "#112922",
                     lang = AppLanguage.ID,
@@ -3921,16 +3946,16 @@ class StartupSmokeTest {
         }
 
         composeRule.waitForIdle()
-        assertTrue("Terminal CLI must lock phosphor palette", resolvedAccentLocked)
-        assertEquals(Color(0xFF00FF66), resolvedAccent)
-        assertEquals(Color(0xFF030604), resolvedTint)
-        assertEquals(0.dp, resolvedCardRadius)
-        assertEquals(JetBrainsMonoFamily, fontPack.displayFont)
-        assertEquals(JetBrainsMonoFamily, fontPack.bodyFont)
-        assertEquals("CLI", fontPack.osBadgeLabel)
+        assertTrue("Android Nougat must lock classic Material teal palette", resolvedAccentLocked)
+        assertEquals(Color(0xFF00BFA5), resolvedAccent)
+        assertEquals(Color(0xFF21272B), resolvedTint)
+        assertEquals(4.dp, resolvedCardRadius)
+        assertEquals(FontFamily.SansSerif, fontPack.displayFont)
+        assertEquals(FontFamily.SansSerif, fontPack.bodyFont)
+        assertEquals("NOUGAT", fontPack.osBadgeLabel)
 
         composeRule.onNodeWithTag("accent_locked_banner").assertIsDisplayed()
-        composeRule.onNodeWithText("Palet Phosphor Terminal CLI Terkunci").assertIsDisplayed()
+        composeRule.onNodeWithText("Palet Material Android Nougat Terkunci").assertIsDisplayed()
         composeRule.onNodeWithTag("accent_pick_color_button").assertDoesNotExist()
         composeRule.onNodeWithTag("tint_pick_color_button").assertDoesNotExist()
     }
@@ -3954,7 +3979,7 @@ class StartupSmokeTest {
                 userDisplayName = "Fathan",
                 userEmail = "fathan@ironpulse.app",
                 appPrefs = AppPreferences(
-                    uiTheme = UiTheme.TERMINAL_CLI,
+                    uiTheme = UiTheme.ANDROID_NOUGAT,
                     lang = AppLanguage.ID,
                     performance = PerformancePreferences(noAnimations = true, staticMascot = true)
                 )
@@ -4289,12 +4314,12 @@ class StartupSmokeTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp-xxhdpi")
-    fun terminalCliChrome_rendersHeaderShellPromptAndBracketedBottomTabs() {
+    fun androidNougatChrome_rendersHeaderVersionChipAndClassicBottomTabs() {
         val restFlow = MutableStateFlow(RestTimerDisplayState())
         composeRule.setContent {
             IronPulseTheme(
                 prefs = AppPreferences(
-                    uiTheme = UiTheme.TERMINAL_CLI,
+                    uiTheme = UiTheme.ANDROID_NOUGAT,
                     lang = AppLanguage.ID,
                     performance = PerformancePreferences(noAnimations = true, staticMascot = true)
                 )
@@ -4316,14 +4341,14 @@ class StartupSmokeTest {
         }
 
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag("theme_brand_lockup_${UiTheme.TERMINAL_CLI.wireValue}").assertIsDisplayed()
-        composeRule.onNodeWithTag("theme_brand_wordmark_${UiTheme.TERMINAL_CLI.wireValue}", useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithTag("cli_header_prompt", useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithText("root@ironpulse:~/moves$", useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithText("[HARI INI]", useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithText("[JADWAL]", useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithText("[RIWAYAT]", useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithText("[GERAKAN]", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_brand_lockup_${UiTheme.ANDROID_NOUGAT.wireValue}").assertIsDisplayed()
+        composeRule.onNodeWithTag("theme_brand_wordmark_${UiTheme.ANDROID_NOUGAT.wireValue}", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("nougat_version_chip", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("7.0", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Hari Ini", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Jadwal", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Riwayat", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Gerakan", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -4455,16 +4480,19 @@ class StartupSmokeTest {
             assertFalse(viewModel.uiState.value.appPrefs.performance.noAnimations)
             composeRule.onNodeWithTag("settings_disable_animations_switch").assertIsOff()
 
-            // Pick Bronze tier and trigger floating banner medal preview (without modal popup)
+            // Pick Bronze tier and trigger 5s 3D medal showcase preview
             composeRule.onNodeWithTag("settings_list")
                 .performScrollToNode(hasTestTag("medal_animation_preview_card"))
             composeRule.onNodeWithTag("settings_medal_tier_bronze")
                 .performScrollTo()
                 .performClick()
             composeRule.waitForIdle()
+
+            composeRule.mainClock.autoAdvance = false
             composeRule.onNodeWithTag("settings_medal_preview_button")
                 .performScrollTo()
                 .performClick()
+            composeRule.mainClock.advanceTimeBy(120L)
             composeRule.waitForIdle()
 
             val unlocked = viewModel.uiState.value.pendingMedalUnlock
@@ -4473,13 +4501,16 @@ class StartupSmokeTest {
             assertTrue(unlocked.isPreview)
 
             composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertIsDisplayed()
-            composeRule.onNodeWithText("PRATINJAU MEDALI", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithTag("medal_3d_spinning_emblem", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNode(hasText("PRATINJAU MEDALI", substring = true), useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithTag("medal_preview_close_button").performClick()
+            composeRule.mainClock.advanceTimeBy(64L)
             composeRule.waitForIdle()
 
             assertNull(viewModel.uiState.value.pendingMedalUnlock)
             composeRule.onNodeWithTag("medal_unlock_celebration_overlay").assertDoesNotExist()
         } finally {
+            composeRule.mainClock.autoAdvance = true
             vmStore.clear()
         }
     }

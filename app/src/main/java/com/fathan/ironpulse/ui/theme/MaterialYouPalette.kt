@@ -68,7 +68,7 @@ object MaterialYouColorEngine {
     const val XMATERIAL_MORNING_ACCENT = "#DFBE84"
     const val XMATERIAL_AFTERNOON_ACCENT = "#8CC5C2"
     const val XMATERIAL_NIGHT_ACCENT = "#B0A4E3"
-    const val CLI_PHOSPHOR_ACCENT = "#00FF66"
+    const val NOUGAT_TEAL_ACCENT = "#00BFA5"
 
     fun xmaterialAccentForPhase(phase: com.fathan.ironpulse.model.DayTimePhase): String = when (phase) {
         com.fathan.ironpulse.model.DayTimePhase.MORNING -> XMATERIAL_MORNING_ACCENT
@@ -83,7 +83,7 @@ object MaterialYouColorEngine {
         UiTheme.AMOLED_STEALTH -> "#07080B"
         UiTheme.FRUTIGER_AERO -> "#DDF5FF"
         UiTheme.XMATERIAL_YOU -> "#0E0F13"
-        UiTheme.TERMINAL_CLI -> "#030604"
+        UiTheme.ANDROID_NOUGAT -> "#21272B"
     }
 
     fun normalizeHexColor(hex: String?, fallback: String = DEFAULT_ACCENT_COLOR): String {
@@ -271,10 +271,10 @@ object MaterialYouColorEngine {
         isLight: Boolean = false,
         isAeroNight: Boolean = false,
         xMaterialPhase: com.fathan.ironpulse.model.DayTimePhase? = null,
-        isCli: Boolean = false
+        isNougat: Boolean = false
     ): MaterialYouPalette {
-        if (isCli) {
-            return buildTerminalCliPalette()
+        if (isNougat) {
+            return buildAndroidNougatPalette()
         }
         if (xMaterialPhase != null) {
             return buildXMaterialYouPhasePalette(xMaterialPhase)
@@ -649,30 +649,30 @@ object MaterialYouColorEngine {
         )
     }
 
-    private fun buildTerminalCliPalette(): MaterialYouPalette = buildFixedPalette(
-        seed = CLI_PHOSPHOR_ACCENT,
-        primaryHex = CLI_PHOSPHOR_ACCENT,
-        onPrimaryHex = "#021809",
-        primaryContainerHex = "#0A2815",
-        onPrimaryContainerHex = "#A7FFCB",
-        secondaryHex = "#2EE6B8",
-        onSecondaryHex = "#031B16",
-        secondaryContainerHex = "#08221D",
-        onSecondaryContainerHex = "#8BFFDF",
-        tertiaryHex = "#FFB000",
-        onTertiaryHex = "#1E1300",
-        tertiaryContainerHex = "#261A04",
-        onTertiaryContainerHex = "#FFE194",
-        surfaceHex = "#040806",
-        surfaceContainerLowestHex = "#030604",
-        surfaceContainerLowHex = "#050A07",
-        surfaceContainerHex = "#08110C",
-        surfaceContainerHighHex = "#0D1C14",
-        surfaceContainerHighestHex = "#13291D",
-        onSurfaceHex = "#D9FFE6",
-        onSurfaceVariantHex = "#6FA883",
-        outlineHex = "#00FF66",
-        outlineVariantHex = "#1F8A4C"
+    private fun buildAndroidNougatPalette(): MaterialYouPalette = buildFixedPalette(
+        seed = NOUGAT_TEAL_ACCENT,
+        primaryHex = NOUGAT_TEAL_ACCENT,
+        onPrimaryHex = "#00251F",
+        primaryContainerHex = "#1A3B39",
+        onPrimaryContainerHex = "#A7FFEB",
+        secondaryHex = "#4FC3F7",
+        onSecondaryHex = "#002436",
+        secondaryContainerHex = "#243640",
+        onSecondaryContainerHex = "#B3E5FC",
+        tertiaryHex = "#80CBC4",
+        onTertiaryHex = "#002B27",
+        tertiaryContainerHex = "#223836",
+        onTertiaryContainerHex = "#B2DFDB",
+        surfaceHex = "#21272B",
+        surfaceContainerLowestHex = "#1B2024",
+        surfaceContainerLowHex = "#252C31",
+        surfaceContainerHex = "#2B3338",
+        surfaceContainerHighHex = "#323B41",
+        surfaceContainerHighestHex = "#3B454C",
+        onSurfaceHex = "#ECEFF1",
+        onSurfaceVariantHex = "#B0BEC5",
+        outlineHex = "#00BFA5",
+        outlineVariantHex = "#455A64"
     )
 
     private fun buildFixedPalette(

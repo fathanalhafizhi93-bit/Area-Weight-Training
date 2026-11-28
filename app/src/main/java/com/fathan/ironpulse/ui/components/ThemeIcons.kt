@@ -206,15 +206,15 @@ private fun resolveThemeIconStyle(
         join = StrokeJoin.Round,
         cornerScale = 0.20f
     )
-    UiTheme.TERMINAL_CLI -> ThemeIconStyle(
+    UiTheme.ANDROID_NOUGAT -> ThemeIconStyle(
         primary = tint,
-        secondary = Color(0xFF00FF66),
-        fillWash = tint.copy(alpha = 0.12f),
-        highlight = Color(0xFFD8FFE6),
-        strokeWidth = widthPx * 0.082f,
+        secondary = Color(0xFF00BFA5),
+        fillWash = tint.copy(alpha = 0.14f),
+        highlight = Color(0xFFB2DFDB),
+        strokeWidth = widthPx * 0.084f,
         cap = StrokeCap.Square,
         join = StrokeJoin.Miter,
-        cornerScale = 0.04f
+        cornerScale = 0.10f
     )
 }
 
@@ -330,18 +330,21 @@ private fun DrawScope.drawThemeIconUnderlay(
                 )
             }
         }
-        UiTheme.TERMINAL_CLI -> {
+        UiTheme.ANDROID_NOUGAT -> {
             if (filledBadge) {
-                drawRect(
-                    color = Color(0xFF050A07),
+                val r = w * 0.12f
+                drawRoundRect(
+                    color = Color(0xFF263238),
                     topLeft = Offset(w * 0.05f, h * 0.05f),
-                    size = Size(w * 0.90f, h * 0.90f)
+                    size = Size(w * 0.90f, h * 0.90f),
+                    cornerRadius = CornerRadius(r, r)
                 )
-                drawRect(
+                drawRoundRect(
                     color = style.secondary.copy(alpha = 0.72f),
                     topLeft = Offset(w * 0.05f, h * 0.05f),
                     size = Size(w * 0.90f, h * 0.90f),
-                    style = Stroke(w * 0.048f, join = StrokeJoin.Miter)
+                    cornerRadius = CornerRadius(r, r),
+                    style = Stroke(w * 0.048f, join = StrokeJoin.Round)
                 )
             }
         }
@@ -398,11 +401,13 @@ private fun DrawScope.drawThemeIconOverlay(
                 center = Offset(w * 0.78f, h * 0.20f)
             )
         }
-        UiTheme.TERMINAL_CLI -> {
-            drawRect(
-                color = style.secondary.copy(alpha = 0.88f),
-                topLeft = Offset(w * 0.82f, h * 0.10f),
-                size = Size(w * 0.08f, h * 0.08f)
+        UiTheme.ANDROID_NOUGAT -> {
+            drawLine(
+                color = Color.White.copy(alpha = 0.24f),
+                start = Offset(w * 0.14f, h * 0.08f),
+                end = Offset(w * 0.86f, h * 0.08f),
+                strokeWidth = w * 0.032f,
+                cap = StrokeCap.Round
             )
         }
     }
@@ -448,19 +453,19 @@ private fun DrawScope.drawSemanticGlyph(
                     }
                     drawPath(dia, style.primary, style = thinStroke)
                 }
-                UiTheme.TERMINAL_CLI -> {
-                    // Terminal TUI crisp box around prompt play glyph
+                UiTheme.ANDROID_NOUGAT -> {
+                    // Android 7 Material crisp 4dp rounded card badge
                     drawRoundRect(
                         color = style.fillWash,
                         topLeft = Offset(w * 0.13f, h * 0.13f),
                         size = Size(w * 0.74f, h * 0.74f),
-                        cornerRadius = CornerRadius(w * 0.08f, w * 0.08f)
+                        cornerRadius = CornerRadius(w * 0.12f, w * 0.12f)
                     )
                     drawRoundRect(
                         color = style.primary,
                         topLeft = Offset(w * 0.13f, h * 0.13f),
                         size = Size(w * 0.74f, h * 0.74f),
-                        cornerRadius = CornerRadius(w * 0.08f, w * 0.08f),
+                        cornerRadius = CornerRadius(w * 0.12f, w * 0.12f),
                         style = stroke
                     )
                 }

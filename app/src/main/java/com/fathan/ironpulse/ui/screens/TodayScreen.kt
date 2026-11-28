@@ -416,10 +416,10 @@ fun TodayScreen(
         // 3. ELEVATED PRIMARY START WORKOUT CTA
         if (activeSchedule?.isGymDay == true && todayEntries.isNotEmpty()) {
             item(key = "start_workout_cta", contentType = "cta") {
-                val isCli = tokens.uiTheme == UiTheme.TERMINAL_CLI
+                val isNougat = tokens.uiTheme == UiTheme.ANDROID_NOUGAT
                 val ctaRadius = (tokens.cardRadius * 0.78f).coerceAtLeast(10.dp)
                 val ctaShape = when {
-                    isCli -> androidx.compose.ui.graphics.RectangleShape
+                    isNougat -> RoundedCornerShape(4.dp)
                     tokens.isXMaterial -> RoundedCornerShape(24.dp)
                     else -> RoundedCornerShape(ctaRadius)
                 }
@@ -441,7 +441,7 @@ fun TodayScreen(
                     0.4f
                 }
                 val pulseGlowTint = when {
-                    isCli -> Color(0xFF9BFFBE)
+                    isNougat -> Color(0xFF80CBC4)
                     isAero -> if (tokens.isAeroNight) Color(0xFFBAE6FD) else Color.White
                     else -> Color.White
                 }
@@ -482,7 +482,7 @@ fun TodayScreen(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .clip(if (isCli) androidx.compose.ui.graphics.RectangleShape else RoundedCornerShape(10.dp))
+                                .clip(if (isNougat) RoundedCornerShape(4.dp) else RoundedCornerShape(10.dp))
                                 .background(Color.Black.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {

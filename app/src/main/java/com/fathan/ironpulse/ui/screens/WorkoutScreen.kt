@@ -354,7 +354,7 @@ fun WorkoutScreen(
                         }
                     }
 
-                    if (hasExercises) {
+                    if (hasExercises && !hudEnabled) {
                         WorkoutMedalVerificationStrip(
                             verification = state.todayVerification,
                             liveElapsedSec = state.liveSessionElapsedSeconds,

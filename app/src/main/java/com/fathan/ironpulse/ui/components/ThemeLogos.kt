@@ -62,7 +62,7 @@ fun resolvePreviewAccentForTheme(
         activeAccent
     }
     UiTheme.MATERIAL_YOU, UiTheme.CARBON_FORGE -> activeAccent
-    UiTheme.TERMINAL_CLI -> MaterialYouColorEngine.parseColor(MaterialYouColorEngine.CLI_PHOSPHOR_ACCENT)
+    UiTheme.ANDROID_NOUGAT -> MaterialYouColorEngine.parseColor(MaterialYouColorEngine.NOUGAT_TEAL_ACCENT)
 }
 
 @Composable
@@ -88,7 +88,7 @@ fun ThemeBrandEmblem(
             UiTheme.AMOLED_STEALTH -> drawAmoledStealthEmblem(accent)
             UiTheme.FRUTIGER_AERO -> drawFrutigerAeroEmblem()
             UiTheme.XMATERIAL_YOU -> drawXMaterialYouEmblem(accent, timePhase)
-            UiTheme.TERMINAL_CLI -> drawTerminalCliEmblem(accent)
+            UiTheme.ANDROID_NOUGAT -> drawAndroidNougatEmblem(accent)
         }
     }
 }
@@ -442,67 +442,56 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
     )
 }
 
-private fun DrawScope.drawTerminalCliEmblem(accent: Color) {
+private fun DrawScope.drawAndroidNougatEmblem(accent: Color) {
     val w = size.width
     val h = size.height
+    val corner = w * 0.16f
 
-    // Razor-sharp CRT Phosphor terminal TUI chassis (0dp corners)
-    drawRect(
-        color = Color(0xFF030604),
-        topLeft = Offset(w * 0.04f, h * 0.04f),
-        size = Size(w * 0.92f, h * 0.92f)
-    )
-    drawRect(
-        brush = Brush.radialGradient(
-            colors = listOf(accent.copy(alpha = 0.24f), Color.Transparent),
-            center = Offset(w * 0.50f, h * 0.54f),
-            radius = w * 0.54f
-        ),
-        topLeft = Offset(w * 0.04f, h * 0.04f),
-        size = Size(w * 0.92f, h * 0.92f)
-    )
-    // Header tint strip
-    drawRect(
-        color = Color(0xFF0D1C14),
-        topLeft = Offset(w * 0.04f, h * 0.04f),
-        size = Size(w * 0.92f, h * 0.22f)
-    )
-    drawRect(
-        color = accent.copy(alpha = 0.90f),
+    // Classic Android 7 Nougat Material tile (slate grey + crisp teal ribbon)
+    drawRoundRect(
+        color = Color(0xFF263238),
         topLeft = Offset(w * 0.04f, h * 0.04f),
         size = Size(w * 0.92f, h * 0.92f),
-        style = Stroke(width = w * 0.062f, join = StrokeJoin.Miter)
+        cornerRadius = CornerRadius(corner, corner)
+    )
+    // Material subtle top-half light paper sheen
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+            startY = h * 0.04f,
+            endY = h * 0.55f
+        ),
+        topLeft = Offset(w * 0.04f, h * 0.04f),
+        size = Size(w * 0.92f, h * 0.92f),
+        cornerRadius = CornerRadius(corner, corner)
+    )
+    drawRoundRect(
+        color = Color(0xFF546E7A),
+        topLeft = Offset(w * 0.04f, h * 0.04f),
+        size = Size(w * 0.92f, h * 0.92f),
+        cornerRadius = CornerRadius(corner, corner),
+        style = Stroke(width = w * 0.048f)
     )
 
-    // Top tiny terminal header separator + amber tty status square
-    drawLine(
-        color = Color(0xFF1F8A4C),
-        start = Offset(w * 0.06f, h * 0.26f),
-        end = Offset(w * 0.94f, h * 0.26f),
-        strokeWidth = w * 0.045f
-    )
-    drawRect(
-        color = Color(0xFFFFB000),
-        topLeft = Offset(w * 0.75f, h * 0.11f),
-        size = Size(w * 0.12f, h * 0.09f)
-    )
-
-    // Classic ">_" shell prompt glyph
-    val chevron = Path().apply {
-        moveTo(w * 0.23f, h * 0.42f)
-        lineTo(w * 0.46f, h * 0.57f)
-        lineTo(w * 0.23f, h * 0.72f)
+    // Geometric Nougat "N" / Pulse Ribbon inspired by Android 7.0 N easter-egg fold
+    val nPath = Path().apply {
+        moveTo(w * 0.28f, h * 0.72f)
+        lineTo(w * 0.28f, h * 0.28f)
+        lineTo(w * 0.72f, h * 0.72f)
+        lineTo(w * 0.72f, h * 0.28f)
     }
     drawPath(
-        path = chevron,
+        path = nPath,
         color = accent,
-        style = Stroke(width = w * 0.095f, cap = StrokeCap.Square, join = StrokeJoin.Miter)
+        style = Stroke(width = w * 0.125f, cap = StrokeCap.Square, join = StrokeJoin.Miter)
     )
-    // Solid high-beam phosphor block cursor
-    drawRect(
-        color = Color(0xFFD9FFE6),
-        topLeft = Offset(w * 0.54f, h * 0.65f),
-        size = Size(w * 0.24f, h * 0.10f)
+    // Crisp teal highlight notch on top-left corner of ribbon
+    drawLine(
+        color = Color(0xFFA7FFEB),
+        start = Offset(w * 0.28f, h * 0.28f),
+        end = Offset(w * 0.44f, h * 0.44f),
+        strokeWidth = w * 0.06f,
+        cap = StrokeCap.Square
     )
 }
 
@@ -619,12 +608,12 @@ fun ThemeBrandWordmark(
                 append("Pulse")
             }
         }
-        UiTheme.TERMINAL_CLI -> buildAnnotatedString {
-            withStyle(SpanStyle(color = Color(0xFF8FBFA0), fontFamily = fontPack.displayFont, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp)) {
-                append("~/iron")
+        UiTheme.ANDROID_NOUGAT -> buildAnnotatedString {
+            withStyle(SpanStyle(color = Color(0xFFECEFF1), fontFamily = fontPack.displayFont, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.1).sp)) {
+                append("Iron")
             }
-            withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.2.sp)) {
-                append("pulse_")
+            withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp)) {
+                append("Pulse")
             }
         }
     }
@@ -632,7 +621,7 @@ fun ThemeBrandWordmark(
     val effectiveSize = when (theme) {
         UiTheme.CARBON_FORGE -> (fontSize.value * 0.90f).sp
         UiTheme.AMOLED_STEALTH -> (fontSize.value * 0.84f).sp
-        UiTheme.TERMINAL_CLI -> (fontSize.value * 0.82f).sp
+        UiTheme.ANDROID_NOUGAT -> (fontSize.value * 0.96f).sp
         else -> fontSize
     }
 
@@ -656,8 +645,8 @@ fun ThemeBrandLockup(
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalIronPulseTokens.current
-    val isCli = theme == UiTheme.TERMINAL_CLI
-    val lockupShape = if (isCli) RectangleShape else RoundedCornerShape(10.dp)
+    val isNougat = theme == UiTheme.ANDROID_NOUGAT
+    val lockupShape = if (isNougat) RoundedCornerShape(4.dp) else RoundedCornerShape(10.dp)
     val baseMod = modifier
         .clip(lockupShape)
         .then(
@@ -669,7 +658,7 @@ fun ThemeBrandLockup(
                 Modifier
             }
         )
-        .padding(vertical = if (isCli) 1.dp else 3.dp, horizontal = 2.dp)
+        .padding(vertical = 3.dp, horizontal = 2.dp)
         .testTag("theme_brand_lockup_${theme.wireValue}")
 
     Row(
@@ -678,44 +667,24 @@ fun ThemeBrandLockup(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ThemeBrandEmblem(theme = theme, accentOverride = accentColor, size = emblemSize)
-        if (isCli) {
-            val slug = when (activeTab) {
-                AppTab.SCHEDULE -> "schedule"
-                AppTab.HISTORY -> "history"
-                AppTab.EXERCISES -> "moves"
-                AppTab.WORKOUT -> "workout"
-                AppTab.SETTINGS -> "config"
-                AppTab.TODAY, null -> "today"
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "root@ironpulse:~/$slug$",
-                        fontSize = 8.5.sp,
-                        lineHeight = 10.sp,
-                        fontFamily = tokens.fontPack.monoFont,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFFFB000),
-                        maxLines = 1,
-                        modifier = Modifier.testTag("cli_header_prompt")
-                    )
-                    Text(
-                        text = "[TTY0]",
-                        fontSize = 8.sp,
-                        lineHeight = 10.sp,
-                        fontFamily = tokens.fontPack.monoFont,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2EE6B8),
-                        maxLines = 1
-                    )
-                }
-                ThemeBrandWordmark(
-                    theme = theme,
-                    accentColor = accentColor,
-                    fontSize = (fontSize.value * 0.90f).sp
+        if (isNougat) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ThemeBrandWordmark(theme = theme, accentColor = accentColor, fontSize = fontSize)
+                Text(
+                    text = "7.0",
+                    fontSize = 9.5.sp,
+                    fontFamily = tokens.fontPack.monoFont,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64FFDA),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0xFF1A3B39))
+                        .border(1.dp, Color(0xFF00BFA5).copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                        .testTag("nougat_version_chip")
                 )
             }
         } else {
@@ -742,7 +711,7 @@ fun ThemedPhaseLogoEmblem(
             UiTheme.AMOLED_STEALTH -> RoundedCornerShape(12.dp)
             UiTheme.FRUTIGER_AERO -> CircleShape
             UiTheme.XMATERIAL_YOU -> RoundedCornerShape(18.dp)
-            UiTheme.TERMINAL_CLI -> RectangleShape
+            UiTheme.ANDROID_NOUGAT -> RoundedCornerShape(4.dp)
         }
     }
 
@@ -753,7 +722,7 @@ fun ThemedPhaseLogoEmblem(
         UiTheme.AMOLED_STEALTH -> Color(0xFF000000)
         UiTheme.FRUTIGER_AERO -> Color.Transparent
         UiTheme.XMATERIAL_YOU -> Color(0xFF0E0F13)
-        UiTheme.TERMINAL_CLI -> Color(0xFF050A07)
+        UiTheme.ANDROID_NOUGAT -> Color(0xFF2B3338)
     }
     val containerBorder = when (theme) {
         UiTheme.MATERIAL_YOU -> softAccent.copy(alpha = 0.25f)
@@ -766,7 +735,7 @@ fun ThemedPhaseLogoEmblem(
             DayTimePhase.AFTERNOON -> Color(0x668CC5C2)
             DayTimePhase.NIGHT -> Color(0x66B0A4E3)
         }
-        UiTheme.TERMINAL_CLI -> Color(0xFF00FF66).copy(alpha = 0.78f)
+        UiTheme.ANDROID_NOUGAT -> Color(0xFF455A64)
     }
 
     Box(
@@ -786,54 +755,39 @@ fun ThemedPhaseLogoEmblem(
                 UiTheme.AMOLED_STEALTH -> drawAmoledStealthPhase(timePhase, accent)
                 UiTheme.FRUTIGER_AERO -> drawFrutigerAeroPhase(timePhase)
                 UiTheme.XMATERIAL_YOU -> drawXMaterialYouPhase(timePhase)
-                UiTheme.TERMINAL_CLI -> drawTerminalCliPhase(timePhase, accent)
+                UiTheme.ANDROID_NOUGAT -> drawAndroidNougatPhase(timePhase, accent)
             }
         }
     }
 }
 
-private fun DrawScope.drawTerminalCliPhase(phase: DayTimePhase, accent: Color) {
+private fun DrawScope.drawAndroidNougatPhase(phase: DayTimePhase, accent: Color) {
     val w = size.width
     val h = size.height
-    val wire = Stroke(width = 1.9.dp.toPx(), cap = StrokeCap.Square, join = StrokeJoin.Miter)
     when (phase) {
         DayTimePhase.MORNING -> {
-            // Sharp ASCII-like rising horizon line + angular phosphor sun
             val cx = w * 0.5f
             val hy = h * 0.70f
-            val r = w * 0.24f
+            val r = w * 0.25f
             drawArc(
-                color = Color(0xFFFFD166),
+                color = Color(0xFFFFB74D),
                 startAngle = 180f,
                 sweepAngle = 180f,
-                useCenter = false,
+                useCenter = true,
                 topLeft = Offset(cx - r, hy - r),
-                size = Size(r * 2f, r * 2f),
-                style = wire
+                size = Size(r * 2f, r * 2f)
             )
-            drawLine(accent, Offset(w * 0.14f, hy), Offset(w * 0.86f, hy), 2.dp.toPx(), cap = StrokeCap.Square)
-            drawRect(accent, Offset(cx - 2.dp.toPx(), h * 0.16f), Size(4.dp.toPx(), 6.dp.toPx()))
+            drawLine(Color(0xFF80CBC4), Offset(w * 0.14f, hy + 2.dp.toPx()), Offset(w * 0.86f, hy + 2.dp.toPx()), 2.4.dp.toPx())
         }
         DayTimePhase.AFTERNOON -> {
-            // Crisp TUI terminal core grid/solar reticle
             val cx = w * 0.5f
             val cy = h * 0.5f
-            drawRect(
-                color = accent,
-                topLeft = Offset(cx - w * 0.22f, cy - h * 0.22f),
-                size = Size(w * 0.44f, h * 0.44f),
-                style = wire
-            )
-            drawRect(
-                color = Color(0xFFD8FFE6),
-                topLeft = Offset(cx - w * 0.08f, cy - h * 0.08f),
-                size = Size(w * 0.16f, h * 0.16f)
-            )
+            drawCircle(color = Color(0xFF00BFA5), radius = w * 0.25f, center = Offset(cx, cy))
+            drawCircle(color = Color(0xFFB2DFDB), radius = w * 0.36f, center = Offset(cx, cy), style = Stroke(1.8.dp.toPx()))
         }
         DayTimePhase.NIGHT -> {
-            // Terminal crescent + crisp pixel star
-            drawPath(buildCrescentPath(), color = Color(0xFF5EEAD4), style = wire)
-            drawRect(accent, Offset(w * 0.72f, h * 0.24f), Size(4.dp.toPx(), 4.dp.toPx()))
+            drawPath(buildCrescentPath(), color = Color(0xFF80CBC4))
+            drawCircle(accent, 2.dp.toPx(), Offset(w * 0.74f, h * 0.28f))
         }
     }
 }

@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -379,39 +380,39 @@ fun resolveMascotOrbPalette(
         )
     }
 
-    UiTheme.TERMINAL_CLI -> when (phase) {
+    UiTheme.ANDROID_NOUGAT -> when (phase) {
         DayTimePhase.MORNING -> MascotOrbPalette(
-            coreStart = Color(0xFF0D1E13),
-            coreMid = Color(0xFF07110B),
-            coreEnd = Color(0xFF040805),
-            lowerBounce = Color(0x42FFD166),
-            haloPrimary = Color(0xFF00FF66),
-            haloSecondary = Color(0xFFFFD166),
-            borderColor = Color(0xFF00FF66),
-            expressionAccent = Color(0xFFFFD166),
-            cardAccent = Color(0xFF5CFF94)
+            coreStart = Color(0xFF37474F),
+            coreMid = Color(0xFF263238),
+            coreEnd = Color(0xFF1B2327),
+            lowerBounce = Color(0x42FFB74D),
+            haloPrimary = Color(0xFF00BFA5),
+            haloSecondary = Color(0xFFFFCC80),
+            borderColor = Color(0xFF00BFA5),
+            expressionAccent = Color(0xFF80CBC4),
+            cardAccent = Color(0xFF64FFDA)
         )
         DayTimePhase.AFTERNOON -> MascotOrbPalette(
-            coreStart = Color(0xFF0D2115),
-            coreMid = Color(0xFF061009),
-            coreEnd = Color(0xFF030704),
-            lowerBounce = Color(0x4400FF66),
-            haloPrimary = Color(0xFF00FF66),
-            haloSecondary = Color(0xFF5CFF94),
-            borderColor = Color(0xFF00FF66),
-            expressionAccent = Color(0xFF70FF9D),
-            cardAccent = Color(0xFF5CFF94)
+            coreStart = Color(0xFF37474F),
+            coreMid = Color(0xFF263238),
+            coreEnd = Color(0xFF1B2327),
+            lowerBounce = Color(0x4400BFA5),
+            haloPrimary = Color(0xFF00BFA5),
+            haloSecondary = Color(0xFF80CBC4),
+            borderColor = Color(0xFF00BFA5),
+            expressionAccent = Color(0xFF64FFDA),
+            cardAccent = Color(0xFF64FFDA)
         )
         DayTimePhase.NIGHT -> MascotOrbPalette(
-            coreStart = Color(0xFF091B18),
-            coreMid = Color(0xFF050F0B),
-            coreEnd = Color(0xFF030705),
-            lowerBounce = Color(0x405EEAD4),
-            haloPrimary = Color(0xFF00FF66),
-            haloSecondary = Color(0xFF5EEAD4),
-            borderColor = Color(0xFF5CFF94),
-            expressionAccent = Color(0xFF5EEAD4),
-            cardAccent = Color(0xFF5CFF94)
+            coreStart = Color(0xFF2E3B42),
+            coreMid = Color(0xFF212A2F),
+            coreEnd = Color(0xFF171E22),
+            lowerBounce = Color(0x404FC3F7),
+            haloPrimary = Color(0xFF00BFA5),
+            haloSecondary = Color(0xFF4FC3F7),
+            borderColor = Color(0xFF4FC3F7),
+            expressionAccent = Color(0xFF81D4FA),
+            cardAccent = Color(0xFF64FFDA)
         )
     }
 }
@@ -800,30 +801,14 @@ fun MascotOrbFace(
                         style = Stroke(sw * 0.85f)
                     )
                 }
-                UiTheme.TERMINAL_CLI -> {
-                    // CRT phosphor segmented bezel ring with 4 pixel bracket ticks
-                    val cliRingColor = orbPalette.haloPrimary.copy(alpha = 0.80f)
-                    for (start in listOf(-30f, 60f, 150f, 240f)) {
-                        drawArc(
-                            color = cliRingColor,
-                            startAngle = start,
-                            sweepAngle = 58f,
-                            useCenter = false,
-                            topLeft = Offset(cx - r * 0.96f, cy - r * 0.96f),
-                            size = Size(r * 1.92f, r * 1.92f),
-                            style = Stroke(sw * 0.85f, cap = StrokeCap.Square)
-                        )
-                    }
-                    for (deg in listOf(45.0, 135.0, 225.0, 315.0)) {
-                        val rad = Math.toRadians(deg)
-                        val px = cx + (r * 0.96f * kotlin.math.cos(rad)).toFloat()
-                        val py = cy + (r * 0.96f * kotlin.math.sin(rad)).toFloat()
-                        drawRect(
-                            color = orbPalette.haloSecondary,
-                            topLeft = Offset(px - sw * 0.55f, py - sw * 0.55f),
-                            size = Size(sw * 1.1f, sw * 1.1f)
-                        )
-                    }
+                UiTheme.ANDROID_NOUGAT -> {
+                    // Classic Android 7 Material teal ring
+                    drawCircle(
+                        color = orbPalette.haloPrimary.copy(alpha = 0.72f),
+                        radius = r * 0.96f,
+                        center = Offset(cx, cy),
+                        style = Stroke(sw * 0.85f)
+                    )
                 }
             }
             val auraP = switchAuraProgress.value
@@ -1028,8 +1013,8 @@ fun MascotOrbFace(
                                 size = Size(r * 1.24f, r * 0.44f)
                             )
                         }
-                        UiTheme.TERMINAL_CLI -> {
-                            // CRT phosphor terminal visor with emerald under-glow
+                        UiTheme.ANDROID_NOUGAT -> {
+                            // Classic Material 7 slate orb + crisp teal sheen
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(orbPalette.coreStart, orbPalette.coreMid, orbPalette.coreEnd),
@@ -1050,10 +1035,10 @@ fun MascotOrbFace(
                             )
                             drawOval(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color(0x1E00FF66), Color.Transparent)
+                                    colors = listOf(Color.White.copy(alpha = 0.14f), Color.Transparent)
                                 ),
-                                topLeft = Offset(cx - r * 0.58f, cy - r * 0.82f),
-                                size = Size(r * 1.16f, r * 0.36f)
+                                topLeft = Offset(cx - r * 0.58f, cy - r * 0.84f),
+                                size = Size(r * 1.16f, r * 0.38f)
                             )
                         }
                     }
@@ -1062,7 +1047,7 @@ fun MascotOrbFace(
                     width = when (theme) {
                         UiTheme.FRUTIGER_AERO -> 2.2.dp
                         UiTheme.XMATERIAL_YOU -> 1.5.dp
-                        UiTheme.TERMINAL_CLI -> 1.8.dp
+                        UiTheme.ANDROID_NOUGAT -> 1.8.dp
                         else -> 2.dp
                     },
                     color = orbPalette.borderColor,
@@ -1400,8 +1385,8 @@ fun MascotOrbFace(
                             leftX, cornerY
                         )
                         pathA.close()
-                        val interiorColor = if (theme == UiTheme.TERMINAL_CLI) {
-                            Color(0xFF04140A)
+                        val interiorColor = if (theme == UiTheme.ANDROID_NOUGAT) {
+                            Color(0xFF151C20)
                         } else {
                             Color(0xFF0C121C).copy(alpha = 0.74f)
                         }
@@ -2210,7 +2195,7 @@ fun FloatingMascotDock(
                         modifier = Modifier
                             .padding(start = 4.dp)
                             .size(32.dp)
-                            .clip(if (tokens.uiTheme == UiTheme.TERMINAL_CLI) androidx.compose.ui.graphics.RectangleShape else CircleShape)
+                            .clip(if (tokens.uiTheme == UiTheme.ANDROID_NOUGAT) RoundedCornerShape(4.dp) else CircleShape)
                             .clickable { bubbleOpen = false },
                         contentAlignment = Alignment.Center
                     ) {

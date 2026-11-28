@@ -110,12 +110,12 @@ fun resolveThemeFontPack(theme: UiTheme): ThemeFontPack = when (theme) {
         fontDisplayName = "Space Grotesk + Jakarta",
         osBadgeLabel = "X-M3"
     )
-    UiTheme.TERMINAL_CLI -> ThemeFontPack(
-        displayFont = JetBrainsMonoFamily,
-        bodyFont = JetBrainsMonoFamily,
+    UiTheme.ANDROID_NOUGAT -> ThemeFontPack(
+        displayFont = FontFamily.SansSerif,
+        bodyFont = FontFamily.SansSerif,
         monoFont = JetBrainsMonoFamily,
-        fontDisplayName = "JetBrains Mono",
-        osBadgeLabel = "CLI"
+        fontDisplayName = "Roboto Classic",
+        osBadgeLabel = "NOUGAT"
     )
 }
 
@@ -126,7 +126,7 @@ fun buildIronPulseTypography(theme: UiTheme): Typography {
     val displayTracking = when (theme) {
         UiTheme.CARBON_FORGE -> 0.5.sp
         UiTheme.AMOLED_STEALTH -> 0.4.sp
-        UiTheme.TERMINAL_CLI -> 0.3.sp
+        UiTheme.ANDROID_NOUGAT -> 0.sp
         UiTheme.FRUTIGER_AERO -> (-0.2).sp
         UiTheme.XMATERIAL_YOU -> (-0.25).sp
         else -> 0.sp
@@ -134,7 +134,7 @@ fun buildIronPulseTypography(theme: UiTheme): Typography {
     val labelTracking = when (theme) {
         UiTheme.CARBON_FORGE -> 0.6.sp
         UiTheme.AMOLED_STEALTH -> 0.5.sp
-        UiTheme.TERMINAL_CLI -> 0.6.sp
+        UiTheme.ANDROID_NOUGAT -> 0.15.sp
         UiTheme.XMATERIAL_YOU -> 0.25.sp
         else -> 0.1.sp
     }

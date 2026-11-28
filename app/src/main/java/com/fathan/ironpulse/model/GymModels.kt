@@ -106,12 +106,12 @@ enum class UiTheme(
         subtitleEn = "Calm dark obsidian glass with dawn, day, and night metal accents",
         isExclusive = true
     ),
-    TERMINAL_CLI(
-        wireValue = "terminal-cli",
-        titleId = "Terminal CLI",
-        titleEn = "Terminal CLI",
-        subtitleId = "Konsol terminal gelap dengan huruf monospace dan pendar fosfor hijau",
-        subtitleEn = "Dark terminal console with crisp monospace type and green phosphor glow",
+    ANDROID_NOUGAT(
+        wireValue = "android-nougat",
+        titleId = "Android Nougat",
+        titleEn = "Android Nougat",
+        subtitleId = "Gaya Material klasik Android 7 dengan panel slate gelap dan aksen teal",
+        subtitleEn = "Classic Android 7 Material slate cards with crisp teal accents",
         isExclusive = true
     );
 
@@ -123,7 +123,7 @@ enum class UiTheme(
             AMOLED_STEALTH.wireValue -> AMOLED_STEALTH
             FRUTIGER_AERO.wireValue -> FRUTIGER_AERO
             XMATERIAL_YOU.wireValue -> XMATERIAL_YOU
-            TERMINAL_CLI.wireValue -> TERMINAL_CLI
+            ANDROID_NOUGAT.wireValue, "terminal-cli" -> ANDROID_NOUGAT
             // Legacy removed heavy glass themes map seamlessly to lightweight Material You
             else -> MATERIAL_YOU
         }

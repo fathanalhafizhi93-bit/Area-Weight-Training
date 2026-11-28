@@ -38,7 +38,6 @@ class IronPulseApp : Application() {
                 val densityScale = resources.displayMetrics.density.toInt().coerceIn(1, 3)
                 ThemeMaterialShaderCache.getCarbonTwillBrush(cellPx = 6, subtle = true)
                 ThemeMaterialShaderCache.getYaruMatteGrainBrush(pixelScale = densityScale, subtle = true)
-                ThemeMaterialShaderCache.getCliScanlineBrush(linePx = 4, subtle = true)
             }
         }
     }

@@ -449,7 +449,7 @@ fun IronPulseRoot(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                val bannerShape = if (tokens.uiTheme == UiTheme.TERMINAL_CLI) RectangleShape else RoundedCornerShape(12.dp)
+                                val bannerShape = if (tokens.uiTheme == UiTheme.ANDROID_NOUGAT) RoundedCornerShape(4.dp) else RoundedCornerShape(12.dp)
                                 if (state.isOffline) {
                                     Surface(
                                         color = Color(0xE61F180A),

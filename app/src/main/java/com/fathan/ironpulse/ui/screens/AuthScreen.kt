@@ -87,7 +87,7 @@ fun AuthScreen(
     val tokens = LocalIronPulseTokens.current
     val lang = tokens.lang
     val noAnim = tokens.performance.noAnimations
-    val isCli = tokens.uiTheme == UiTheme.TERMINAL_CLI
+    val isNougat = tokens.uiTheme == UiTheme.ANDROID_NOUGAT
     val backdropBitmap = rememberScaledResourceBitmap(R.drawable.gym_arena_backdrop, 1024)
 
     var mascotTapCount by remember { mutableIntStateOf(0) }
@@ -195,7 +195,7 @@ fun AuthScreen(
         )
     }
 
-    val chipShape = if (isCli) RectangleShape else RoundedCornerShape(999.dp)
+    val chipShape = if (isNougat) RoundedCornerShape(4.dp) else RoundedCornerShape(999.dp)
 
     Box(
         modifier = Modifier
@@ -252,8 +252,8 @@ fun AuthScreen(
                     fontSize = 21.sp
                 )
 
-                val toggleContainerShape = if (isCli) RectangleShape else RoundedCornerShape(12.dp)
-                val toggleOptionShape = if (isCli) RectangleShape else RoundedCornerShape(8.dp)
+                val toggleContainerShape = if (isNougat) RoundedCornerShape(4.dp) else RoundedCornerShape(12.dp)
+                val toggleOptionShape = if (isNougat) RoundedCornerShape(3.dp) else RoundedCornerShape(8.dp)
                 IronPulseTonalSurface(
                     shape = toggleContainerShape,
                     baseColor = tokens.wellBg.copy(alpha = 0.88f),
@@ -310,7 +310,7 @@ fun AuthScreen(
                             tokens = tokens,
                             subtle = true,
                             borderOverride = tokens.phaseTokens.accent.copy(alpha = 0.42f),
-                            radiusOverride = if (isCli) 0.dp else 22.dp
+                            radiusOverride = if (isNougat) 4.dp else 22.dp
                         )
                         .clickable {
                             if (!isCoolingDown) {

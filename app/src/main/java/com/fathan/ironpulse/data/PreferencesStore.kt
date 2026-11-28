@@ -31,7 +31,7 @@ data class AppPreferences(
     val performance: PerformancePreferences = PerformancePreferences(),
     val floatingOrbSideRight: Boolean = true,
     val floatingOrbYRatio: Float = 0.72f,
-    val workoutFocusHudEnabled: Boolean = false,
+    val workoutFocusHudEnabled: Boolean = true,
     val keepScreenOnWorkout: Boolean = true
 )
 
@@ -69,7 +69,7 @@ class PreferencesStore(context: Context) {
             ),
             floatingOrbSideRight = prefs.getBoolean(KEY_ORB_SIDE_RIGHT, true),
             floatingOrbYRatio = prefs.getFloat(KEY_ORB_Y_RATIO, 0.72f).coerceIn(0.15f, 0.85f),
-            workoutFocusHudEnabled = prefs.getBoolean(KEY_WORKOUT_FOCUS_HUD, false),
+            workoutFocusHudEnabled = prefs.getBoolean(KEY_WORKOUT_FOCUS_HUD, true),
             keepScreenOnWorkout = prefs.getBoolean(KEY_KEEP_SCREEN_ON_WORKOUT, true)
         )
     }

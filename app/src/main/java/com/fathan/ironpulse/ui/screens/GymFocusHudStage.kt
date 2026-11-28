@@ -165,21 +165,38 @@ fun GymFocusHudStage(
 
     val cardBorder = if (allDone) Color(0x8016A34A) else tokens.accentColor.copy(alpha = 0.32f)
 
+    val summaryParts = remember(entry, spec, mode, usesWeight, defaultTargetDur, lang) {
+        buildList {
+            add(entry.muscleGroup.label(lang))
+            if (spec != null) {
+                if (mode == ExerciseTrackingMode.TIMER) {
+                    add("${lang.t("Target", "Target")} ${spec.targetSets}×${GymModelHelpers.formatCompactDuration(defaultTargetDur, lang)}")
+                } else {
+                    add("${lang.t("Target", "Target")} ${spec.targetSets}×${spec.targetReps}")
+                }
+            }
+            if (!spec?.equipment.isNullOrBlank()) {
+                add(spec!!.equipment)
+            } else if (!usesWeight) {
+                add(lang.t("Tanpa Beban", "Bodyweight"))
+            }
+        }.joinToString(" · ")
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .testTag("gym_focus_hud_stage"),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. SINGLE-EXERCISE HUD HEADER + ONE-HANDED PREV / NEXT STEPPER
+        // 1. CLEAN COMPACT ACTIVE EXERCISE HEADER (01/04 + Prev/Next + Big Title)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .ironGlassSurface(tokens, borderOverride = cardBorder)
-                .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.FluidCardSpring))
-                .padding(16.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp)
                 .testTag("hud_exercise_header_card"),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -217,20 +234,26 @@ fun GymFocusHudStage(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "${(index + 1).toString().padStart(2, '0')} / ${totalExercises.toString().padStart(2, '0')} · ${entry.muscleGroup.label(lang)}",
+                        text = "${(index + 1).toString().padStart(2, '0')} / ${totalExercises.toString().padStart(2, '0')} · $doneCount/${entry.sets.size} ${lang.t("Set", "Sets")}",
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = tokens.accentColor,
+                        color = if (allDone) Color(0xFF4ADE80) else tokens.accentTextColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "$doneCount/${entry.sets.size} ${lang.t("Set Selesai", "Sets Done")}",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (allDone) Color(0xFF4ADE80) else tokens.mutedTextColor
+                        text = entry.name,
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = tokens.palette.onSurface,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("hud_exercise_title")
                     )
                 }
 
@@ -259,107 +282,9 @@ fun GymFocusHudStage(
                     }
                 }
             }
-
-            Text(
-                text = entry.name,
-                fontSize = 26.sp,
-                lineHeight = 30.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = tokens.palette.onSurface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("hud_exercise_title")
-            )
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (spec != null) {
-                    HudMetaChip(
-                        text = if (mode == ExerciseTrackingMode.TIMER) {
-                            "${lang.t("Target", "Target")} ${spec.targetSets}×${GymModelHelpers.formatCompactDuration(defaultTargetDur, lang)}"
-                        } else {
-                            "${lang.t("Target", "Target")} ${spec.targetSets}×${spec.targetReps}"
-                        }
-                    )
-                }
-                if (!spec?.equipment.isNullOrBlank()) {
-                    HudMetaChip(text = spec?.equipment ?: "")
-                }
-                if (!usesWeight) {
-                    HudMetaChip(text = lang.t("Tanpa Beban", "Bodyweight"))
-                }
-                if (!spec?.notes.isNullOrBlank()) {
-                    IronPulseTonalSurface(
-                        onClick = onToggleNotes,
-                        shape = RoundedCornerShape(999.dp),
-                        baseColor = tokens.controlBg,
-                        border = BorderStroke(1.dp, tokens.subtleBorderColor),
-                        modifier = Modifier.testTag("hud_notes_toggle"),
-                        visualModifier = Modifier.heightIn(min = 34.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = lang.t("Teknik", "Form"),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = tokens.palette.onSurface
-                            )
-                            ThemedIcon(
-                                icon = if (notesExpanded) IronPulseIcon.EXPAND_LESS else IronPulseIcon.EXPAND_MORE,
-                                contentDescription = null,
-                                tint = tokens.mutedTextColor,
-                                size = 16.dp
-                            )
-                        }
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = notesExpanded && !spec?.notes.isNullOrBlank(),
-                enter = if (noAnim) EnterTransition.None else expandVertically(IronPulseMotion.FluidCardSpring) + fadeIn(tween(180)),
-                exit = if (noAnim) ExitTransition.None else shrinkVertically(IronPulseMotion.FluidCardSpring) + fadeOut(tween(140))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(tokens.wellBg)
-                        .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(14.dp))
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        text = spec?.notes ?: "",
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
-                        color = tokens.palette.onSurface.copy(alpha = 0.9f)
-                    )
-                }
-            }
         }
 
-        // 2. LARGE REST TIMER COUNTDOWN RING / QUICK START STRIP (ISOLATED 1Hz FLOW)
-        HudRestTimerRingCard(
-            restTimerFlow = restTimerFlow,
-            restBarDismissed = restBarDismissed,
-            recommendedRestSeconds = spec?.restSeconds ?: 60,
-            secUnit = secUnit,
-            onStartRest = onStartRest,
-            onAdjustRest = onAdjustRest,
-            onToggleRestPause = onToggleRestPause,
-            onDismissRest = onDismissRest,
-            onUndismissRest = onUndismissRest
-        )
-
-        // 3. INTERACTIVE SET PILLS + ADD / REMOVE SET
+        // 2. INTERACTIVE SET PILLS + ADD / REMOVE SET
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -476,7 +401,7 @@ fun GymFocusHudStage(
             }
         }
 
-        // 4. ACTIVE SET HERO CARD WITH OVERSIZED ONE-HANDED CONTROLS
+        // 3. PRIMARY ACTIVE SET HERO CARD (BIG SET/REP CONTROLS + SELESAI CTA)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -667,32 +592,99 @@ fun GymFocusHudStage(
                 onClick = { onToggleSetComplete(activeSet.setNumber) }
             )
         }
-    }
-}
 
-@Composable
-private fun HudMetaChip(text: String) {
-    val tokens = LocalIronPulseTokens.current
-    IronPulseTonalSurface(
-        shape = RoundedCornerShape(999.dp),
-        baseColor = tokens.wellBg,
-        border = BorderStroke(1.dp, tokens.subtleBorderColor),
-        visualModifier = Modifier.heightIn(min = 34.dp)
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
+        // 4. COMPACT 1-LINE SUMMARY DIRECTLY BELOW PRIMARY SET CONTROLS (MUSCLE · TARGET · EQUIPMENT + FORM TOGGLE)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (noAnim) Modifier else Modifier.animateContentSize(IronPulseMotion.FluidCardSpring)),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = text,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Medium,
-                color = tokens.palette.onSurface.copy(alpha = 0.85f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .ironGlassSurface(tokens, subtle = true)
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
+                    .testTag("hud_summary_line"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = summaryParts,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = tokens.palette.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                if (!spec?.notes.isNullOrBlank()) {
+                    IronPulseTonalSurface(
+                        onClick = onToggleNotes,
+                        shape = RoundedCornerShape(999.dp),
+                        baseColor = tokens.controlBg,
+                        border = BorderStroke(1.dp, tokens.subtleBorderColor),
+                        modifier = Modifier.testTag("hud_notes_toggle"),
+                        visualModifier = Modifier.heightIn(min = 32.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = lang.t("Teknik", "Form"),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = tokens.palette.onSurface
+                            )
+                            ThemedIcon(
+                                icon = if (notesExpanded) IronPulseIcon.EXPAND_LESS else IronPulseIcon.EXPAND_MORE,
+                                contentDescription = null,
+                                tint = tokens.mutedTextColor,
+                                size = 14.dp
+                            )
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = notesExpanded && !spec?.notes.isNullOrBlank(),
+                enter = if (noAnim) EnterTransition.None else expandVertically(IronPulseMotion.FluidCardSpring) + fadeIn(tween(180)),
+                exit = if (noAnim) ExitTransition.None else shrinkVertically(IronPulseMotion.FluidCardSpring) + fadeOut(tween(140))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(tokens.wellBg)
+                        .border(1.dp, tokens.subtleBorderColor, RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                        .testTag("hud_notes_drawer")
+                ) {
+                    Text(
+                        text = spec?.notes ?: "",
+                        fontSize = 12.5.sp,
+                        lineHeight = 18.sp,
+                        color = tokens.palette.onSurface.copy(alpha = 0.9f)
+                    )
+                }
+            }
         }
+
+        // 5. REST TIMER STRIP / ACTIVE COUNTDOWN RING
+        HudRestTimerRingCard(
+            restTimerFlow = restTimerFlow,
+            restBarDismissed = restBarDismissed,
+            recommendedRestSeconds = spec?.restSeconds ?: 60,
+            secUnit = secUnit,
+            onStartRest = onStartRest,
+            onAdjustRest = onAdjustRest,
+            onToggleRestPause = onToggleRestPause,
+            onDismissRest = onDismissRest,
+            onUndismissRest = onUndismissRest
+        )
     }
 }
 
