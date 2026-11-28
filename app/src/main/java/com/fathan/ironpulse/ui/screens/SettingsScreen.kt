@@ -463,7 +463,7 @@ fun SettingsScreen(
                         }
                         item(key = "builtin_ringtones_label", contentType = "section_label") {
                             Text(
-                                text = lang.t("Nada Bawaan IronPulse (5 Synth)", "Built-in Synth Ringtones (5)"),
+                                text = lang.t("Nada Bawaan VeloLift (5 Synth)", "Built-in Synth Ringtones (5)"),
                                 fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = tokens.palette.onSurfaceVariant,
@@ -728,7 +728,7 @@ private fun SettingsCategoryRow(
                 val clockLabel = if (state.appPrefs.clockFormat == ClockFormat.H24) "24H" else "12H"
                 "${state.appPrefs.lang.displayName} · $clockLabel"
             }
-            SettingsCategory.ABOUT -> "IronPulse $appVersionLabel"
+            SettingsCategory.ABOUT -> "VeloLift $appVersionLabel"
         }
     }
 

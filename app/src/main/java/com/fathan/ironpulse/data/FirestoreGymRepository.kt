@@ -111,7 +111,7 @@ class FirestoreGymRepository(
         var hasWrites = false
 
         if (!userSnap.exists()) {
-            val displayName = (user.displayName?.trim()?.takeIf { it.isNotEmpty() } ?: "Atlet IronPulse").take(100)
+            val displayName = (user.displayName?.trim()?.takeIf { it.isNotEmpty() } ?: "Atlet VeloLift").take(100)
             val email = (user.email ?: "").take(200)
             val initialProfile = mapOf(
                 "userId" to uid,
@@ -613,7 +613,7 @@ class FirestoreGymRepository(
     private fun parseUserProfile(doc: DocumentSnapshot, uid: String): UserProfile {
         return UserProfile(
             userId = doc.getString("userId") ?: uid,
-            displayName = doc.getString("displayName") ?: "Atlet IronPulse",
+            displayName = doc.getString("displayName") ?: "Atlet VeloLift",
             email = doc.getString("email") ?: "",
             defaultRingtoneId = doc.getString("defaultRingtoneId") ?: "builtin_athletic_bell",
             restRingtoneId = doc.getString("restRingtoneId") ?: "builtin_kettlebell_chime",

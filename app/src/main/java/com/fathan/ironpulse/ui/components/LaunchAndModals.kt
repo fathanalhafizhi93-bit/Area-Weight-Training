@@ -149,8 +149,8 @@ fun NamePromptModal(
             Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = lang.t(
-                    "Pulse akan menyapamu dengan nama ini dan memandumu mengenal IronPulse. Kamu bisa menggantinya kapan saja di Pengaturan.",
-                    "Pulse will greet you by this name and guide you around IronPulse. You can change it anytime in Settings."
+                    "Pulse akan menyapamu dengan nama ini dan memandumu mengenal VeloLift. Kamu bisa menggantinya kapan saja di Pengaturan.",
+                    "Pulse will greet you by this name and guide you around VeloLift. You can change it anytime in Settings."
                 ),
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
@@ -470,7 +470,7 @@ fun AboutContentCards(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "About IronPulse",
+                            text = "About VeloLift",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = tokens.palette.onSurfaceVariant
@@ -533,8 +533,8 @@ fun AboutContentCards(
             )
             Text(
                 text = lang.t(
-                    "IronPulse dirancang untuk membantu konsistensi jadwal latihan gym Anda setiap minggu, lengkap dengan alarm hari aktif, unggahan ringtone kustom, panduan daftar gerakan harian, catatan beban/set/repetisi, riwayat kalender sesi, serta timer istirahat antar set yang tersinkronisasi ke Cloud.",
-                    "IronPulse is built to keep your weekly gym schedule consistent—featuring daily workout alarms, custom ringtones, daily movement plans, weight/set/rep logging, a workout history calendar, and cloud-synced rest timers."
+                    "VeloLift dirancang untuk membantu konsistensi jadwal latihan gym Anda setiap minggu, lengkap dengan alarm hari aktif, unggahan ringtone kustom, panduan daftar gerakan harian, catatan beban/set/repetisi, riwayat kalender sesi, serta timer istirahat antar set yang tersinkronisasi ke Cloud.",
+                    "VeloLift is built to keep your weekly gym schedule consistent—featuring daily workout alarms, custom ringtones, daily movement plans, weight/set/rep logging, a workout history calendar, and cloud-synced rest timers."
                 ),
                 fontSize = 13.sp,
                 lineHeight = 20.sp,

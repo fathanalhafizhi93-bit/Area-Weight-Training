@@ -122,24 +122,23 @@ private fun DrawScope.drawMaterialYouEmblem(accent: Color) {
         cornerRadius = CornerRadius(corner, corner),
         style = Stroke(width = w * 0.055f)
     )
-    // Smooth organic pulse wave
-    val pulse = Path().apply {
-        moveTo(w * 0.22f, h * 0.56f)
-        lineTo(w * 0.36f, h * 0.56f)
-        lineTo(w * 0.45f, h * 0.31f)
-        lineTo(w * 0.56f, h * 0.70f)
-        lineTo(w * 0.65f, h * 0.48f)
-        lineTo(w * 0.78f, h * 0.48f)
+    // Crisp VeloLift kinetic V-lift chevron + terminal lift dot
+    val vLift = Path().apply {
+        moveTo(w * 0.23f, h * 0.34f)
+        lineTo(w * 0.43f, h * 0.69f)
+        lineTo(w * 0.60f, h * 0.36f)
+        lineTo(w * 0.60f, h * 0.67f)
+        lineTo(w * 0.78f, h * 0.67f)
     }
     drawPath(
-        path = pulse,
+        path = vLift,
         color = accent,
-        style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        style = Stroke(width = w * 0.095f, cap = StrokeCap.Round, join = StrokeJoin.Round)
     )
     drawCircle(
-        color = Color.White.copy(alpha = 0.9f),
+        color = Color.White.copy(alpha = 0.92f),
         radius = w * 0.06f,
-        center = Offset(w * 0.78f, h * 0.48f)
+        center = Offset(w * 0.78f, h * 0.35f)
     )
 }
 
@@ -421,24 +420,23 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
         style = Stroke(width = w * 0.042f)
     )
 
-    // Crisp Alabaster Ivory pulse trace with restrained precious-metal terminal node
-    val pulse = Path().apply {
-        moveTo(w * 0.22f, h * 0.56f)
-        lineTo(w * 0.36f, h * 0.56f)
-        lineTo(w * 0.46f, h * 0.32f)
-        lineTo(w * 0.56f, h * 0.70f)
-        lineTo(w * 0.65f, h * 0.49f)
-        lineTo(w * 0.78f, h * 0.49f)
+    // Crisp Alabaster Ivory VL kinetic lift trace with restrained precious-metal terminal node
+    val vLift = Path().apply {
+        moveTo(w * 0.23f, h * 0.34f)
+        lineTo(w * 0.43f, h * 0.68f)
+        lineTo(w * 0.60f, h * 0.36f)
+        lineTo(w * 0.60f, h * 0.67f)
+        lineTo(w * 0.78f, h * 0.67f)
     }
     drawPath(
-        path = pulse,
+        path = vLift,
         color = Color(0xFFF5F3EF),
-        style = Stroke(width = w * 0.075f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round)
     )
     drawCircle(
         color = metalHighlight,
         radius = w * 0.055f,
-        center = Offset(w * 0.78f, h * 0.49f)
+        center = Offset(w * 0.78f, h * 0.35f)
     )
 }
 
@@ -528,26 +526,26 @@ fun ThemeBrandWordmark(
     val text = when (theme) {
         UiTheme.MATERIAL_YOU -> buildAnnotatedString {
             withStyle(SpanStyle(color = Color(0xFFF4F1F8), fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold)) {
-                append("Iron")
+                append("Velo")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.ExtraBold)) {
-                append("Pulse")
+                append("Lift")
             }
         }
         UiTheme.CARBON_FORGE -> buildAnnotatedString {
             withStyle(SpanStyle(brush = metallicBrush, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)) {
-                append("IRON")
+                append("VELO")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)) {
-                append("PULSE")
+                append("LIFT")
             }
         }
         UiTheme.UBUNTU_YARU -> buildAnnotatedString {
             withStyle(SpanStyle(color = Color(0xFFF6F5F4), fontFamily = fontPack.displayFont, fontWeight = FontWeight.Medium, letterSpacing = (-0.2).sp)) {
-                append("iron")
+                append("velo")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp)) {
-                append("pulse")
+                append("lift")
             }
         }
         UiTheme.AMOLED_STEALTH -> buildAnnotatedString {
@@ -559,7 +557,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = 0.25.sp
                 )
             ) {
-                append("IRON")
+                append("VELO")
             }
             withStyle(
                 SpanStyle(
@@ -569,7 +567,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = 0.25.sp
                 )
             ) {
-                append("_PULSE")
+                append("_LIFT")
             }
         }
         UiTheme.FRUTIGER_AERO -> buildAnnotatedString {
@@ -582,7 +580,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = (-0.4).sp
                 )
             ) {
-                append("Iron")
+                append("Velo")
             }
             withStyle(
                 SpanStyle(
@@ -592,7 +590,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = (-0.3).sp
                 )
             ) {
-                append("Pulse")
+                append("Lift")
             }
         }
         UiTheme.XMATERIAL_YOU -> buildAnnotatedString {
@@ -602,18 +600,18 @@ fun ThemeBrandWordmark(
                 DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
             }
             withStyle(SpanStyle(color = Color(0xFFF5F3EF), fontFamily = fontPack.displayFont, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.25).sp)) {
-                append("Iron")
+                append("Velo")
             }
             withStyle(SpanStyle(color = metalColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.15).sp)) {
-                append("Pulse")
+                append("Lift")
             }
         }
         UiTheme.ANDROID_NOUGAT -> buildAnnotatedString {
             withStyle(SpanStyle(color = Color(0xFFECEFF1), fontFamily = fontPack.displayFont, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.1).sp)) {
-                append("Iron")
+                append("Velo")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp)) {
-                append("Pulse")
+                append("Lift")
             }
         }
     }

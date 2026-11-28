@@ -556,7 +556,7 @@ object GymModelHelpers {
     )
 
     val ACCENT_COLOR_PRESETS: List<ColorPresetOption> = listOf(
-        ColorPresetOption("lime", "#C8FF2E", "Hijau Limau", "IronPulse Lime"),
+        ColorPresetOption("lime", "#C8FF2E", "Hijau Limau", "VeloLift Lime"),
         ColorPresetOption("cyan", "#38BDF8", "Biru Pixel", "Pixel Sky"),
         ColorPresetOption("violet", "#B69DF8", "Lavender M3", "Material Lavender"),
         ColorPresetOption("crimson", "#FB7185", "Merah Rose", "Crimson Rose"),

@@ -403,7 +403,7 @@ class StartupSmokeTest {
             }
         }
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("About IronPulse").assertIsDisplayed()
+        composeRule.onNodeWithText("About VeloLift").assertIsDisplayed()
         composeRule.onNodeWithText("v1.0.0").assertIsDisplayed()
         composeRule.onNodeWithText("scripter").assertIsDisplayed()
         composeRule.onNodeWithText("Fathan, and Artificial intelligence").assertIsDisplayed()
@@ -1528,7 +1528,7 @@ class StartupSmokeTest {
             composeRule.onNodeWithTag("os_top_bar_${theme.wireValue}").assertIsDisplayed()
             composeRule.onNodeWithTag("topbar_settings_button").assertIsDisplayed()
             composeRule.onNodeWithTag("topbar_test_alarm_button").assertIsDisplayed()
-            composeRule.onNodeWithContentDescription("Tentang IronPulse").assertDoesNotExist()
+            composeRule.onNodeWithContentDescription("Tentang VeloLift").assertDoesNotExist()
             composeRule.onNodeWithTag("os_bottom_nav_${theme.wireValue}").assertIsDisplayed()
             composeRule.onNodeWithTag("mascot_orb_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_settings", useUnmergedTree = true).assertIsDisplayed()
@@ -2352,7 +2352,7 @@ class StartupSmokeTest {
             composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.ABOUT.testTag))
             composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithText("About IronPulse").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("About VeloLift").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("v1.0.0").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Fathan, and Artificial intelligence").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("fathan.").performScrollTo().assertIsDisplayed()
@@ -4149,7 +4149,8 @@ class StartupSmokeTest {
     fun todayMascot_fadesOutAndInWithoutTypewriterCursorBeforeVoiceSpeech() {
         val eyeFlow = MutableStateFlow(MascotEyeState())
         val finishedEvents = mutableListOf<Int>()
-        val mascotState = MascotUiState(
+        var mascotSetter: ((MascotUiState) -> Unit)? = null
+        val initialMascotState = MascotUiState(
             mood = MascotMood.READY,
             timePhase = DayTimePhase.MORNING,
             activeTimePose = TimePhasePose.SPARKLE,
@@ -4161,12 +4162,15 @@ class StartupSmokeTest {
                 expression = MascotExpression.EXCITED
             ),
             speechEventId = 1,
+            speechCooldownUntilMs = System.currentTimeMillis() + 5000L,
             shouldSpeakAfterReveal = true
         )
 
         composeRule.mainClock.autoAdvance = false
         try {
             composeRule.setContent {
+                var mascotState by remember { mutableStateOf(initialMascotState) }
+                mascotSetter = { mascotState = it }
                 IronPulseTheme(
                     prefs = AppPreferences(
                         uiTheme = UiTheme.MATERIAL_YOU,
@@ -4188,21 +4192,49 @@ class StartupSmokeTest {
                 }
             }
 
-            // Mid fade-out/fade-in (~260ms total), TTS trigger callback must NOT have fired yet
-            composeRule.mainClock.advanceTimeBy(40)
-            assertTrue("Expected voice reveal callback to wait until fade transition completes", finishedEvents.isEmpty())
+            // Mid per-letter reveal (80ms < 9*16ms + 40ms + 28*11ms), TTS trigger must NOT have fired yet
+            composeRule.mainClock.advanceTimeBy(80)
+            assertTrue("Expected voice reveal callback to wait until per-letter reveal completes", finishedEvents.isEmpty())
+            composeRule.onNodeWithText("Siap gas!", useUnmergedTree = true).assertDoesNotExist()
+            composeRule.onNodeWithTag("mascot_cooldown_indicator", useUnmergedTree = true).assertDoesNotExist()
+            composeRule.onNodeWithText("• • jeda", useUnmergedTree = true).assertDoesNotExist()
 
-            // Advance past 110ms fade-out + 150ms fade-in
-            composeRule.mainClock.advanceTimeBy(450)
+            // Advance past full headline (144ms) + gap (40ms) + subline (308ms)
+            composeRule.mainClock.advanceTimeBy(650)
             composeRule.waitForIdle()
 
-            assertEquals("Expected speech reveal callback to fire once after fade transition ends", listOf(1), finishedEvents)
+            assertEquals("Expected speech reveal callback to fire once after per-letter reveal ends", listOf(1), finishedEvents)
             composeRule.onNodeWithTag("mascot_speech_headline", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithTag("mascot_speech_subline", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithText("Siap gas!", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithText("Ayo mulai pemanasan singkat.", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithText("Siap gas!|", useUnmergedTree = true).assertDoesNotExist()
             composeRule.onNodeWithText("Siap gas!▌", useUnmergedTree = true).assertDoesNotExist()
+            composeRule.onNodeWithTag("mascot_cooldown_indicator", useUnmergedTree = true).assertDoesNotExist()
+            composeRule.onNodeWithText("• • jeda", useUnmergedTree = true).assertDoesNotExist()
+
+            // Next speech line runs 115ms fade-out then fast per-letter reveal
+            composeRule.runOnUiThread {
+                mascotSetter?.invoke(
+                    initialMascotState.copy(
+                        activeLine = MascotSpeechLine(
+                            id = "fade_test_2",
+                            headline = "Fokus!",
+                            subline = "Tarik napas dan atur tempo.",
+                            expression = MascotExpression.FOCUSED
+                        ),
+                        speechEventId = 2
+                    )
+                )
+            }
+            composeRule.mainClock.advanceTimeBy(90)
+            assertEquals("Expected fade-out before typing next line", listOf(1), finishedEvents)
+
+            composeRule.mainClock.advanceTimeBy(650)
+            composeRule.waitForIdle()
+            assertEquals(listOf(1, 2), finishedEvents)
+            composeRule.onNodeWithText("Fokus!", useUnmergedTree = true).assertIsDisplayed()
+            composeRule.onNodeWithText("Tarik napas dan atur tempo.", useUnmergedTree = true).assertIsDisplayed()
         } finally {
             composeRule.mainClock.autoAdvance = true
         }
@@ -4297,7 +4329,22 @@ class StartupSmokeTest {
                                     tier = MedalTier.GOLD,
                                     size = 64.dp,
                                     shineEnabled = true,
+                                    yawDegrees = 0f,
                                     modifier = Modifier.testTag("scroll_anim_medal")
+                                )
+                                ProceduralMedalEmblem(
+                                    tier = MedalTier.SILVER,
+                                    size = 64.dp,
+                                    shineEnabled = true,
+                                    yawDegrees = 85f,
+                                    modifier = Modifier.testTag("scroll_anim_medal_edge")
+                                )
+                                ProceduralMedalEmblem(
+                                    tier = MedalTier.BRONZE,
+                                    size = 64.dp,
+                                    shineEnabled = true,
+                                    yawDegrees = 180f,
+                                    modifier = Modifier.testTag("scroll_anim_medal_back")
                                 )
                             }
                         }

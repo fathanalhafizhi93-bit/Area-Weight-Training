@@ -2658,7 +2658,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         )
         val exact = AlarmScheduler.scheduleTestAlarm5Seconds(
             context = getApplication(),
-            focusTitle = todaySched?.focusTitle ?: "Tes Alarm IronPulse",
+            focusTitle = todaySched?.focusTitle ?: "Tes Alarm VeloLift",
             ringtoneId = resolvedId,
             volume = (prof?.volume ?: 0.85).toFloat()
         )
@@ -3313,7 +3313,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun pickLineFromPool(pool: List<MascotSpeechLine>, roll: Int): MascotSpeechLine {
-        if (pool.isEmpty()) return MascotSpeechLine("fallback", "IronPulse", "")
+        if (pool.isEmpty()) return MascotSpeechLine("fallback", "VeloLift", "")
         val unseen = pool.filter { it.id !in recentLineIds }
         val candidates = unseen.ifEmpty { pool }
         return candidates[abs(roll) % candidates.size]

@@ -2,6 +2,7 @@ package com.fathan.ironpulse.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -59,10 +60,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -169,7 +172,8 @@ fun ProceduralMedalEmblem(
     modifier: Modifier = Modifier,
     size: Dp = 84.dp,
     shineEnabled: Boolean = true,
-    landingBurstTick: Int = 0
+    landingBurstTick: Int = 0,
+    yawDegrees: Float = 0f
 ) {
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
@@ -199,7 +203,7 @@ fun ProceduralMedalEmblem(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 2100, easing = FastOutSlowInEasing),
+                animation = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "medalPulse"
@@ -208,7 +212,7 @@ fun ProceduralMedalEmblem(
             initialValue = 0f,
             targetValue = 360f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 14000, easing = LinearEasing),
+                animation = tween(durationMillis = 15000, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
             label = "medalRays"
@@ -241,14 +245,13 @@ fun ProceduralMedalEmblem(
             val w = this.size.width
             val h = this.size.height
             val minDim = minOf(w, h)
-            val center = Offset(w * 0.5f, h * 0.56f)
-            val coinR = minDim * 0.37f
+            val center = Offset(w * 0.5f, h * 0.58f)
+            val coinR = minDim * 0.36f
             val sweep = sweepState.value
             val pulse = pulseState.value
             val burst = burstAnim.value
 
             if (tier == MedalTier.NONE) {
-                // Locked/in-progress silhouette medal
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
@@ -275,23 +278,24 @@ fun ProceduralMedalEmblem(
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                     )
                 )
-                drawStarCrest(
+                drawFacetedStarCrest(
                     center = center,
                     outerR = coinR * 0.44f,
                     innerR = coinR * 0.20f,
-                    color = tokens.mutedTextColor.copy(alpha = 0.35f)
+                    lightColor = tokens.mutedTextColor.copy(alpha = 0.35f),
+                    shadowColor = tokens.mutedTextColor.copy(alpha = 0.20f)
                 )
                 return@Canvas
             }
 
-            // 1. Soft breathing glow aura behind medal
+            // 1. Soft aura & refined ambient rays behind the sculpted 3D coin
             if (!suppressGlow) {
-                val auraR = coinR * (1.58f + pulse * 0.14f)
+                val auraR = coinR * (1.62f + pulse * 0.14f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            pal.auraGlow.copy(alpha = 0.34f + pulse * 0.14f),
-                            pal.auraGlow.copy(alpha = 0.10f),
+                            pal.auraGlow.copy(alpha = 0.30f + pulse * 0.12f),
+                            pal.auraGlow.copy(alpha = 0.08f),
                             Color.Transparent
                         ),
                         center = center,
@@ -301,172 +305,415 @@ fun ProceduralMedalEmblem(
                     center = center
                 )
 
-                // Rotating subtle light rays
                 rotate(degrees = rayAngleState.value, pivot = center) {
                     val rayCount = 8
                     for (i in 0 until rayCount) {
                         val angleRad = (i * (360f / rayCount)) * (PI / 180.0)
-                        val rInner = coinR * 1.04f
-                        val rOuter = coinR * (1.42f + (i % 2) * 0.14f)
+                        val rInner = coinR * 1.06f
+                        val rOuter = coinR * (1.42f + (i % 2) * 0.16f)
+                        val startPt = Offset(
+                            center.x + (cos(angleRad) * rInner).toFloat(),
+                            center.y + (sin(angleRad) * rInner).toFloat()
+                        )
+                        val endPt = Offset(
+                            center.x + (cos(angleRad) * rOuter).toFloat(),
+                            center.y + (sin(angleRad) * rOuter).toFloat()
+                        )
                         drawLine(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    pal.rimHighlight.copy(alpha = 0.28f + pulse * 0.14f),
+                                    pal.rimHighlight.copy(alpha = 0.24f + pulse * 0.12f),
                                     Color.Transparent
                                 ),
-                                start = Offset(
-                                    center.x + (cos(angleRad) * rInner).toFloat(),
-                                    center.y + (sin(angleRad) * rInner).toFloat()
-                                ),
-                                end = Offset(
-                                    center.x + (cos(angleRad) * rOuter).toFloat(),
-                                    center.y + (sin(angleRad) * rOuter).toFloat()
-                                )
+                                start = startPt,
+                                end = endPt
                             ),
-                            start = Offset(
-                                center.x + (cos(angleRad) * rInner).toFloat(),
-                                center.y + (sin(angleRad) * rInner).toFloat()
-                            ),
-                            end = Offset(
-                                center.x + (cos(angleRad) * rOuter).toFloat(),
-                                center.y + (sin(angleRad) * rOuter).toFloat()
-                            ),
-                            strokeWidth = 2.dp.toPx(),
+                            start = startPt,
+                            end = endPt,
+                            strokeWidth = 1.6.dp.toPx(),
                             cap = StrokeCap.Round
                         )
                     }
                 }
             }
 
-            // 2. Top V-shaped Championship Ribbon Clasp
+            // Compute 3D yaw projection & extruded coin thickness
+            val normYaw = ((yawDegrees % 360f) + 360f) % 360f
+            val radYaw = normYaw * (PI / 180.0)
+            val cosYaw = cos(radYaw).toFloat()
+            val sinYaw = sin(radYaw).toFloat()
+            val faceScaleX = kotlin.math.abs(cosYaw).coerceAtLeast(0.055f)
+            val isFrontFacing = cosYaw >= 0f
+            val maxDepthPx = coinR * 0.24f
+            val visibleDepthPx = maxDepthPx * kotlin.math.abs(sinYaw)
+            // Direction of the hidden/back side relative to center along X
+            val edgeDir = if (sinYaw >= 0f) -1f else 1f
+            val frontShiftX = -edgeDir * (visibleDepthPx * 0.5f)
+            val backShiftX = edgeDir * (visibleDepthPx * 0.5f)
+
+            // 2. Layered V-Fold Championship Ribbon & Metallic Clasp Bar
+            val claspCenterY = center.y - coinR * 0.96f
+            val ribbonTopY = center.y - coinR * 1.54f
+            val ribbonFoldY = center.y - coinR * 0.94f
+
+            // Back under-fold ribbon wing for stacked 3D depth
+            val backRibbon = Path().apply {
+                moveTo(center.x - coinR * 0.62f, ribbonTopY + coinR * 0.06f)
+                lineTo(center.x + coinR * 0.62f, ribbonTopY + coinR * 0.06f)
+                lineTo(center.x + coinR * 0.34f, ribbonFoldY + coinR * 0.08f)
+                lineTo(center.x - coinR * 0.34f, ribbonFoldY + coinR * 0.08f)
+                close()
+            }
+            drawPath(backRibbon, pal.ribbonBottom.copy(alpha = 0.72f))
+
             val ribbonLeft = Path().apply {
-                moveTo(center.x - coinR * 0.56f, center.y - coinR * 1.38f)
-                lineTo(center.x - coinR * 0.12f, center.y - coinR * 1.38f)
-                lineTo(center.x + coinR * 0.04f, center.y - coinR * 0.72f)
-                lineTo(center.x - coinR * 0.28f, center.y - coinR * 0.72f)
+                moveTo(center.x - coinR * 0.58f, ribbonTopY)
+                lineTo(center.x - coinR * 0.10f, ribbonTopY)
+                lineTo(center.x + coinR * 0.14f, ribbonFoldY)
+                lineTo(center.x - coinR * 0.30f, ribbonFoldY)
                 close()
             }
             val ribbonRight = Path().apply {
-                moveTo(center.x + coinR * 0.12f, center.y - coinR * 1.38f)
-                lineTo(center.x + coinR * 0.56f, center.y - coinR * 1.38f)
-                lineTo(center.x + coinR * 0.28f, center.y - coinR * 0.72f)
-                lineTo(center.x - coinR * 0.04f, center.y - coinR * 0.72f)
+                moveTo(center.x + coinR * 0.10f, ribbonTopY)
+                lineTo(center.x + coinR * 0.58f, ribbonTopY)
+                lineTo(center.x + coinR * 0.30f, ribbonFoldY)
+                lineTo(center.x - coinR * 0.14f, ribbonFoldY)
                 close()
             }
-            val ribbonBrush = Brush.verticalGradient(
+            val ribbonLeftBrush = Brush.verticalGradient(
                 colors = listOf(pal.ribbonTop, pal.ribbonBottom),
-                startY = center.y - coinR * 1.38f,
-                endY = center.y - coinR * 0.72f
+                startY = ribbonTopY,
+                endY = ribbonFoldY
             )
-            drawPath(ribbonLeft, ribbonBrush)
-            drawPath(ribbonRight, ribbonBrush)
+            val ribbonRightBrush = Brush.verticalGradient(
+                colors = listOf(pal.ribbonTop.copy(alpha = 0.96f), pal.ribbonBottom),
+                startY = ribbonTopY,
+                endY = ribbonFoldY
+            )
+            drawPath(ribbonLeft, ribbonLeftBrush)
+            // Subtle crisp gold/ivory center stripe on left fold
+            drawLine(
+                color = pal.rimHighlight.copy(alpha = 0.48f),
+                start = Offset(center.x - coinR * 0.34f, ribbonTopY + coinR * 0.03f),
+                end = Offset(center.x - coinR * 0.08f, ribbonFoldY - coinR * 0.03f),
+                strokeWidth = (coinR * 0.07f).coerceAtLeast(1.dp.toPx()),
+                cap = StrokeCap.Butt
+            )
+            // Fold overlap shadow before drawing right wing over left wing
+            drawLine(
+                color = Color.Black.copy(alpha = 0.28f),
+                start = Offset(center.x + coinR * 0.08f, ribbonTopY),
+                end = Offset(center.x - coinR * 0.15f, ribbonFoldY),
+                strokeWidth = (coinR * 0.09f).coerceAtLeast(1.2.dp.toPx())
+            )
+            drawPath(ribbonRight, ribbonRightBrush)
+            drawLine(
+                color = pal.rimHighlight.copy(alpha = 0.42f),
+                start = Offset(center.x + coinR * 0.34f, ribbonTopY + coinR * 0.03f),
+                end = Offset(center.x + coinR * 0.08f, ribbonFoldY - coinR * 0.03f),
+                strokeWidth = (coinR * 0.07f).coerceAtLeast(1.dp.toPx()),
+                cap = StrokeCap.Butt
+            )
 
-            // Metallic clasp ring connecting ribbon to coin
+            // Sculpted horizontal metallic ribbon bar + jump ring connecting coin
+            val barW = coinR * 0.56f
+            val barH = coinR * 0.15f
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(pal.rimHighlight, pal.faceMid, pal.rimShadow),
+                    startY = ribbonFoldY - barH * 0.5f,
+                    endY = ribbonFoldY + barH * 0.5f
+                ),
+                topLeft = Offset(center.x - barW * 0.5f, ribbonFoldY - barH * 0.5f),
+                size = Size(barW, barH),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(barH * 0.4f, barH * 0.4f)
+            )
+            drawCircle(
+                color = pal.rimShadow,
+                radius = coinR * 0.13f,
+                center = Offset(center.x + frontShiftX * 0.45f, claspCenterY + coinR * 0.04f),
+                style = Stroke(width = (coinR * 0.065f).coerceAtLeast(1.4.dp.toPx()))
+            )
             drawCircle(
                 color = pal.rimHighlight,
-                radius = coinR * 0.15f,
-                center = Offset(center.x, center.y - coinR * 0.98f),
-                style = Stroke(width = 2.2.dp.toPx())
+                radius = coinR * 0.13f,
+                center = Offset(center.x + frontShiftX * 0.45f, claspCenterY + coinR * 0.02f),
+                style = Stroke(width = (coinR * 0.045f).coerceAtLeast(1.1.dp.toPx()))
             )
 
-            // 3. Outer Beveled Coin Body & Inner Metallic Disc
-            drawCircle(
-                brush = Brush.linearGradient(
-                    colors = listOf(pal.rimHighlight, pal.faceMid, pal.rimShadow),
-                    start = Offset(center.x - coinR, center.y - coinR),
-                    end = Offset(center.x + coinR, center.y + coinR)
-                ),
-                radius = coinR,
-                center = center
+            // 3. Soft Ground/Drop Shadow behind sculpted coin
+            val rx = coinR * faceScaleX
+            val ry = coinR
+            drawOval(
+                color = Color.Black.copy(alpha = 0.24f),
+                topLeft = Offset(center.x - rx * 1.03f, center.y - ry * 0.94f + coinR * 0.08f),
+                size = Size(rx * 2.06f, ry * 2.02f)
             )
 
-            val innerR = coinR * 0.80f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(pal.faceLight, pal.faceMid, pal.faceDeep),
-                    center = Offset(center.x - innerR * 0.28f, center.y - innerR * 0.30f),
-                    radius = innerR * 1.45f
-                ),
-                radius = innerR,
-                center = center
-            )
-
-            // Engraved concentric ring & rim highlight
-            drawCircle(
-                color = pal.rimShadow.copy(alpha = 0.45f),
-                radius = innerR,
-                center = center,
-                style = Stroke(width = 1.4.dp.toPx())
-            )
-            drawCircle(
-                color = pal.rimHighlight.copy(alpha = 0.55f),
-                radius = coinR * 0.94f,
-                center = center,
-                style = Stroke(width = 1.1.dp.toPx())
-            )
-
-            // 4. Central Embossed Star + Crown/Barbell Emblem
-            drawStarCrest(
-                center = Offset(center.x, center.y + innerR * 0.03f),
-                outerR = innerR * 0.56f,
-                innerR = innerR * 0.26f,
-                color = pal.rimShadow.copy(alpha = 0.35f)
-            )
-            drawStarCrest(
-                center = Offset(center.x, center.y - innerR * 0.02f),
-                outerR = innerR * 0.54f,
-                innerR = innerR * 0.25f,
-                color = pal.crestTint.copy(alpha = 0.94f)
-            )
-
-            // 5. Clipped Diagonal Specular Shine Sweep across Medal Face
-            if (shineEnabled) {
-                val coinClip = Path().apply {
-                    addOval(
-                        androidx.compose.ui.geometry.Rect(
-                            left = center.x - coinR,
-                            top = center.y - coinR,
-                            right = center.x + coinR,
-                            bottom = center.y + coinR
-                        )
+            // 4. True 3D Extruded Metallic Rim when coin turns sideways
+            if (visibleDepthPx > 0.6f) {
+                val backCenterX = center.x + backShiftX
+                val frontCenterX = center.x + frontShiftX
+                // Draw back rim oval
+                drawOval(
+                    color = pal.rimShadow,
+                    topLeft = Offset(backCenterX - rx, center.y - ry),
+                    size = Size(rx * 2f, ry * 2f)
+                )
+                // Side cylinder band bridging top-to-bottom tangent of back & front ovals
+                val rimBand = Path().apply {
+                    moveTo(backCenterX, center.y - ry)
+                    lineTo(frontCenterX, center.y - ry)
+                    arcTo(
+                        rect = androidx.compose.ui.geometry.Rect(
+                            left = frontCenterX - rx,
+                            top = center.y - ry,
+                            right = frontCenterX + rx,
+                            bottom = center.y + ry
+                        ),
+                        startAngleDegrees = -90f,
+                        sweepAngleDegrees = if (edgeDir > 0f) -180f else 180f,
+                        forceMoveTo = false
+                    )
+                    lineTo(backCenterX, center.y + ry)
+                    arcTo(
+                        rect = androidx.compose.ui.geometry.Rect(
+                            left = backCenterX - rx,
+                            top = center.y - ry,
+                            right = backCenterX + rx,
+                            bottom = center.y + ry
+                        ),
+                        startAngleDegrees = 90f,
+                        sweepAngleDegrees = if (edgeDir > 0f) 180f else -180f,
+                        forceMoveTo = false
+                    )
+                    close()
+                }
+                drawPath(
+                    path = rimBand,
+                    brush = Brush.verticalGradient(
+                        0.0f to pal.rimShadow,
+                        0.22f to pal.faceMid,
+                        0.46f to pal.rimHighlight,
+                        0.74f to pal.faceDeep,
+                        1.0f to pal.rimShadow,
+                        startY = center.y - ry,
+                        endY = center.y + ry
+                    )
+                )
+                // Milled edge grooves on the exposed 3D rim thickness
+                val grooveCount = 9
+                for (g in 1 until grooveCount) {
+                    val fracY = (g / grooveCount.toFloat()) * 2f - 1f
+                    val gy = center.y + fracY * ry * 0.90f
+                    val edgeOffset = kotlin.math.sqrt((1f - fracY * fracY).coerceAtLeast(0f)) * rx * (-edgeDir)
+                    val gxStart = backCenterX + edgeOffset
+                    val gxEnd = frontCenterX + edgeOffset
+                    drawLine(
+                        color = pal.rimShadow.copy(alpha = 0.52f),
+                        start = Offset(gxStart, gy),
+                        end = Offset(gxEnd, gy),
+                        strokeWidth = (coinR * 0.032f).coerceAtLeast(0.8.dp.toPx())
                     )
                 }
-                clipPath(coinClip) {
-                    val bandX = (center.x - coinR * 1.3f) + (coinR * 2.6f * sweep)
-                    rotate(degrees = 26f, pivot = center) {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.White.copy(alpha = 0.68f),
-                                    Color.Transparent
-                                ),
-                                startX = bandX - coinR * 0.28f,
-                                endX = bandX + coinR * 0.28f
-                            ),
-                            topLeft = Offset(bandX - coinR * 0.28f, center.y - coinR * 1.5f),
-                            size = Size(coinR * 0.56f, coinR * 3.0f)
+            }
+
+            // 5. Perspective-Scaled Coin Face (Front Sculpted or Reverse Minted)
+            withTransform({
+                translate(left = frontShiftX, top = 0f)
+                scale(scaleX = faceScaleX, scaleY = 1f, pivot = center)
+            }) {
+                // Outer beveled metallic body
+                drawCircle(
+                    brush = Brush.linearGradient(
+                        colors = listOf(pal.rimHighlight, pal.faceMid, pal.rimShadow),
+                        start = Offset(center.x - coinR, center.y - coinR),
+                        end = Offset(center.x + coinR, center.y + coinR)
+                    ),
+                    radius = coinR,
+                    center = center
+                )
+
+                // Reeded / milled rim tick ring around outer bezel
+                val tickCount = 36
+                val outerTickR = coinR * 0.97f
+                val innerTickR = coinR * 0.88f
+                for (t in 0 until tickCount) {
+                    val ang = (t * (360.0 / tickCount)) * (PI / 180.0)
+                    val tickCol = if (t % 2 == 0) pal.rimHighlight.copy(alpha = 0.55f) else pal.rimShadow.copy(alpha = 0.42f)
+                    drawLine(
+                        color = tickCol,
+                        start = Offset(
+                            center.x + (cos(ang) * innerTickR).toFloat(),
+                            center.y + (sin(ang) * innerTickR).toFloat()
+                        ),
+                        end = Offset(
+                            center.x + (cos(ang) * outerTickR).toFloat(),
+                            center.y + (sin(ang) * outerTickR).toFloat()
+                        ),
+                        strokeWidth = (coinR * 0.030f).coerceAtLeast(0.7.dp.toPx()),
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                // Inner metallic rim ridge & recessed dish
+                val innerR = coinR * 0.78f
+                drawCircle(
+                    color = pal.rimHighlight.copy(alpha = 0.65f),
+                    radius = coinR * 0.84f,
+                    center = center,
+                    style = Stroke(width = (coinR * 0.042f).coerceAtLeast(1.dp.toPx()))
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(pal.faceLight, pal.faceMid, pal.faceDeep),
+                        center = Offset(center.x - innerR * 0.28f, center.y - innerR * 0.30f),
+                        radius = innerR * 1.48f
+                    ),
+                    radius = innerR,
+                    center = center
+                )
+                // Inner dish shadow groove
+                drawCircle(
+                    color = pal.rimShadow.copy(alpha = 0.58f),
+                    radius = innerR,
+                    center = center,
+                    style = Stroke(width = (coinR * 0.045f).coerceAtLeast(1.1.dp.toPx()))
+                )
+
+                if (isFrontFacing) {
+                    // Sculpted Symmetrical Laurel Wreath framing the inner well
+                    drawLaurelWreath(
+                        center = center,
+                        radius = innerR * 0.76f,
+                        leafSize = innerR * 0.145f,
+                        lightColor = pal.crestTint.copy(alpha = 0.88f),
+                        shadowColor = pal.rimShadow.copy(alpha = 0.44f)
+                    )
+
+                    // Tier-specific sculpted centerpiece
+                    when (tier) {
+                        MedalTier.GOLD -> {
+                            drawCrownCrest(
+                                center = Offset(center.x, center.y - innerR * 0.42f),
+                                width = innerR * 0.44f,
+                                height = innerR * 0.22f,
+                                lightColor = pal.crestTint,
+                                shadowColor = pal.rimShadow.copy(alpha = 0.45f)
+                            )
+                            drawFacetedStarCrest(
+                                center = Offset(center.x, center.y + innerR * 0.07f),
+                                outerR = innerR * 0.42f,
+                                innerR = innerR * 0.19f,
+                                lightColor = pal.crestTint,
+                                shadowColor = pal.faceDeep.copy(alpha = 0.72f)
+                            )
+                        }
+                        MedalTier.SILVER -> {
+                            drawFacetedStarCrest(
+                                center = Offset(center.x, center.y - innerR * 0.02f),
+                                outerR = innerR * 0.46f,
+                                innerR = innerR * 0.21f,
+                                lightColor = pal.crestTint,
+                                shadowColor = pal.faceDeep.copy(alpha = 0.72f)
+                            )
+                            drawCircle(
+                                color = pal.rimHighlight.copy(alpha = 0.55f),
+                                radius = innerR * 0.52f,
+                                center = center,
+                                style = Stroke(width = (coinR * 0.025f).coerceAtLeast(0.7.dp.toPx()))
+                            )
+                        }
+                        MedalTier.BRONZE -> {
+                            drawFacetedStarCrest(
+                                center = Offset(center.x, center.y - innerR * 0.01f),
+                                outerR = innerR * 0.44f,
+                                innerR = innerR * 0.20f,
+                                lightColor = pal.crestTint,
+                                shadowColor = pal.faceDeep.copy(alpha = 0.76f)
+                            )
+                        }
+                        MedalTier.NONE -> Unit
+                    }
+                } else {
+                    // Reverse Minted Face (visible mid-rotation when cosYaw < 0): concentric ring + embossed "VL" crest
+                    drawCircle(
+                        color = pal.crestTint.copy(alpha = 0.42f),
+                        radius = innerR * 0.68f,
+                        center = center,
+                        style = Stroke(width = (coinR * 0.032f).coerceAtLeast(0.8.dp.toPx()))
+                    )
+                    // Reverse engraved "VL" chevron monogram
+                    val vlStroke = Stroke(
+                        width = (innerR * 0.16f).coerceAtLeast(1.8.dp.toPx()),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
+                    val vlPath = Path().apply {
+                        moveTo(center.x - innerR * 0.36f, center.y - innerR * 0.24f)
+                        lineTo(center.x - innerR * 0.10f, center.y + innerR * 0.24f)
+                        lineTo(center.x + innerR * 0.14f, center.y - innerR * 0.24f)
+                        lineTo(center.x + innerR * 0.14f, center.y + innerR * 0.22f)
+                        lineTo(center.x + innerR * 0.38f, center.y + innerR * 0.22f)
+                    }
+                    drawPath(vlPath, pal.rimShadow.copy(alpha = 0.52f), style = vlStroke)
+                    drawPath(vlPath, pal.crestTint.copy(alpha = 0.90f), style = Stroke(
+                        width = (innerR * 0.12f).coerceAtLeast(1.4.dp.toPx()),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    ))
+                }
+
+                // 6. Clipped Diagonal Specular Shine Sweep scaled naturally by surface angle
+                if (shineEnabled) {
+                    val coinClip = Path().apply {
+                        addOval(
+                            androidx.compose.ui.geometry.Rect(
+                                left = center.x - coinR,
+                                top = center.y - coinR,
+                                right = center.x + coinR,
+                                bottom = center.y + coinR
+                            )
                         )
+                    }
+                    val angleShineFactor = (0.18f + 0.82f * faceScaleX).coerceIn(0.18f, 1f)
+                    clipPath(coinClip) {
+                        val bandX = (center.x - coinR * 1.3f) + (coinR * 2.6f * sweep)
+                        rotate(degrees = 26f, pivot = center) {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.White.copy(alpha = 0.56f * angleShineFactor),
+                                        Color.Transparent
+                                    ),
+                                    startX = bandX - coinR * 0.26f,
+                                    endX = bandX + coinR * 0.26f
+                                ),
+                                topLeft = Offset(bandX - coinR * 0.26f, center.y - coinR * 1.5f),
+                                size = Size(coinR * 0.52f, coinR * 3.0f)
+                            )
+                        }
                     }
                 }
             }
 
-            // 6. Twinkling rim sparkles
+            // 7. Twinkling rim sparkles (anchored gently outside rotated silhouette)
             if (runShine && !suppressGlow) {
                 val sparkleAlpha = (0.35f + pulse * 0.65f).coerceIn(0f, 1f)
                 drawFourPointSparkle(
-                    center = Offset(center.x + coinR * 0.78f, center.y - coinR * 0.62f),
-                    radius = coinR * (0.14f + pulse * 0.08f),
+                    center = Offset(center.x + coinR * 0.80f * faceScaleX + frontShiftX, center.y - coinR * 0.64f),
+                    radius = coinR * (0.13f + pulse * 0.07f),
                     color = Color.White.copy(alpha = sparkleAlpha)
                 )
                 drawFourPointSparkle(
-                    center = Offset(center.x - coinR * 0.82f, center.y + coinR * 0.56f),
-                    radius = coinR * (0.11f + (1f - pulse) * 0.07f),
+                    center = Offset(center.x - coinR * 0.82f * faceScaleX + frontShiftX, center.y + coinR * 0.58f),
+                    radius = coinR * (0.10f + (1f - pulse) * 0.06f),
                     color = pal.rimHighlight.copy(alpha = 0.35f + (1f - pulse) * 0.55f)
                 )
             }
 
-            // 7. Landing Arrival Shockwave + Sparkle Burst
+            // 8. Landing Arrival Shockwave + Sparkle Burst
             if (burst > 0f) {
                 val burstAlpha = (1f - burst).coerceIn(0f, 1f)
                 val shockR = coinR * (1.0f + burst * 0.95f)
@@ -474,13 +721,13 @@ fun ProceduralMedalEmblem(
                     color = pal.auraGlow.copy(alpha = burstAlpha * 0.85f),
                     radius = shockR,
                     center = center,
-                    style = Stroke(width = (3.6f * (1f - burst * 0.6f)).dp.toPx())
+                    style = Stroke(width = (3.4f * (1f - burst * 0.6f)).dp.toPx())
                 )
                 drawCircle(
                     color = Color.White.copy(alpha = burstAlpha * 0.65f),
                     radius = coinR * (0.95f + burst * 0.55f),
                     center = center,
-                    style = Stroke(width = 1.6.dp.toPx())
+                    style = Stroke(width = 1.5.dp.toPx())
                 )
                 val particleCount = 10
                 for (i in 0 until particleCount) {
@@ -501,22 +748,118 @@ fun ProceduralMedalEmblem(
     }
 }
 
-private fun DrawScope.drawStarCrest(
+private fun DrawScope.drawLaurelWreath(
+    center: Offset,
+    radius: Float,
+    leafSize: Float,
+    lightColor: Color,
+    shadowColor: Color
+) {
+    val pairs = 6
+    listOf(-1f, 1f).forEach { sideSign ->
+        for (i in 0 until pairs) {
+            // Arc from bottom (+68 deg) toward upper side (-52 deg)
+            val baseDeg = 68f - i * 22f
+            val rad = (if (sideSign < 0f) 180f - baseDeg else baseDeg) * (PI / 180.0)
+            val anchor = Offset(
+                center.x + (cos(rad) * radius).toFloat(),
+                center.y + (sin(rad) * radius).toFloat()
+            )
+            // Outer and inner leaf angled along wreath curvature
+            listOf(-26f, 22f).forEach { offsetDeg ->
+                val leafAngle = (if (sideSign < 0f) 180f - baseDeg - 90f else baseDeg + 90f) + offsetDeg * sideSign
+                val leafPath = Path().apply {
+                    moveTo(anchor.x, anchor.y)
+                    val tipRad = (leafAngle - 16f) * (PI / 180.0)
+                    val midLeft = (leafAngle - 42f) * (PI / 180.0)
+                    val midRight = (leafAngle + 14f) * (PI / 180.0)
+                    val tip = Offset(
+                        anchor.x + (cos(tipRad) * leafSize * 1.35f).toFloat(),
+                        anchor.y + (sin(tipRad) * leafSize * 1.35f).toFloat()
+                    )
+                    val c1 = Offset(
+                        anchor.x + (cos(midLeft) * leafSize * 0.75f).toFloat(),
+                        anchor.y + (sin(midLeft) * leafSize * 0.75f).toFloat()
+                    )
+                    val c2 = Offset(
+                        anchor.x + (cos(midRight) * leafSize * 0.75f).toFloat(),
+                        anchor.y + (sin(midRight) * leafSize * 0.75f).toFloat()
+                    )
+                    quadraticBezierTo(c1.x, c1.y, tip.x, tip.y)
+                    quadraticBezierTo(c2.x, c2.y, anchor.x, anchor.y)
+                    close()
+                }
+                drawPath(leafPath, shadowColor)
+                withTransform({ translate(left = 0f, top = -leafSize * 0.08f) }) {
+                    drawPath(leafPath, lightColor)
+                }
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawCrownCrest(
+    center: Offset,
+    width: Float,
+    height: Float,
+    lightColor: Color,
+    shadowColor: Color
+) {
+    val left = center.x - width * 0.5f
+    val right = center.x + width * 0.5f
+    val bottom = center.y + height * 0.5f
+    val top = center.y - height * 0.5f
+    val crown = Path().apply {
+        moveTo(left + width * 0.12f, bottom)
+        lineTo(left, top + height * 0.22f)
+        lineTo(center.x - width * 0.22f, center.y + height * 0.06f)
+        lineTo(center.x, top)
+        lineTo(center.x + width * 0.22f, center.y + height * 0.06f)
+        lineTo(right, top + height * 0.22f)
+        lineTo(right - width * 0.12f, bottom)
+        close()
+    }
+    withTransform({ translate(left = 0f, top = height * 0.10f) }) {
+        drawPath(crown, shadowColor)
+    }
+    drawPath(crown, lightColor)
+}
+
+private fun DrawScope.drawFacetedStarCrest(
     center: Offset,
     outerR: Float,
     innerR: Float,
-    color: Color
+    lightColor: Color,
+    shadowColor: Color
 ) {
-    val path = Path()
+    // Drop shadow behind star
+    val shadowPath = Path()
     for (i in 0 until 10) {
         val r = if (i % 2 == 0) outerR else innerR
         val angle = (-90.0 + i * 36.0) * (PI / 180.0)
         val x = center.x + (cos(angle) * r).toFloat()
-        val y = center.y + (sin(angle) * r).toFloat()
-        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        val y = center.y + outerR * 0.06f + (sin(angle) * r).toFloat()
+        if (i == 0) shadowPath.moveTo(x, y) else shadowPath.lineTo(x, y)
     }
-    path.close()
-    drawPath(path, color)
+    shadowPath.close()
+    drawPath(shadowPath, shadowColor.copy(alpha = 0.55f))
+
+    // 10 beveled triangular facets meeting at the star center
+    for (i in 0 until 10) {
+        val r1 = if (i % 2 == 0) outerR else innerR
+        val r2 = if ((i + 1) % 2 == 0) outerR else innerR
+        val a1 = (-90.0 + i * 36.0) * (PI / 180.0)
+        val a2 = (-90.0 + (i + 1) * 36.0) * (PI / 180.0)
+        val p1 = Offset(center.x + (cos(a1) * r1).toFloat(), center.y + (sin(a1) * r1).toFloat())
+        val p2 = Offset(center.x + (cos(a2) * r2).toFloat(), center.y + (sin(a2) * r2).toFloat())
+        val facet = Path().apply {
+            moveTo(center.x, center.y)
+            lineTo(p1.x, p1.y)
+            lineTo(p2.x, p2.y)
+            close()
+        }
+        drawPath(facet, if (i % 2 == 0) lightColor else shadowColor.copy(alpha = 0.62f))
+    }
 }
 
 private fun DrawScope.drawFourPointSparkle(
@@ -840,10 +1183,13 @@ fun MedalUnlockCelebrationOverlay(
                     shockwaveProgress.animateTo(1f, tween(durationMillis = 900, easing = FastOutSlowInEasing))
                 }
                 launch {
-                    delay(450L)
+                    delay(260L)
                     medalSpinY.animateTo(
-                        targetValue = 720f,
-                        animationSpec = tween(durationMillis = 3750, easing = FastOutSlowInEasing)
+                        targetValue = 1080f,
+                        animationSpec = tween(
+                            durationMillis = 4150,
+                            easing = CubicBezierEasing(0.18f, 0.88f, 0.24f, 1.0f)
+                        )
                     )
                 }
                 launch {
@@ -930,10 +1276,10 @@ fun MedalUnlockCelebrationOverlay(
 
             val tick = ambientTick.value
             if (!tokens.performance.noAmbientGlow && !noAnim) {
-                // Rotating radial light beams behind the 3D spinning medal
+                // Delicate rotating light beams behind the 3D extruded coin
                 val rayCount = 12
                 val baseAngle = tick * 360f
-                val beamLen = 175.dp.toPx()
+                val beamLen = 178.dp.toPx()
                 for (r in 0 until rayCount) {
                     val deg = baseAngle + r * (360f / rayCount)
                     val rad = Math.toRadians(deg.toDouble())
@@ -944,7 +1290,7 @@ fun MedalUnlockCelebrationOverlay(
                     drawLine(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                pal.auraGlow.copy(alpha = if (r % 2 == 0) 0.42f else 0.22f),
+                                pal.auraGlow.copy(alpha = if (r % 2 == 0) 0.30f else 0.14f),
                                 Color.Transparent
                             ),
                             start = center,
@@ -952,7 +1298,7 @@ fun MedalUnlockCelebrationOverlay(
                         ),
                         start = center,
                         end = end,
-                        strokeWidth = (if (r % 2 == 0) 12.dp else 6.dp).toPx(),
+                        strokeWidth = (if (r % 2 == 0) 6.dp else 3.dp).toPx(),
                         cap = StrokeCap.Round
                     )
                 }
@@ -1071,15 +1417,13 @@ fun MedalUnlockCelebrationOverlay(
                 )
             }
 
-            // Center 3D spinning medal tracked for exact curved flight origin
+            // Center extruded 3D spinning coin tracked for exact curved flight origin
             Box(
                 modifier = Modifier
-                    .size(164.dp)
+                    .size(168.dp)
                     .graphicsLayer {
                         scaleX = medalPopScale.value
                         scaleY = medalPopScale.value
-                        rotationY = medalSpinY.value
-                        cameraDistance = 14f * density
                     }
                     .onGloballyPositioned { coords ->
                         val b = coords.boundsInRoot()
@@ -1091,8 +1435,9 @@ fun MedalUnlockCelebrationOverlay(
             ) {
                 ProceduralMedalEmblem(
                     tier = event.tier,
-                    size = 136.dp,
-                    shineEnabled = true
+                    size = 148.dp,
+                    shineEnabled = true,
+                    yawDegrees = medalSpinY.value
                 )
             }
 

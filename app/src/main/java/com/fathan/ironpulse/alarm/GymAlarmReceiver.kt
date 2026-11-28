@@ -55,7 +55,7 @@ class GymAlarmReceiver : BroadcastReceiver() {
             val nm = context.getSystemService(NotificationManager::class.java)
             val notification = NotificationCompat.Builder(context, IronPulseApp.CHANNEL_GYM_ALARM)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("IronPulse Alarm — $alarmTime")
+                .setContentTitle("VeloLift Alarm — $alarmTime")
                 .setContentText(focusTitle)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)

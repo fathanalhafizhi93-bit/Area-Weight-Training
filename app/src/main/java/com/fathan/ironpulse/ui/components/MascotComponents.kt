@@ -1713,10 +1713,12 @@ fun TodayMascot(
         }
     }
 
-    // Smooth sequential fade-out -> fade-in text reveal (no typewriter characters or cursors)
+    // Smooth fade-out old line -> rapid character-by-character speech reveal (no cursor, no pause indicator)
     var displayedLine by remember { mutableStateOf(mascot.activeLine) }
     var lastRevealedEventId by remember { mutableIntStateOf(0) }
     val textAlphaAnim = remember { Animatable(1f) }
+    var visibleHeadlineChars by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
+    var visibleSublineChars by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
     var isRevealingSpeech by remember { mutableStateOf(false) }
 
     LaunchedEffect(mascot.speechEventId, tabActive, hideForTutorial, noAnim) {
@@ -1726,6 +1728,8 @@ fun TodayMascot(
         if (!activeHere || eventId <= 0) {
             displayedLine = nextLine
             lastRevealedEventId = eventId
+            visibleHeadlineChars = nextLine.headline.length
+            visibleSublineChars = nextLine.subline.length
             textAlphaAnim.snapTo(1f)
             isRevealingSpeech = false
             return@LaunchedEffect
@@ -1734,6 +1738,8 @@ fun TodayMascot(
             val isNewEvent = eventId != lastRevealedEventId
             displayedLine = nextLine
             lastRevealedEventId = eventId
+            visibleHeadlineChars = nextLine.headline.length
+            visibleSublineChars = nextLine.subline.length
             textAlphaAnim.snapTo(1f)
             isRevealingSpeech = false
             if (isNewEvent) {
@@ -1743,27 +1749,35 @@ fun TodayMascot(
         }
         if (eventId != lastRevealedEventId || displayedLine != nextLine) {
             isRevealingSpeech = true
-            textAlphaAnim.animateTo(0f, tween(durationMillis = 110, easing = FastOutSlowInEasing))
+            if (lastRevealedEventId != 0) {
+                textAlphaAnim.animateTo(0f, tween(durationMillis = 115, easing = FastOutSlowInEasing))
+            }
             displayedLine = nextLine
-            textAlphaAnim.animateTo(1f, tween(durationMillis = 150, easing = FastOutSlowInEasing))
+            visibleHeadlineChars = 0
+            visibleSublineChars = 0
+            textAlphaAnim.snapTo(1f)
+
+            val hLen = nextLine.headline.length
+            for (i in 1..hLen) {
+                visibleHeadlineChars = i
+                delay(16L)
+            }
+            val sLen = nextLine.subline.length
+            if (sLen > 0) {
+                delay(40L)
+                for (i in 1..sLen) {
+                    visibleSublineChars = i
+                    delay(11L)
+                }
+            }
             lastRevealedEventId = eventId
             isRevealingSpeech = false
             currentOnSpeechRevealFinished(eventId)
         } else {
+            visibleHeadlineChars = nextLine.headline.length
+            visibleSublineChars = nextLine.subline.length
             textAlphaAnim.snapTo(1f)
             isRevealingSpeech = false
-        }
-    }
-
-    var isCoolingDown by remember { mutableStateOf(false) }
-    LaunchedEffect(mascot.speechCooldownUntilMs) {
-        val remaining = mascot.speechCooldownUntilMs - System.currentTimeMillis()
-        if (remaining > 0L) {
-            isCoolingDown = true
-            delay(remaining)
-            isCoolingDown = false
-        } else {
-            isCoolingDown = false
         }
     }
 
@@ -1846,47 +1860,30 @@ fun TodayMascot(
                 .weight(1f)
                 .graphicsLayer { alpha = textAlphaAnim.value }
         ) {
-            if (mascot.personality == MascotPersonality.COACH || isCoolingDown) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (mascot.personality == MascotPersonality.COACH) {
-                        Text(
-                            text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.8.sp,
-                            color = phaseColor
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(1.dp))
-                    }
-                    if (isCoolingDown) {
-                        Text(
-                            text = tokens.lang.t("• • jeda", "• • pause"),
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = phaseColor.copy(alpha = 0.78f),
-                            modifier = Modifier.testTag("mascot_cooldown_indicator")
-                        )
-                    }
-                }
+            if (mascot.personality == MascotPersonality.COACH) {
+                Text(
+                    text = tokens.lang.t("COACH · FOKUS", "COACH · STRICT"),
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.8.sp,
+                    color = phaseColor
+                )
                 Spacer(modifier = Modifier.height(1.dp))
             }
+            val shownHeadline = displayedLine.headline.take(visibleHeadlineChars.coerceIn(0, displayedLine.headline.length))
+            val shownSubline = displayedLine.subline.take(visibleSublineChars.coerceIn(0, displayedLine.subline.length))
             Text(
-                text = displayedLine.headline,
+                text = shownHeadline,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = tokens.palette.onSurface,
                 lineHeight = 18.sp,
                 modifier = Modifier.testTag("mascot_speech_headline")
             )
-            if (displayedLine.subline.isNotEmpty()) {
+            if (displayedLine.subline.isNotEmpty() && (shownSubline.isNotEmpty() || !isRevealingSpeech)) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = displayedLine.subline,
+                    text = shownSubline,
                     fontSize = 12.sp,
                     color = tokens.mutedTextColor,
                     lineHeight = 16.sp,
@@ -1906,7 +1903,7 @@ fun TodayMascot(
                 ThemedIcon(
                     icon = IronPulseIcon.VOLUME,
                     contentDescription = "Speak mascot line",
-                    tint = phaseColor.copy(alpha = if (isCoolingDown) 0.45f else 1f),
+                    tint = phaseColor,
                     size = 18.dp
                 )
             }
@@ -2012,10 +2009,12 @@ fun FloatingMascotDock(
             TransformOrigin(pivotFractionX = if (anchorSideRight) 1f else 0f, pivotFractionY = 0.5f)
         }
 
-        // Smooth fade-out -> fade-in reveal for FloatingMascotDock bubble + voice handoff
+        // Smooth fade-out old line -> fast character-by-character reveal for FloatingMascotDock bubble + voice handoff
         var displayedBubbleLine by remember { mutableStateOf(mascot.activeLine) }
         var lastRevealedBubbleEventId by remember { mutableIntStateOf(mascot.speechEventId) }
         val bubbleTextAlphaAnim = remember { Animatable(1f) }
+        var visibleBubbleHeadlineChars by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
+        var visibleBubbleSublineChars by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
         var isRevealingBubble by remember { mutableStateOf(false) }
         LaunchedEffect(mascot.speechEventId, bubbleVisible, shouldFloat, noAnim) {
             val nextLine = mascot.activeLine
@@ -2023,6 +2022,8 @@ fun FloatingMascotDock(
             if (!shouldFloat || eventId <= 0) {
                 displayedBubbleLine = nextLine
                 lastRevealedBubbleEventId = eventId
+                visibleBubbleHeadlineChars = nextLine.headline.length
+                visibleBubbleSublineChars = nextLine.subline.length
                 bubbleTextAlphaAnim.snapTo(1f)
                 isRevealingBubble = false
                 return@LaunchedEffect
@@ -2030,11 +2031,13 @@ fun FloatingMascotDock(
             if (!bubbleVisible) {
                 displayedBubbleLine = nextLine
                 lastRevealedBubbleEventId = eventId
+                visibleBubbleHeadlineChars = nextLine.headline.length
+                visibleBubbleSublineChars = nextLine.subline.length
                 bubbleTextAlphaAnim.snapTo(1f)
                 if (mascot.shouldSpeakAfterReveal) {
                     if (!noAnim) {
                         isRevealingBubble = true
-                        delay(220L)
+                        delay(200L)
                         isRevealingBubble = false
                     }
                     currentOnSpeechRevealFinished(eventId)
@@ -2046,6 +2049,8 @@ fun FloatingMascotDock(
             if (noAnim) {
                 displayedBubbleLine = nextLine
                 lastRevealedBubbleEventId = eventId
+                visibleBubbleHeadlineChars = nextLine.headline.length
+                visibleBubbleSublineChars = nextLine.subline.length
                 bubbleTextAlphaAnim.snapTo(1f)
                 isRevealingBubble = false
                 currentOnSpeechRevealFinished(eventId)
@@ -2053,13 +2058,31 @@ fun FloatingMascotDock(
             }
             if (eventId != lastRevealedBubbleEventId || displayedBubbleLine != nextLine) {
                 isRevealingBubble = true
-                bubbleTextAlphaAnim.animateTo(0f, tween(durationMillis = 110, easing = FastOutSlowInEasing))
+                bubbleTextAlphaAnim.animateTo(0f, tween(durationMillis = 115, easing = FastOutSlowInEasing))
                 displayedBubbleLine = nextLine
-                bubbleTextAlphaAnim.animateTo(1f, tween(durationMillis = 150, easing = FastOutSlowInEasing))
+                visibleBubbleHeadlineChars = 0
+                visibleBubbleSublineChars = 0
+                bubbleTextAlphaAnim.snapTo(1f)
+
+                val hLen = nextLine.headline.length
+                for (i in 1..hLen) {
+                    visibleBubbleHeadlineChars = i
+                    delay(16L)
+                }
+                val sLen = nextLine.subline.length
+                if (sLen > 0) {
+                    delay(40L)
+                    for (i in 1..sLen) {
+                        visibleBubbleSublineChars = i
+                        delay(11L)
+                    }
+                }
                 lastRevealedBubbleEventId = eventId
                 isRevealingBubble = false
                 currentOnSpeechRevealFinished(eventId)
             } else {
+                visibleBubbleHeadlineChars = nextLine.headline.length
+                visibleBubbleSublineChars = nextLine.subline.length
                 bubbleTextAlphaAnim.snapTo(1f)
                 isRevealingBubble = false
             }
@@ -2174,17 +2197,23 @@ fun FloatingMascotDock(
                             .weight(1f)
                             .graphicsLayer { alpha = bubbleTextAlphaAnim.value }
                     ) {
+                        val shownBubbleHeadline = displayedBubbleLine.headline.take(
+                            visibleBubbleHeadlineChars.coerceIn(0, displayedBubbleLine.headline.length)
+                        )
+                        val shownBubbleSubline = displayedBubbleLine.subline.take(
+                            visibleBubbleSublineChars.coerceIn(0, displayedBubbleLine.subline.length)
+                        )
                         Text(
-                            text = displayedBubbleLine.headline,
+                            text = shownBubbleHeadline,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = tokens.palette.onSurface,
                             lineHeight = 17.sp
                         )
-                        if (displayedBubbleLine.subline.isNotEmpty()) {
+                        if (displayedBubbleLine.subline.isNotEmpty() && (shownBubbleSubline.isNotEmpty() || !isRevealingBubble)) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = displayedBubbleLine.subline,
+                                text = shownBubbleSubline,
                                 fontSize = 11.5.sp,
                                 lineHeight = 15.5.sp,
                                 color = tokens.mutedTextColor

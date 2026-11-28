@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "IronPulse"
+rootProject.name = "VeloLift"
 include(":app")
