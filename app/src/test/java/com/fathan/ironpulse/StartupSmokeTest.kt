@@ -119,6 +119,7 @@ import com.fathan.ironpulse.ui.components.AmbientPhaseBackdrop
 import com.fathan.ironpulse.ui.components.ConfirmDeleteDialog
 import com.fathan.ironpulse.ui.components.FloatingMascotDock
 import com.fathan.ironpulse.ui.components.GpuSheenOverlay
+import com.fathan.ironpulse.ui.components.Interactive3DMedalEmblem
 import com.fathan.ironpulse.ui.components.IronPulseBottomNav
 import com.fathan.ironpulse.ui.components.IronPulseMotion
 import com.fathan.ironpulse.ui.components.IronPulseTopBar
@@ -403,7 +404,7 @@ class StartupSmokeTest {
             }
         }
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("About VeloLift").assertIsDisplayed()
+        composeRule.onNodeWithText("About RepMate").assertIsDisplayed()
         composeRule.onNodeWithText("v1.0.0").assertIsDisplayed()
         composeRule.onNodeWithText("scripter").assertIsDisplayed()
         composeRule.onNodeWithText("Fathan, and Artificial intelligence").assertIsDisplayed()
@@ -1528,7 +1529,7 @@ class StartupSmokeTest {
             composeRule.onNodeWithTag("os_top_bar_${theme.wireValue}").assertIsDisplayed()
             composeRule.onNodeWithTag("topbar_settings_button").assertIsDisplayed()
             composeRule.onNodeWithTag("topbar_test_alarm_button").assertIsDisplayed()
-            composeRule.onNodeWithContentDescription("Tentang VeloLift").assertDoesNotExist()
+            composeRule.onNodeWithContentDescription("Tentang RepMate").assertDoesNotExist()
             composeRule.onNodeWithTag("os_bottom_nav_${theme.wireValue}").assertIsDisplayed()
             composeRule.onNodeWithTag("mascot_orb_${theme.wireValue}", useUnmergedTree = true).assertIsDisplayed()
             composeRule.onNodeWithTag("themed_icon_${theme.wireValue}_settings", useUnmergedTree = true).assertIsDisplayed()
@@ -2352,7 +2353,7 @@ class StartupSmokeTest {
             composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag(SettingsCategory.ABOUT.testTag))
             composeRule.onNodeWithTag(SettingsCategory.ABOUT.testTag).performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithText("About VeloLift").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("About RepMate").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("v1.0.0").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Fathan, and Artificial intelligence").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("fathan.").performScrollTo().assertIsDisplayed()
@@ -4330,6 +4331,9 @@ class StartupSmokeTest {
                                     size = 64.dp,
                                     shineEnabled = true,
                                     yawDegrees = 0f,
+                                    pitchDegrees = 10f,
+                                    rollDegrees = -4f,
+                                    ambientFloat3D = true,
                                     modifier = Modifier.testTag("scroll_anim_medal")
                                 )
                                 ProceduralMedalEmblem(
@@ -4337,13 +4341,14 @@ class StartupSmokeTest {
                                     size = 64.dp,
                                     shineEnabled = true,
                                     yawDegrees = 85f,
+                                    pitchDegrees = 16f,
+                                    rollDegrees = 6f,
                                     modifier = Modifier.testTag("scroll_anim_medal_edge")
                                 )
-                                ProceduralMedalEmblem(
+                                Interactive3DMedalEmblem(
                                     tier = MedalTier.BRONZE,
                                     size = 64.dp,
                                     shineEnabled = true,
-                                    yawDegrees = 180f,
                                     modifier = Modifier.testTag("scroll_anim_medal_back")
                                 )
                             }
@@ -4354,6 +4359,8 @@ class StartupSmokeTest {
             composeRule.mainClock.advanceTimeBy(480)
             composeRule.onNodeWithTag("scroll_anim_mascot").assertIsDisplayed()
             composeRule.onNodeWithTag("scroll_anim_medal").assertIsDisplayed()
+            composeRule.onNodeWithTag("scroll_anim_medal_edge").assertIsDisplayed()
+            composeRule.onNodeWithTag("scroll_anim_medal_back").assertIsDisplayed()
         } finally {
             composeRule.mainClock.autoAdvance = true
         }

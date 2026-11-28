@@ -193,7 +193,7 @@ fun IronPulseRoot(
                     ) {
                         CircularProgressIndicator(color = tokens.accentColor)
                         Text(
-                            text = lang.t("Menyiapkan VeloLift...", "Preparing VeloLift..."),
+                            text = lang.t("Menyiapkan RepMate...", "Preparing RepMate..."),
                             fontSize = 13.sp,
                             color = tokens.mutedTextColor
                         )

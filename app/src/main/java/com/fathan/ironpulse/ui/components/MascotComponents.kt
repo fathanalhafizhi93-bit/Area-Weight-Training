@@ -82,12 +82,17 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fathan.ironpulse.model.DayTimePhase
@@ -1713,12 +1718,13 @@ fun TodayMascot(
         }
     }
 
-    // Smooth fade-out old line -> rapid character-by-character speech reveal (no cursor, no pause indicator)
+    // Smooth fade-out old line -> sequential per-letter fade-in reveal (no cursor, no pause indicator)
+    val featherChars = 2.8f
     var displayedLine by remember { mutableStateOf(mascot.activeLine) }
     var lastRevealedEventId by remember { mutableIntStateOf(0) }
     val textAlphaAnim = remember { Animatable(1f) }
-    var visibleHeadlineChars by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
-    var visibleSublineChars by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
+    val headlineRevealAnim = remember { Animatable(mascot.activeLine.headline.length + featherChars) }
+    val sublineRevealAnim = remember { Animatable(mascot.activeLine.subline.length + featherChars) }
     var isRevealingSpeech by remember { mutableStateOf(false) }
 
     LaunchedEffect(mascot.speechEventId, tabActive, hideForTutorial, noAnim) {
@@ -1728,8 +1734,8 @@ fun TodayMascot(
         if (!activeHere || eventId <= 0) {
             displayedLine = nextLine
             lastRevealedEventId = eventId
-            visibleHeadlineChars = nextLine.headline.length
-            visibleSublineChars = nextLine.subline.length
+            headlineRevealAnim.snapTo(nextLine.headline.length + featherChars)
+            sublineRevealAnim.snapTo(nextLine.subline.length + featherChars)
             textAlphaAnim.snapTo(1f)
             isRevealingSpeech = false
             return@LaunchedEffect
@@ -1738,8 +1744,8 @@ fun TodayMascot(
             val isNewEvent = eventId != lastRevealedEventId
             displayedLine = nextLine
             lastRevealedEventId = eventId
-            visibleHeadlineChars = nextLine.headline.length
-            visibleSublineChars = nextLine.subline.length
+            headlineRevealAnim.snapTo(nextLine.headline.length + featherChars)
+            sublineRevealAnim.snapTo(nextLine.subline.length + featherChars)
             textAlphaAnim.snapTo(1f)
             isRevealingSpeech = false
             if (isNewEvent) {
@@ -1753,29 +1759,31 @@ fun TodayMascot(
                 textAlphaAnim.animateTo(0f, tween(durationMillis = 115, easing = FastOutSlowInEasing))
             }
             displayedLine = nextLine
-            visibleHeadlineChars = 0
-            visibleSublineChars = 0
+            headlineRevealAnim.snapTo(0f)
+            sublineRevealAnim.snapTo(0f)
             textAlphaAnim.snapTo(1f)
 
             val hLen = nextLine.headline.length
-            for (i in 1..hLen) {
-                visibleHeadlineChars = i
-                delay(16L)
+            if (hLen > 0) {
+                headlineRevealAnim.animateTo(
+                    targetValue = hLen + featherChars,
+                    animationSpec = tween(durationMillis = (hLen * 16).coerceAtLeast(120), easing = LinearEasing)
+                )
             }
             val sLen = nextLine.subline.length
             if (sLen > 0) {
-                delay(40L)
-                for (i in 1..sLen) {
-                    visibleSublineChars = i
-                    delay(11L)
-                }
+                delay(36L)
+                sublineRevealAnim.animateTo(
+                    targetValue = sLen + featherChars,
+                    animationSpec = tween(durationMillis = (sLen * 11).coerceAtLeast(110), easing = LinearEasing)
+                )
             }
             lastRevealedEventId = eventId
             isRevealingSpeech = false
             currentOnSpeechRevealFinished(eventId)
         } else {
-            visibleHeadlineChars = nextLine.headline.length
-            visibleSublineChars = nextLine.subline.length
+            headlineRevealAnim.snapTo(nextLine.headline.length + featherChars)
+            sublineRevealAnim.snapTo(nextLine.subline.length + featherChars)
             textAlphaAnim.snapTo(1f)
             isRevealingSpeech = false
         }
@@ -1870,8 +1878,18 @@ fun TodayMascot(
                 )
                 Spacer(modifier = Modifier.height(1.dp))
             }
-            val shownHeadline = displayedLine.headline.take(visibleHeadlineChars.coerceIn(0, displayedLine.headline.length))
-            val shownSubline = displayedLine.subline.take(visibleSublineChars.coerceIn(0, displayedLine.subline.length))
+            val shownHeadline = buildPerLetterFadeText(
+                source = displayedLine.headline,
+                revealCursor = headlineRevealAnim.value,
+                baseColor = tokens.palette.onSurface,
+                featherWidth = featherChars
+            )
+            val shownSubline = buildPerLetterFadeText(
+                source = displayedLine.subline,
+                revealCursor = sublineRevealAnim.value,
+                baseColor = tokens.mutedTextColor,
+                featherWidth = featherChars
+            )
             Text(
                 text = shownHeadline,
                 fontSize = 14.sp,
@@ -2009,12 +2027,13 @@ fun FloatingMascotDock(
             TransformOrigin(pivotFractionX = if (anchorSideRight) 1f else 0f, pivotFractionY = 0.5f)
         }
 
-        // Smooth fade-out old line -> fast character-by-character reveal for FloatingMascotDock bubble + voice handoff
+        // Smooth fade-out old line -> sequential per-letter fade-in reveal for FloatingMascotDock bubble + voice handoff
+        val bubbleFeatherChars = 2.8f
         var displayedBubbleLine by remember { mutableStateOf(mascot.activeLine) }
         var lastRevealedBubbleEventId by remember { mutableIntStateOf(mascot.speechEventId) }
         val bubbleTextAlphaAnim = remember { Animatable(1f) }
-        var visibleBubbleHeadlineChars by remember { mutableIntStateOf(mascot.activeLine.headline.length) }
-        var visibleBubbleSublineChars by remember { mutableIntStateOf(mascot.activeLine.subline.length) }
+        val bubbleHeadlineRevealAnim = remember { Animatable(mascot.activeLine.headline.length + bubbleFeatherChars) }
+        val bubbleSublineRevealAnim = remember { Animatable(mascot.activeLine.subline.length + bubbleFeatherChars) }
         var isRevealingBubble by remember { mutableStateOf(false) }
         LaunchedEffect(mascot.speechEventId, bubbleVisible, shouldFloat, noAnim) {
             val nextLine = mascot.activeLine
@@ -2022,8 +2041,8 @@ fun FloatingMascotDock(
             if (!shouldFloat || eventId <= 0) {
                 displayedBubbleLine = nextLine
                 lastRevealedBubbleEventId = eventId
-                visibleBubbleHeadlineChars = nextLine.headline.length
-                visibleBubbleSublineChars = nextLine.subline.length
+                bubbleHeadlineRevealAnim.snapTo(nextLine.headline.length + bubbleFeatherChars)
+                bubbleSublineRevealAnim.snapTo(nextLine.subline.length + bubbleFeatherChars)
                 bubbleTextAlphaAnim.snapTo(1f)
                 isRevealingBubble = false
                 return@LaunchedEffect
@@ -2031,8 +2050,8 @@ fun FloatingMascotDock(
             if (!bubbleVisible) {
                 displayedBubbleLine = nextLine
                 lastRevealedBubbleEventId = eventId
-                visibleBubbleHeadlineChars = nextLine.headline.length
-                visibleBubbleSublineChars = nextLine.subline.length
+                bubbleHeadlineRevealAnim.snapTo(nextLine.headline.length + bubbleFeatherChars)
+                bubbleSublineRevealAnim.snapTo(nextLine.subline.length + bubbleFeatherChars)
                 bubbleTextAlphaAnim.snapTo(1f)
                 if (mascot.shouldSpeakAfterReveal) {
                     if (!noAnim) {
@@ -2049,8 +2068,8 @@ fun FloatingMascotDock(
             if (noAnim) {
                 displayedBubbleLine = nextLine
                 lastRevealedBubbleEventId = eventId
-                visibleBubbleHeadlineChars = nextLine.headline.length
-                visibleBubbleSublineChars = nextLine.subline.length
+                bubbleHeadlineRevealAnim.snapTo(nextLine.headline.length + bubbleFeatherChars)
+                bubbleSublineRevealAnim.snapTo(nextLine.subline.length + bubbleFeatherChars)
                 bubbleTextAlphaAnim.snapTo(1f)
                 isRevealingBubble = false
                 currentOnSpeechRevealFinished(eventId)
@@ -2060,29 +2079,31 @@ fun FloatingMascotDock(
                 isRevealingBubble = true
                 bubbleTextAlphaAnim.animateTo(0f, tween(durationMillis = 115, easing = FastOutSlowInEasing))
                 displayedBubbleLine = nextLine
-                visibleBubbleHeadlineChars = 0
-                visibleBubbleSublineChars = 0
+                bubbleHeadlineRevealAnim.snapTo(0f)
+                bubbleSublineRevealAnim.snapTo(0f)
                 bubbleTextAlphaAnim.snapTo(1f)
 
                 val hLen = nextLine.headline.length
-                for (i in 1..hLen) {
-                    visibleBubbleHeadlineChars = i
-                    delay(16L)
+                if (hLen > 0) {
+                    bubbleHeadlineRevealAnim.animateTo(
+                        targetValue = hLen + bubbleFeatherChars,
+                        animationSpec = tween(durationMillis = (hLen * 16).coerceAtLeast(120), easing = LinearEasing)
+                    )
                 }
                 val sLen = nextLine.subline.length
                 if (sLen > 0) {
-                    delay(40L)
-                    for (i in 1..sLen) {
-                        visibleBubbleSublineChars = i
-                        delay(11L)
-                    }
+                    delay(36L)
+                    bubbleSublineRevealAnim.animateTo(
+                        targetValue = sLen + bubbleFeatherChars,
+                        animationSpec = tween(durationMillis = (sLen * 11).coerceAtLeast(110), easing = LinearEasing)
+                    )
                 }
                 lastRevealedBubbleEventId = eventId
                 isRevealingBubble = false
                 currentOnSpeechRevealFinished(eventId)
             } else {
-                visibleBubbleHeadlineChars = nextLine.headline.length
-                visibleBubbleSublineChars = nextLine.subline.length
+                bubbleHeadlineRevealAnim.snapTo(nextLine.headline.length + bubbleFeatherChars)
+                bubbleSublineRevealAnim.snapTo(nextLine.subline.length + bubbleFeatherChars)
                 bubbleTextAlphaAnim.snapTo(1f)
                 isRevealingBubble = false
             }
@@ -2197,11 +2218,17 @@ fun FloatingMascotDock(
                             .weight(1f)
                             .graphicsLayer { alpha = bubbleTextAlphaAnim.value }
                     ) {
-                        val shownBubbleHeadline = displayedBubbleLine.headline.take(
-                            visibleBubbleHeadlineChars.coerceIn(0, displayedBubbleLine.headline.length)
+                        val shownBubbleHeadline = buildPerLetterFadeText(
+                            source = displayedBubbleLine.headline,
+                            revealCursor = bubbleHeadlineRevealAnim.value,
+                            baseColor = tokens.palette.onSurface,
+                            featherWidth = bubbleFeatherChars
                         )
-                        val shownBubbleSubline = displayedBubbleLine.subline.take(
-                            visibleBubbleSublineChars.coerceIn(0, displayedBubbleLine.subline.length)
+                        val shownBubbleSubline = buildPerLetterFadeText(
+                            source = displayedBubbleLine.subline,
+                            revealCursor = bubbleSublineRevealAnim.value,
+                            baseColor = tokens.mutedTextColor,
+                            featherWidth = bubbleFeatherChars
                         )
                         Text(
                             text = shownBubbleHeadline,
@@ -2339,6 +2366,28 @@ fun FloatingMascotDock(
                     animActive = animActive,
                     isTalking = isRevealingBubble || (isVoiceSpeaking && shouldFloat)
                 )
+            }
+        }
+    }
+}
+
+private fun buildPerLetterFadeText(
+    source: String,
+    revealCursor: Float,
+    baseColor: Color,
+    featherWidth: Float = 2.8f
+): AnnotatedString {
+    if (source.isEmpty()) return AnnotatedString("")
+    val count = ceil(revealCursor.toDouble()).toInt().coerceIn(0, source.length)
+    if (count == 0) return AnnotatedString("")
+    if (revealCursor >= source.length + featherWidth) {
+        return AnnotatedString(source)
+    }
+    return buildAnnotatedString {
+        for (i in 0 until count) {
+            val charAlpha = ((revealCursor - i) / featherWidth).coerceIn(0.04f, 1f)
+            withStyle(SpanStyle(color = baseColor.copy(alpha = baseColor.alpha * charAlpha))) {
+                append(source[i])
             }
         }
     }

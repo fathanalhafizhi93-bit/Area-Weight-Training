@@ -14,9 +14,12 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +71,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -173,7 +178,10 @@ fun ProceduralMedalEmblem(
     size: Dp = 84.dp,
     shineEnabled: Boolean = true,
     landingBurstTick: Int = 0,
-    yawDegrees: Float = 0f
+    yawDegrees: Float = 0f,
+    pitchDegrees: Float = 0f,
+    rollDegrees: Float = 0f,
+    ambientFloat3D: Boolean = false
 ) {
     val tokens = LocalIronPulseTokens.current
     val tabActive = LocalTabActive.current
@@ -181,6 +189,7 @@ fun ProceduralMedalEmblem(
     val noAnim = tokens.performance.noAnimations
     val suppressGlow = tokens.performance.noAmbientGlow
     val runShine = shineEnabled && tier != MedalTier.NONE && !noAnim && tabActive && tabSettled
+    val runFloat3D = ambientFloat3D && runShine
 
     val staticSweep = remember { mutableFloatStateOf(0.35f) }
     val staticZero = remember { mutableFloatStateOf(0f) }
@@ -188,6 +197,7 @@ fun ProceduralMedalEmblem(
     val sweepState: State<Float>
     val pulseState: State<Float>
     val rayAngleState: State<Float>
+    val floatPhaseState: State<Float>
     if (runShine) {
         val infinite = rememberInfiniteTransition(label = "medalShineInfinite")
         sweepState = infinite.animateFloat(
@@ -217,10 +227,24 @@ fun ProceduralMedalEmblem(
             ),
             label = "medalRays"
         )
+        floatPhaseState = if (runFloat3D) {
+            infinite.animateFloat(
+                initialValue = 0f,
+                targetValue = (2.0 * PI).toFloat(),
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 4400, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "medalFloat3D"
+            )
+        } else {
+            staticZero
+        }
     } else {
         sweepState = staticSweep
         pulseState = staticZero
         rayAngleState = staticZero
+        floatPhaseState = staticZero
     }
 
     val burstAnim = remember { Animatable(0f) }
@@ -229,16 +253,32 @@ fun ProceduralMedalEmblem(
             burstAnim.snapTo(0.01f)
             burstAnim.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 780, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = 880, easing = FastOutSlowInEasing)
             )
             burstAnim.snapTo(0f)
         }
     }
 
     val pal = remember(tier) { resolveMedalPalette(tier) }
+    val density = LocalDensity.current.density
+    val floatPhase = floatPhaseState.value
+    val burst = burstAnim.value
+    val reboundWave = if (burst > 0.005f) sin(burst * 3f * PI).toFloat() * (1f - burst) else 0f
+    val effectiveYaw = yawDegrees + (if (runFloat3D) sin(floatPhase) * 10.5f else 0f) + reboundWave * 28f
+    val effectivePitch = pitchDegrees + (if (runFloat3D) cos(floatPhase * 1.2f) * 6.5f else 0f) + reboundWave * 14f
+    val effectiveRoll = rollDegrees + (if (runFloat3D) sin(floatPhase * 0.8f) * 2.2f else 0f) + reboundWave * 6f
+    val reboundScale = 1f + reboundWave * 0.08f
 
     Box(
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .graphicsLayer {
+                cameraDistance = 14f * density
+                rotationX = (effectivePitch * 0.58f).coerceIn(-36f, 36f)
+                rotationZ = effectiveRoll
+                scaleX = reboundScale
+                scaleY = reboundScale
+            },
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -249,7 +289,6 @@ fun ProceduralMedalEmblem(
             val coinR = minDim * 0.36f
             val sweep = sweepState.value
             val pulse = pulseState.value
-            val burst = burstAnim.value
 
             if (tier == MedalTier.NONE) {
                 drawCircle(
@@ -337,15 +376,16 @@ fun ProceduralMedalEmblem(
                 }
             }
 
-            // Compute 3D yaw projection & extruded coin thickness
-            val normYaw = ((yawDegrees % 360f) + 360f) % 360f
+            // Compute 3D yaw & pitch projection + extruded coin thickness
+            val normYaw = ((effectiveYaw % 360f) + 360f) % 360f
             val radYaw = normYaw * (PI / 180.0)
             val cosYaw = cos(radYaw).toFloat()
             val sinYaw = sin(radYaw).toFloat()
+            val pitchCos = cos(effectivePitch.coerceIn(-45f, 45f) * (PI / 180.0)).toFloat()
             val faceScaleX = kotlin.math.abs(cosYaw).coerceAtLeast(0.055f)
             val isFrontFacing = cosYaw >= 0f
-            val maxDepthPx = coinR * 0.24f
-            val visibleDepthPx = maxDepthPx * kotlin.math.abs(sinYaw)
+            val maxDepthPx = coinR * 0.25f
+            val visibleDepthPx = maxDepthPx * kotlin.math.abs(sinYaw) * (0.75f + 0.25f * (1f - pitchCos))
             // Direction of the hidden/back side relative to center along X
             val edgeDir = if (sinYaw >= 0f) -1f else 1f
             val frontShiftX = -edgeDir * (visibleDepthPx * 0.5f)
@@ -636,32 +676,43 @@ fun ProceduralMedalEmblem(
                         MedalTier.NONE -> Unit
                     }
                 } else {
-                    // Reverse Minted Face (visible mid-rotation when cosYaw < 0): concentric ring + embossed "VL" crest
+                    // Reverse Minted Face (visible mid-rotation when cosYaw < 0): concentric ring + embossed "RM" crest
                     drawCircle(
                         color = pal.crestTint.copy(alpha = 0.42f),
                         radius = innerR * 0.68f,
                         center = center,
                         style = Stroke(width = (coinR * 0.032f).coerceAtLeast(0.8.dp.toPx()))
                     )
-                    // Reverse engraved "VL" chevron monogram
-                    val vlStroke = Stroke(
-                        width = (innerR * 0.16f).coerceAtLeast(1.8.dp.toPx()),
+                    // Reverse engraved "RM" monogram
+                    val rmStroke = Stroke(
+                        width = (innerR * 0.15f).coerceAtLeast(1.6.dp.toPx()),
                         cap = StrokeCap.Round,
                         join = StrokeJoin.Round
                     )
-                    val vlPath = Path().apply {
-                        moveTo(center.x - innerR * 0.36f, center.y - innerR * 0.24f)
-                        lineTo(center.x - innerR * 0.10f, center.y + innerR * 0.24f)
-                        lineTo(center.x + innerR * 0.14f, center.y - innerR * 0.24f)
-                        lineTo(center.x + innerR * 0.14f, center.y + innerR * 0.22f)
-                        lineTo(center.x + innerR * 0.38f, center.y + innerR * 0.22f)
-                    }
-                    drawPath(vlPath, pal.rimShadow.copy(alpha = 0.52f), style = vlStroke)
-                    drawPath(vlPath, pal.crestTint.copy(alpha = 0.90f), style = Stroke(
-                        width = (innerR * 0.12f).coerceAtLeast(1.4.dp.toPx()),
+                    val rmHighlightStroke = Stroke(
+                        width = (innerR * 0.11f).coerceAtLeast(1.3.dp.toPx()),
                         cap = StrokeCap.Round,
                         join = StrokeJoin.Round
-                    ))
+                    )
+                    val rmPath = Path().apply {
+                        // Stylized 'R'
+                        moveTo(center.x - innerR * 0.36f, center.y + innerR * 0.22f)
+                        lineTo(center.x - innerR * 0.36f, center.y - innerR * 0.22f)
+                        lineTo(center.x - innerR * 0.14f, center.y - innerR * 0.22f)
+                        lineTo(center.x - innerR * 0.10f, center.y - innerR * 0.08f)
+                        lineTo(center.x - innerR * 0.14f, center.y + innerR * 0.02f)
+                        lineTo(center.x - innerR * 0.36f, center.y + innerR * 0.02f)
+                        moveTo(center.x - innerR * 0.20f, center.y + innerR * 0.02f)
+                        lineTo(center.x - innerR * 0.09f, center.y + innerR * 0.22f)
+                        // Stylized 'M'
+                        moveTo(center.x + innerR * 0.05f, center.y + innerR * 0.22f)
+                        lineTo(center.x + innerR * 0.05f, center.y - innerR * 0.22f)
+                        lineTo(center.x + innerR * 0.21f, center.y + innerR * 0.04f)
+                        lineTo(center.x + innerR * 0.37f, center.y - innerR * 0.22f)
+                        lineTo(center.x + innerR * 0.37f, center.y + innerR * 0.22f)
+                    }
+                    drawPath(rmPath, pal.rimShadow.copy(alpha = 0.52f), style = rmStroke)
+                    drawPath(rmPath, pal.crestTint.copy(alpha = 0.90f), style = rmHighlightStroke)
                 }
 
                 // 6. Clipped Diagonal Specular Shine Sweep scaled naturally by surface angle
@@ -882,6 +933,98 @@ private fun DrawScope.drawFourPointSparkle(
     drawPath(path, color)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Interactive3DMedalEmblem(
+    tier: MedalTier,
+    modifier: Modifier = Modifier,
+    size: Dp = 86.dp,
+    shineEnabled: Boolean = true,
+    landingBurstTick: Int = 0
+) {
+    val tokens = LocalIronPulseTokens.current
+    val noAnim = tokens.performance.noAnimations
+    val scope = rememberCoroutineScope()
+    val touchYaw = remember { Animatable(0f) }
+    val touchPitch = remember { Animatable(0f) }
+    val tapSpin = remember { Animatable(0f) }
+
+    Box(
+        modifier = modifier
+            .then(
+                if (tier != MedalTier.NONE && !noAnim) {
+                    Modifier
+                        .pointerInput(tier) {
+                            detectDragGestures(
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    scope.launch {
+                                        touchYaw.snapTo(touchYaw.value + dragAmount.x * 1.15f)
+                                        touchPitch.snapTo((touchPitch.value - dragAmount.y * 0.55f).coerceIn(-34f, 34f))
+                                    }
+                                },
+                                onDragEnd = {
+                                    scope.launch {
+                                        val nearestTurn = kotlin.math.round(touchYaw.value / 360f) * 360f
+                                        launch {
+                                            touchYaw.animateTo(
+                                                targetValue = nearestTurn,
+                                                animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)
+                                            )
+                                            touchYaw.snapTo(0f)
+                                        }
+                                        launch {
+                                            touchPitch.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow)
+                                            )
+                                        }
+                                    }
+                                },
+                                onDragCancel = {
+                                    scope.launch {
+                                        launch { touchYaw.animateTo(0f, spring()) }
+                                        launch { touchPitch.animateTo(0f, spring()) }
+                                    }
+                                }
+                            )
+                        }
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                scope.launch {
+                                    val start = tapSpin.value % 360f
+                                    tapSpin.snapTo(start)
+                                    tapSpin.animateTo(
+                                        targetValue = start + 360f,
+                                        animationSpec = tween(
+                                            durationMillis = 820,
+                                            easing = CubicBezierEasing(0.14f, 0.88f, 0.24f, 1.0f)
+                                        )
+                                    )
+                                    tapSpin.snapTo(0f)
+                                }
+                            }
+                        )
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        ProceduralMedalEmblem(
+            tier = tier,
+            size = size,
+            shineEnabled = shineEnabled,
+            landingBurstTick = landingBurstTick,
+            yawDegrees = touchYaw.value + tapSpin.value,
+            pitchDegrees = touchPitch.value,
+            ambientFloat3D = true
+        )
+    }
+}
+
 @Composable
 fun MonthlyMedalShowcaseCard(
     summary: MonthlyMedalSummary,
@@ -923,7 +1066,7 @@ fun MonthlyMedalShowcaseCard(
                     .testTag("history_medal_emblem_slot"),
                 contentAlignment = Alignment.Center
             ) {
-                ProceduralMedalEmblem(
+                Interactive3DMedalEmblem(
                     tier = summary.tier,
                     size = 86.dp,
                     shineEnabled = true,
@@ -1145,8 +1288,10 @@ fun MedalUnlockCelebrationOverlay(
     val pal = remember(event.tier) { resolveMedalPalette(event.tier) }
     val sourceOffsetHolder = remember { mutableListOf(Offset.Zero) }
 
-    val medalPopScale = remember { Animatable(if (noAnim) 1f else 0.36f) }
+    val medalPopScale = remember { Animatable(if (noAnim) 1f else 0.34f) }
     val medalSpinY = remember { Animatable(0f) }
+    val medalPitchX = remember { Animatable(0f) }
+    val medalRollZ = remember { Animatable(0f) }
     val shockwaveProgress = remember { Animatable(if (noAnim) 1f else 0f) }
     val showcaseFade = remember { Animatable(if (noAnim) 1f else 0f) }
     var remainingSeconds by remember(event) { mutableIntStateOf(5) }
@@ -1163,12 +1308,14 @@ fun MedalUnlockCelebrationOverlay(
         remainingSeconds = 5
         if (!noAnim) {
             showcaseFade.snapTo(0f)
-            medalPopScale.snapTo(0.36f)
+            medalPopScale.snapTo(0.34f)
             medalSpinY.snapTo(0f)
+            medalPitchX.snapTo(20f)
+            medalRollZ.snapTo(-10f)
             shockwaveProgress.snapTo(0f)
             coroutineScope {
                 launch {
-                    showcaseFade.animateTo(1f, tween(durationMillis = 280, easing = FastOutSlowInEasing))
+                    showcaseFade.animateTo(1f, tween(durationMillis = 260, easing = FastOutSlowInEasing))
                 }
                 launch {
                     medalPopScale.animateTo(
@@ -1183,12 +1330,31 @@ fun MedalUnlockCelebrationOverlay(
                     shockwaveProgress.animateTo(1f, tween(durationMillis = 900, easing = FastOutSlowInEasing))
                 }
                 launch {
-                    delay(260L)
+                    // Fast initial 3D spin that decelerates smoothly and faces cleanly forward
+                    delay(140L)
                     medalSpinY.animateTo(
-                        targetValue = 1080f,
+                        targetValue = 1440f,
                         animationSpec = tween(
-                            durationMillis = 4150,
-                            easing = CubicBezierEasing(0.18f, 0.88f, 0.24f, 1.0f)
+                            durationMillis = 4280,
+                            easing = CubicBezierEasing(0.10f, 0.94f, 0.22f, 1.0f)
+                        )
+                    )
+                }
+                launch {
+                    medalPitchX.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(
+                            durationMillis = 3900,
+                            easing = CubicBezierEasing(0.16f, 0.88f, 0.28f, 1.0f)
+                        )
+                    )
+                }
+                launch {
+                    medalRollZ.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(
+                            durationMillis = 3400,
+                            easing = FastOutSlowInEasing
                         )
                     )
                 }
@@ -1203,6 +1369,8 @@ fun MedalUnlockCelebrationOverlay(
             showcaseFade.snapTo(1f)
             medalPopScale.snapTo(1f)
             medalSpinY.snapTo(0f)
+            medalPitchX.snapTo(0f)
+            medalRollZ.snapTo(0f)
             shockwaveProgress.snapTo(1f)
             for (sec in 5 downTo 1) {
                 remainingSeconds = sec
@@ -1437,7 +1605,9 @@ fun MedalUnlockCelebrationOverlay(
                     tier = event.tier,
                     size = 148.dp,
                     shineEnabled = true,
-                    yawDegrees = medalSpinY.value
+                    yawDegrees = medalSpinY.value,
+                    pitchDegrees = medalPitchX.value,
+                    rollDegrees = medalRollZ.value
                 )
             }
 
@@ -1532,10 +1702,16 @@ fun FlyingMedalOverlay(
             }
         }
 
+        val flightYaw = p * 720f
+        val flightPitch = (sin(p * PI).toFloat() * 24f)
+        val flightRoll = (sin(p * PI).toFloat() * -14f)
         ProceduralMedalEmblem(
             tier = tier,
             size = curSizeDp,
             shineEnabled = true,
+            yawDegrees = flightYaw,
+            pitchDegrees = flightPitch,
+            rollDegrees = flightRoll,
             modifier = Modifier.offset {
                 IntOffset(
                     x = (curX - curSizePx * 0.5f).roundToInt(),

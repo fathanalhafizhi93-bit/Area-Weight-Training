@@ -517,7 +517,7 @@ object MascotDialogues {
                 )
                 TimePhasePose.SMIRK -> listOf(
                     MascotSpeechLine("a-smk-1", t("Gampang kan set hari ini$n?", "Making it look easy$n?"), t("Gaya santai tapi angkanya naik terus — itu baru definisi progres elegan!", "Calm face, climbing numbers — that’s what smooth progress looks like!"), MascotExpression.SMIRK),
-                    MascotSpeechLine("a-smk-2", t("Aku tahu kamu bakal muncul$n", "Knew you’d show up$n"), t("Rasa malas siang hari nggak mempan kalau jadwalmu udah rapi di VeloLift.", "Afternoon sluggishness doesn’t stand a chance once your plan is locked in."), MascotExpression.TEASING),
+                    MascotSpeechLine("a-smk-2", t("Aku tahu kamu bakal muncul$n", "Knew you’d show up$n"), t("Rasa malas siang hari nggak mempan kalau jadwalmu udah rapi di RepMate.", "Afternoon sluggishness doesn’t stand a chance once your plan is locked in."), MascotExpression.TEASING),
                     MascotSpeechLine("a-smk-3", t("Boleh juga konsistensimu$n~", "Impressive streak energy$n~"), t("Kalau lanjut begini terus, bulan depan pasti beda jauh performanya!", "Keep stacking days like this and next month’s numbers will fly!"), MascotExpression.PROUD),
                     MascotSpeechLine("a-smk-4", t("Siap bikin rekor kecil lagi$n?", "Ready to sneak in a PR$n?"), t("Pelan tapi pasti — diam-diam beban naik, badan makin bugar.", "Quiet work, steady climbs — let the results speak for themselves."), MascotExpression.SMIRK),
                     sharedBanter[4]
@@ -581,7 +581,7 @@ object MascotDialogues {
                 MascotSpeechLine("n-drm-1", t("Mimpi cetak PR baru besok$n...", "Dreaming of new PRs$n..."), t("Sambil tidur, otak juga memperkuat memori gerakan yang baru kamu latih hari ini!", "While you sleep, your brain actually consolidates today’s movement patterns!"), MascotExpression.SLEEPY),
                 MascotSpeechLine("n-drm-2", t("Lagi membayangkan target bulan depan$n", "Visualizing next month’s gains$n"), t("Semua pencapaian besar selalu dimulai dari rutinitas malam yang terjaga.", "Every big milestone starts with steady daily habits and good sleep."), MascotExpression.CALM),
                 MascotSpeechLine("n-drm-3", t("Selamat beristirahat dalam mimpi indah$n", "Sweet dreams & strong recovery$n"), t("Biarkan ototmu memperbaiki diri pelan-pelan sepanjang malam.", "Let your muscles repair and grow quietly through the night."), MascotExpression.COZY),
-                MascotSpeechLine("n-drm-4", t("Awan malam penuh ketenangan$n", "Floating into peaceful sleep$n"), t("Besok alarm VeloLift siap bangunkan kamu di waktu paling pas!", "Tomorrow your VeloLift alarm will be ready right on schedule!"), MascotExpression.SLEEPY),
+                MascotSpeechLine("n-drm-4", t("Awan malam penuh ketenangan$n", "Floating into peaceful sleep$n"), t("Besok alarm RepMate siap bangunkan kamu di waktu paling pas!", "Tomorrow your RepMate alarm will be ready right on schedule!"), MascotExpression.SLEEPY),
                 sharedBanter[1]
             )
             TimePhasePose.MOONLIT -> listOf(

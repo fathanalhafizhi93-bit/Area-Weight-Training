@@ -1,283 +1,218 @@
 <div align="center">
 
-# IronPulse — Gym Reminder & Pelacak Latihan
+<img src="docs/images/repmate-hero-banner.jpg" alt="RepMate Hero Banner — Smart Gym Companion, Exact Alarm & 3D Consistency Medals" width="100%" />
 
-<p>
-  <img src="docs/images/ironpulse-mascot-strip-overlay.png" alt="Strip Horizontal Maskot Pulse IronPulse — Material You, Carbon Forge, Ubuntu Yaru, Frutiger Aero, AMOLED Stealth, dan XMaterial You" width="100%" />
-</p>
+# RepMate
 
-<p>
-  <sub><b>Maskot Interaktif Pulse di 6 Tema OS</b> — komposisi strip horizontal dengan efek <i>edge-fade</i> transparan dari aset &amp; tipografi resmi IronPulse</sub>
-</p>
+**Your High-Contrast Gym Companion, Exact Workout Alarm & 3D Consistency Tracker for Android**
+
+[![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B%20(API%2024--36)-7C3AED?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
+[![Version](https://img.shields.io/badge/Version-1.0.0%20(code%203)-A3E635?style=flat-square)](#build--release)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202025.05.00-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/compose)
+[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com)
+
+*Concept by **fathan.** · Scripted by **Fathan, and Artificial Intelligence***
 
 </div>
 
-**IronPulse** adalah aplikasi Android native berbasis **Kotlin** dan **Jetpack Compose (Material Design 3)** untuk mengatur jadwal gym mingguan, menjalankan alarm pengingat presisi di latar belakang, mencatat beban/set/repetisi maupun durasi latihan secara real-time, memantau riwayat kalender sesi, dan menjaga ritme istirahat antar set.
+---
 
-> **Versi saat ini:** `0.0.1-alpha` (`versionCode = 2`)  
-> **Application ID:** `com.aistudio.ironpulse.k7m2xp` | **Namespace:** `com.fathan.ironpulse`  
-> **Kompatibilitas:** Android 7.0 Nougat (`minSdk = 24`) hingga Android 16 (`compileSdk = 36`, `targetSdk = 36`)  
-> **Kredit:** `scripter`: **Fathan, and Artificial intelligence** · `concept`: **fathan.**
+**RepMate** is a native Kotlin & Jetpack Compose Android application designed to keep lifters consistent from wake-up alarm to final cooldown set. Built around an expressive **Pulse** mascot companion, **7 distinctive OS-inspired UI themes**, an **all-3D perspective medal system**, a **327-exercise bilingual anatomy library**, and **offline-first Cloud Firestore sync**, RepMate adapts cleanly across phones, foldables, and low-end devices.
 
 ---
 
-## Daftar Isi
+## Table of Contents
 
-- [Fitur Utama](#fitur-utama)
-- [Sistem 6 Tema UI (Standar & Eksklusif)](#sistem-6-tema-ui-standar--eksklusif)
-- [Tech Stack & Dependensi](#tech-stack--dependensi)
-- [Struktur Proyek](#struktur-proyek)
-- [Izin Android & Komponen Sistem](#izin-android--komponen-sistem)
-- [Autentikasi, Keamanan & Sinkronisasi Cloud](#autentikasi-keamanan--sinkronisasi-cloud)
-- [Build, Pengujian & CI/CD (GitHub Actions)](#build-pengujian--cicd-github-actions)
-
----
-
-## Fitur Utama
-
-### 1. Beranda (`Today`) & Maskot Interaktif Pulse
-- **Jam Digital Real-Time & Fase Waktu:** Menampilkan jam langsung (`LiveFluidClockSlot`) dengan opsi format `12h` atau `24h` serta sapaan otomatis berdasarkan fase waktu (*Pagi / Morning*, *Siang / Afternoon*, *Malam / Night*).
-- **Ringkasan Hari Ini:** Menampilkan status *Gym Day* atau *Rest Day*, judul fokus latihan hari berjalan, jadwal alarm berikutnya, serta pratinjau daftar gerakan hari ini lengkap dengan tombol cepat mulai latihan.
-- **Quick Rest Timer:** Preset timer istirahat cepat langsung dari beranda.
-- **Maskot Interaktif Pulse:** Memiliki **9 status mood (`MascotMood`)** dan **27 pose berbasis fase waktu** (Pagi, Siang, Malam), lengkap dengan dialog kontekstual (`MascotDialogues`) serta dukungan suara/ucapan opsional melalui `MascotTtsSpeaker` dan efek *chirp* audio.
-
-### 2. Mode Latihan (`Workout`) — Standard Cockpit & Focus HUD
-- **Dua Tampilan Latihan:**
-  - **Standard Cockpit:** Mendukung mode tampilan *Fokus 1 Gerakan* (navigasi per gerakan) maupun *Semua Gerakan* sekaligus dalam satu daftar.
-  - **Focus HUD (`GymFocusHudStage`):** Tampilan khusus penggunaan satu tangan di gym dengan tombol stepper raksasa (`-2.5 / +2.5 kg`, `-1 / +1 rep`, `-10s / +10s`), ring hitung mundur istirahat berukuran besar, dan *sticky floating rest bar*.
-- **Dua Mode Pencatatan Gerakan:**
-  - **`REPS`:** Pencatatan target set, repetisi, serta beban (`kg`) atau mode *Bodyweight / Tanpa Beban*.
-  - **`TIMER`:** Mendukung mode **Countdown** (hitung mundur) dan **Count-Up** (stopwatch).
-- **Proteksi & Kenyamanan Sesi:**
-  - Modal pengingat jeda antar set (*Set Cooldown Protection*) untuk mencegah pencatatan beruntun yang tidak disengaja.
-  - Opsi **Keep Screen On** agar layar tidak mati saat sesi latihan aktif.
-  - Kartu ringkasan selesai latihan (`WorkoutSessionSummaryCard`) setelah seluruh gerakan rampung.
-- **Rest Timer Background (`RestTimerService`):** Berjalan sebagai *Android Foreground Service* (`specialUse`) sehingga hitung mundur istirahat tetap akurat dan tampil di notifikasi saat aplikasi diminimalkan atau layar terkunci.
-
-### 3. Jadwal Mingguan (`Schedule`) & Program Switcher
-- **Jadwal 7 Hari (Senin–Minggu):** Atur masing-masing hari sebagai *Gym Day* atau *Rest Day*, edit judul fokus latihan (misalnya *Push*, *Pull*, *Legs*), nyalakan/matikan alarm harian, atur jam alarm, dan pilih ringtone per hari.
-- **Program Switcher (`ScheduleProgramSwitcher`):**
-  - **3 Templat Program Resmi Bawaan:**
-    1. **PPL × Upper-Lower** *(5 hari — Featured)*
-    2. **Push-Pull-Legs** *(6 hari)*
-    3. **Upper-Lower** *(4 hari)*
-  - **Profil Jadwal Kustom Tersimpan:** Simpan konfigurasi jadwal aktif sebagai profil kustom, terapkan ulang kapan saja, ubah nama, atau hapus—lengkap dengan opsi mempertahankan jam alarm saat beralih program.
-
-### 4. Pustaka 123 Gerakan & Perencana Harian (`Exercises`)
-- **Pustaka Bawaan Lengkap (`GymPresets`):** Berisi **123 gerakan bawaan** dengan metadata lengkap (nama ID/EN, kelompok otot, jenis alat, default set/reps/beban/mode tracking).
-- **Filter Multi-Kriteria:**
-  - **7 Kelompok Otot (`MuscleGroup`):** Dada (*Chest*), Punggung (*Back*), Bahu (*Shoulders*), Kaki (*Legs*), Lengan (*Arms*), Core, dan Kardio (*Cardio*).
-  - **8 Kategori Alat (`EquipmentBucket`):** Semua Alat, Tanpa Alat / Bodyweight, Barbel / EZ-Bar, Dumbbell, Kettlebell, Kabel, Mesin, dan Kardio.
-- **Perencana Harian Fleksibel:** Tambah banyak gerakan sekaligus (*multi-select batch add*), buat gerakan kustom baru, edit target set/reps/durasi/beban, ubah urutan latihan, atau hapus gerakan (mendukung hingga **30 gerakan per hari**).
-
-### 5. Riwayat Latihan & Kalender Bulanan (`History`)
-- **3 Metrik KPI:** Total Sesi Selesai, Streak Mingguan, dan Total Volume Bulanan.
-- **Kalender Bulanan Interaktif:** Menampilkan penanda visual untuk hari latihan selesai penuh (*Full*), sebagian (*Partial*), dan hari berjalan (*Today*), disertai rincian log latihan setiap tanggal yang dipilih.
-
-### 6. Alarm Background & Mesin Audio (`Alarm` & `Audio`)
-- **Alarm Presisi Latar Belakang (`AlarmScheduler` & `GymAlarmReceiver`):** Menggunakan `AlarmManager` untuk memicu pengingat sesuai jadwal hari aktif.
-- **Auto-Reschedule (`BootCompletedReceiver`):** Menjadwalkan ulang semua alarm otomatis saat perangkat restart (`BOOT_COMPLETED`), perubahan waktu sistem (`TIME_SET`), atau perpindahan zona waktu (`TIMEZONE_CHANGED`).
-- **Layar Alarm Lock-Screen (`AlarmRingActivity`):** Tampil penuh di atas layar terkunci dan menyalakan layar dengan aksi **Snooze** dan **Dismiss**.
-- **5 Ringtone Sintesis Bawaan (`NativeAudioEngine`):** Dihasilkan langsung menggunakan sintesis PCM `AudioTrack` tanpa file MP3 statis yang membebani APK:
-  1. *Athletic Bell*
-  2. *Arena Horn*
-  3. *Digital Pulse*
-  4. *Kettlebell Chime*
-  5. *Sprint Interval*
-- **Ringtone Kustom:** Mendukung impor file audio dari penyimpanan perangkat (mode lokal maupun sinkronisasi cloud), pengaturan volume alarm, durasi snooze (`1–60` menit), dan tombol **Tes Alarm**.
-
-### 7. Pengaturan (`Settings`), Performa, Dwibahasa & Tutorial
-- **Hub 6 Kategori:** *Profil*, *Tema*, *Konfigurasi*, *Alarm*, *Sistem*, dan *About* yang membuka sub-halaman penuh dengan dukungan tombol *Back* sistem.
-- **Kustomisasi Performa:** Preset **Balanced**, **Battery**, dan **Ultra**, serta toggle individual untuk mematikan animasi, menonaktifkan cahaya *ambient glow*, atau membuat maskot statis.
-- **Simulasi / Mode Fase Waktu (`DayTimeMode`):** Pilih *Auto* (mengikuti jam perangkat) atau kunci ke *Morning*, *Afternoon*, maupun *Night*.
-- **Dwibahasa & Preferensi:** Beralih instan antara **Bahasa Indonesia (`ID`)** dan **English (`EN`)**, format jam `12h/24h`, haptic feedback (`HapticFeedbackHelper`), suara maskot, serta tombol putar ulang **Tutorial Interaktif Spotlight** (`PulseMascotTutorialOverlay`).
+- [Core Features](#core-features)
+- [7 OS Themes & 2 Lightweight Motion Presets](#7-os-themes--2-lightweight-motion-presets)
+- [Tech Stack & Dependencies](#tech-stack--dependencies)
+- [Architecture & Project Structure](#architecture--project-structure)
+- [Android Permissions & Cloud Security](#android-permissions--cloud-security)
+- [Build, Testing & CI/CD](#build-testing--cicd)
 
 ---
 
-## Sistem 6 Tema UI (Standar & Eksklusif)
+## Core Features
 
-IronPulse memisahkan tema antarmuka menjadi dua kelompok besar dengan karakteristik tipografi (`ThemeTypography`), ikonografi (`ThemeIcons`), emblem SVG (`ThemeLogos`), dan material permukaan tersendiri:
+### 1. Phase-Aware Today Dashboard & Exact Workout Alarms
+- **Time-of-Day Phase Engine:** Automatically shifts atmosphere gradients, card accents, and Pulse's pose across **Morning**, **Afternoon**, and **Night** phases.
+- **Exact Alarm Scheduling:** Uses Android `AlarmManager` exact wakeups (`SCHEDULE_EXACT_ALARM`) paired with a lock-screen capable `AlarmRingActivity`, boot/timezone rescheduling (`BootCompletedReceiver`), customizable snooze intervals, and **5 native PCM synthesized ringtones** (`NativeAudioEngine`) plus custom user audio selection.
+- **3-State Daily Readiness:** Displays tailored status cards for scheduled training days, completed/logged workouts, and active recovery days.
 
-| Kategori | Nama Tema | Karakteristik Visual & Aturan Warna |
+### 2. Dual Workout Experience: Gym Focus HUD & Standard Cockpit
+- **Gym Focus HUD (`GymFocusHudStage`):** High-legibility stage built for mid-set glances on the gym floor, featuring big set counters, previous/next movement stepping, haptic cues (`HapticFeedbackHelper`), and live progress bars.
+- **Standard Workout Cockpit (`WorkoutScreen`):** Detailed set-by-set tracking for weight, reps, notes, and quick completion toggles.
+- **Foreground Rest Timer (`RestTimerService`):** Runs a persistent special-use foreground countdown notification between sets with configurable auto-start and dedicated rest chimes.
+
+### 3. All-3D Monthly Medal System & 5-Second Celebration
+- **Verified Monthly Consistency Rules:** Automatically audits workout logs so only genuine training days count (**>= 2 exercises**, **>= 6 paced sets**, and **>= 15 minutes** per day):
+  - **Bronze Medal:** `12` verified gym days/month
+  - **Silver Medal:** `16` verified gym days/month
+  - **Gold Medal:** `20` verified gym days/month
+- **True Multi-Axis 3D Emblem (`ProceduralMedalEmblem`):** Extruded metallic rim layers, specular sweeps, dynamic bevel shading, and a minted **`RM`** reverse crest rendered with perspective `cameraDistance`, `yawDegrees`, `pitchDegrees`, and `rollDegrees`.
+- **5-Second Unlock Showcase & Parabolic 3D Flight:** Unlocking a tier triggers a 5-second celebration (`MedalUnlockCelebrationOverlay`) where the coin launches into a fast multi-turn 3D spin before smoothly decelerating dead-front alongside confetti rays and cheering Pulse—then banks along a curved 3D trajectory (`FlyingMedalOverlay`) straight into the History showcase slot with a shockwave burst and 3D landing rebound.
+- **Interactive History & Settings Preview (`Interactive3DMedalEmblem`):** Medals in **History** gently float with ambient 3D tilt, respond to touch-drag orbit across yaw/pitch, and spin 360° on tap. Settings includes a non-destructive 3D celebration preview for Bronze, Silver, and Gold.
+
+### 4. Pulse Mascot Companion (Partner & Coach Modes)
+- **Adaptive Personality Engine:** Switch between **Partner** (friendly gym buddy) and **Coach** (structured intensity), each backed by **100+ bilingual (`ID`/`EN`) dialogues** and **10+ facial/body expressions** (`MascotDialogues`, `CoachMascotDialogues`).
+- **Per-Letter Fade-In & Smooth Fade-Out Speech:** Speech headlines and sublines reveal character-by-character via smooth `AnnotatedString` alpha feathering (`0.04f -> 1.0f`) and cross-fade cleanly out (`115ms`) on transitions without distracting cursor artifacts.
+- **Tactile & Voice Support:** Pet or drag the Pulse orb with spring physics, trigger optional offline Android `TextToSpeech` playback (`MascotTtsSpeaker`), and learn the interface through an interactive mascot tutorial (`PulseMascotTutorialOverlay`).
+
+### 5. 7-Day Split Planner & 327-Exercise Muscle Anatomy Library
+- **Flexible Weekly Scheduler (`ScheduleScreen`):** Configure `mon`–`sun` training focus titles, rest days, per-day alarm times, ringtone overrides, and switch between multi-day program presets (`ScheduleProgramSwitcher`, `ProgramTemplatePresets`).
+- **327 Built-In Exercises (`GymPresets` + `ExerciseLibraryExtended`):** Fast bilingual search index covering strength, hypertrophy, bodyweight, and mobility movements.
+- **Interactive Muscle Anatomy Diagrams (`MuscleAnatomyDiagram`):** Front and back anatomical vector overlays highlight primary and secondary muscle groups alongside equipment tags and form tips.
+
+### 6. Bilingual UI, Performance Controls & Custom Accent Engine
+- **Instant Language Switching:** Complete **Indonesian (`ID`)** and **English (`EN`)** localization across UI, exercise catalog, mascot speech, and workout logs.
+- **Low-End & Accessibility Toggles (`PerformancePreferences`):** Independent switches for disabling animations (`noAnimations`), disabling ambient glow (`noAmbientGlow`), static mascot mode (`staticMascot`), and custom accent color picking (`VisualColorPickerDialog`).
+
+---
+
+## 7 OS Themes & 2 Lightweight Motion Presets
+
+Every UI surface—including top/bottom chrome, mascot orb palettes, icons (`ThemeIcons.kt`), and custom brand wordmarks (`ThemeLogos.kt`)—adapts dynamically to the active theme:
+
+| Category | Theme (`UiTheme`) | Visual Signature |
 | :--- | :--- | :--- |
-| **Tema Standar** | **Material You (M3)** | Gaya modern Material 3 dengan sudut membulat dinamis, permukaan bersih, dan dukungan penuh kustomisasi warna. |
-| **Tema Standar** | **Carbon Forge** | Estetika industrial gelap bernuansa serat karbon tegas, kontras tajam, dan aksen bertenaga. |
-| **Tema Standar** | **AMOLED Stealth** | Hitam pekat hemat layar OLED dengan border minimalis dan kontras tinggi. |
-| **Tema Eksklusif** | **Ubuntu Yaru** | Terinspirasi desktop Ubuntu Yaru; palet terkunci penuh pada **Jingga Yaru (`#E95420`)** dan **Aubergine (`#2E182A`)** dengan tipografi rapi. |
-| **Tema Eksklusif** | **Frutiger Aero (Y2K)** | Material kaca **wet-glossy** transparan di seluruh kartu, tombol, dan pill; berpadu gradasi biru langit, aqua, dan nuansa senja Y2K. |
-| **Tema Eksklusif** | **XMaterial You** | Permukaan **obsidian gelap bersih** dengan border halus, sudut sangat membulat **`28.dp`** di seluruh kartu, dan aksen metalik adaptif fase waktu (*Morning Gold*, *Afternoon Platinum*, *Night Moonstone*). |
+| **Standard** | **Material You (M3)** | Adaptive tonal surfaces with customizable accent palette (`RepMate Lime` default) & orbital monogram crest |
+| **Standard** | **Carbon Forge** | Industrial brushed dark carbon steel paired with high-visibility forge amber/lime telemetry |
+| **Standard** | **AMOLED Stealth** | Pure `#000000` power-saving OLED canvas with razor-sharp contrast borders |
+| **Exclusive OS** | **Ubuntu Yaru** | Warm canonical aubergine surfaces, Yaru orange highlights, and crisp Linux-inspired pill geometry |
+| **Exclusive OS** | **Frutiger Aero (Y2K)** | Early-2000s glossy aqua glass, luminous sky gradients, and high-contrast crisp ink typography |
+| **Exclusive OS** | **XMaterial You** | Expressive color-blocked editorial containers with bold rounded badges and vibrant surface contrast |
+| **Exclusive OS** | **Android Nougat 7.0** | Classic Android 7.0 slate-teal Material chrome featuring a dedicated `7.0` header version chip |
 
-> Pada **Tema Standar**, pengguna dapat memilih dari **9 preset warna aksen**, **9 preset warna permukaan (tint)**, atau meracik warna bebas melalui **`VisualColorPickerDialog`**. Pada **Tema Eksklusif**, palet warna dikunci untuk menjaga keutuhan identitas visual masing-masing tema.
-
----
-
-## Tech Stack & Dependensi
-
-Konfigurasi build dan pustaka utama mengacu pada `gradle/libs.versions.toml` dan `app/build.gradle.kts`:
-
-- **Bahasa & Toolchain:** Kotlin `2.2.10`, Android Gradle Plugin `9.1.1`, Gradle `9.3.1`, Java `21`
-- **UI & Navigasi:**
-  - Jetpack Compose (`Compose BOM 2025.05.00`) — UI, Graphics, Foundation, Material 3, Material Icons Extended
-  - Navigation Compose `2.8.9`
-  - Core SplashScreen `1.2.0`
-  - Font lokal terpaket di `app/src/main/res/font/`
-- **Arsitektur & Asinkronus:**
-  - MVVM (`GymViewModel` + `StateFlow` + `Lifecycle Runtime Compose 2.8.7`)
-  - Kotlinx Coroutines (`1.9.0` — `android` & `play-services`)
-  - AndroidX ProfileInstaller `1.4.1`
-- **Backend, Auth & Penyimpanan:**
-  - Firebase BoM `34.1.0` (`firebase-auth`, `firebase-firestore`)
-  - Jetpack Credential Manager `1.5.0` & Google Identity (`googleid 1.1.1`) untuk Google Sign-In
-  - Penyimpanan lokal terstruktur (`LocalGymCacheStore`, `PreferencesStore`, `ScheduleProfileStore`)
-- **Pengujian:**
-  - JUnit `4.13.2`, Robolectric `4.16.1`, AndroidX Test Core `1.6.1`, Compose UI Test JUnit4
-  - Pengujian rules Firestore (`firestore.test.js`)
+### Lightweight Motion Presets (`MotionTransitionStyle`)
+- **`Silk Glide`:** Clean horizontal directional transitions with low overdraw.
+- **`Elastic Pop`:** Expressive vertical spring-inspired scale and reveal motion.
 
 ---
 
-## Struktur Proyek
+## Tech Stack & Dependencies
+
+| Layer | Technology / Library | Version |
+| :--- | :--- | :--- |
+| **Language** | Kotlin | `2.2.10` |
+| **Android Gradle Plugin** | AGP | `9.1.1` |
+| **Gradle Wrapper / Build Tool** | Gradle (system `gradle`) | `9.3.1` (`JDK 21`) |
+| **SDK Targets** | `minSdk 24` / `compileSdk 36` / `targetSdk 36` | Android 7.0 – 16 |
+| **UI Toolkit** | Jetpack Compose (`androidx.compose:compose-bom`) + Material 3 + Material Icons Extended | `2025.05.00` |
+| **Navigation & Lifecycle** | Navigation Compose (`2.8.9`), Lifecycle Runtime/Compose/ViewModel (`2.8.7`), Core SplashScreen (`1.2.0`) | `2.8.x` |
+| **Concurrency** | Kotlinx Coroutines Android & Play Services | `1.9.0` |
+| **Backend & Identity** | Firebase BOM (`34.1.0`: Auth + Firestore), Jetpack Credentials (`1.5.0`), Google ID (`1.1.1`) | `34.1.0` / `1.5.0` |
+| **Performance** | `androidx.profileinstaller` Baseline Profile support | `1.4.1` |
+| **Testing** | JUnit (`4.13.2`), Robolectric (`4.16.1`), AndroidX Test Core (`1.6.1`), Compose UI Test JUnit4 | Local JVM CUJ Suite |
+
+---
+
+## Architecture & Project Structure
+
+RepMate follows an **offline-first MVVM architecture** driven by a single source-of-truth `StateFlow<IronPulseUiState>` in `GymViewModel`:
+
+```text
++-------------------------------------------------------------------+
+|                   Jetpack Compose UI Layer                        |
+|  Today · GymFocusHUD · Workout · Schedule · History · Exercises   |
+|  Settings (6 Categories) · All-3D Medals · Pulse Mascot Overlay   |
++---------------------------------+---------------------------------+
+                                  | collects StateFlow & triggers intents
+                                  v
++-------------------------------------------------------------------+
+|                     ViewModel Layer (`GymViewModel`)              |
+|  Auth Gate · Theme & Motion State · Medal Eligibility Calculator  |
+|  Speech Cooldown & Dialogue Picker · Alarm & Rest Timer Control   |
++----------------+---------------------------------+----------------+
+                 |                                 |
+                 v                                 v
++---------------------------------+ +-------------------------------+
+|       Local & System Layer      | |     Cloud Persistence Layer   |
+|  LocalGymCacheStore (offline    | |  Google Sign-In via Jetpack   |
+|   cache + queued sync replay)   | |  CredentialManager + Firebase |
+|  PreferencesStore · ProgramStore| |  Auth -> FirestoreGymRepo     |
+|  AlarmScheduler · NativeAudio   | |  Zero-Trust `firestore.rules` |
++---------------------------------+ +-------------------------------+
+```
 
 ```text
 .
-├── .github/workflows/
-│   └── android-apk.yml                 # CI/CD GitHub Actions (Test, Build Debug/Release APK, Release tag)
-├── docs/images/
-│   └── ironpulse-mascot-strip-overlay.png   # Strip horizontal maskot Pulse 6 tema (edge-fade overlay) untuk README
+├── .github/workflows/android-apk.yml        # Automated unit tests, Debug/Release APKs & tag releases
 ├── app/
-│   ├── build.gradle.kts                # Konfigurasi modul app (SDK 24..36, ProGuard release, signing)
+│   ├── build.gradle.kts                     # App configuration (namespace com.fathan.ironpulse, appId com.aistudio.ironpulse.k7m2xp)
 │   └── src/
 │       ├── main/
-│       │   ├── AndroidManifest.xml     # Deklarasi permission, activity, receiver, & foreground service
-│       │   ├── java/com/fathan/ironpulse/
-│       │   │   ├── IronPulseApp.kt     # Application class & inisialisasi global
-│       │   │   ├── MainActivity.kt     # Host Compose, SplashScreen, & Credential Manager host
-│       │   │   ├── alarm/
-│       │   │   │   ├── AlarmRingActivity.kt
-│       │   │   │   ├── AlarmScheduler.kt
-│       │   │   │   ├── BootCompletedReceiver.kt
-│       │   │   │   └── GymAlarmReceiver.kt
-│       │   │   ├── audio/
-│       │   │   │   ├── MascotTtsSpeaker.kt
-│       │   │   │   └── NativeAudioEngine.kt
-│       │   │   ├── data/
-│       │   │   │   ├── FirestoreGymRepository.kt
-│       │   │   │   ├── GymPresets.kt
-│       │   │   │   ├── LocalGymCacheStore.kt
-│       │   │   │   ├── MascotDialogues.kt
-│       │   │   │   ├── PreferencesStore.kt
-│       │   │   │   ├── ProgramTemplatePresets.kt
-│       │   │   │   └── ScheduleProfileStore.kt
-│       │   │   ├── lib/
-│       │   │   │   └── HapticFeedbackHelper.kt
-│       │   │   ├── model/
-│       │   │   │   ├── GymModels.kt
-│       │   │   │   └── ScheduleProgramModels.kt
-│       │   │   ├── timer/
-│       │   │   │   └── RestTimerService.kt
-│       │   │   └── ui/
-│       │   │       ├── IronPulseRoot.kt
-│       │   │       ├── components/
-│       │   │       │   ├── ChromeAndClock.kt
-│       │   │       │   ├── LaunchAndModals.kt
-│       │   │       │   ├── MascotComponents.kt
-│       │   │       │   ├── Motion.kt
-│       │   │       │   ├── PulseMascotTutorialOverlay.kt
-│       │   │       │   ├── ScheduleProgramSwitcher.kt
-│       │   │       │   ├── ThemeIcons.kt
-│       │   │       │   ├── ThemeLogos.kt
-│       │   │       │   └── VisualColorPickerDialog.kt
-│       │   │       ├── screens/
-│       │   │       │   ├── AuthScreen.kt
-│       │   │       │   ├── ExercisesScreen.kt
-│       │   │       │   ├── GymFocusHudStage.kt
-│       │   │       │   ├── HistoryScreen.kt
-│       │   │       │   ├── ScheduleScreen.kt
-│       │   │       │   ├── SettingsScreen.kt
-│       │   │       │   ├── TodayScreen.kt
-│       │   │       │   └── WorkoutScreen.kt
-│       │   │       ├── theme/
-│       │   │       │   ├── MaterialYouPalette.kt
-│       │   │       │   ├── Theme.kt
-│       │   │       │   └── ThemeTypography.kt
-│       │   │       └── viewmodel/
-│       │   │           └── GymViewModel.kt
-│       │   └── res/                    # Drawables, bundled fonts (.ttf), raw, mipmap, strings, values
+│       │   ├── AndroidManifest.xml          # Permissions, BootCompletedReceiver, AlarmRingActivity, RestTimerService
+│       │   ├── res/
+│       │   │   ├── drawable/                # Custom purple-to-black + Pulse orb/barbell adaptive launcher XMLs
+│       │   │   ├── mipmap-*/                # Generated launcher & round PNG fallbacks (mdpi -> xxxhdpi)
+│       │   │   └── values/                  # Strings (app_name = RepMate), themes & splash styles
+│       │   └── java/com/fathan/ironpulse/
+│       │       ├── alarm/                   # AlarmScheduler, GymAlarmReceiver, BootCompletedReceiver, AlarmRingActivity
+│       │       ├── audio/                   # NativeAudioEngine (5 PCM synth tones) & MascotTtsSpeaker
+│       │       ├── data/                    # GymPresets (167), ExerciseLibraryExtended (160), MascotDialogues,
+│       │       │                            # CoachMascotDialogues, FirestoreGymRepository, LocalGymCacheStore,
+│       │       │                            # PreferencesStore, ScheduleProfileStore, ProgramTemplatePresets
+│       │       ├── lib/                     # HapticFeedbackHelper
+│       │       ├── model/                   # GymModels, MedalModels, MuscleAnatomy, ScheduleProgramModels
+│       │       ├── timer/                   # RestTimerService (specialUse foreground service)
+│       │       ├── ui/
+│       │       │   ├── components/          # MedalComponents (all-3D), MascotComponents (per-letter fade),
+│       │       │   │                        # ChromeAndClock, Motion, MuscleAnatomyDiagram, ThemeIcons,
+│       │       │   │                        # ThemeLogos, LaunchAndModals, VisualColorPickerDialog
+│       │       │   ├── screens/             # TodayScreen, GymFocusHudStage, WorkoutScreen, ScheduleScreen,
+│       │       │   │                        # HistoryScreen, ExercisesScreen, SettingsScreen, AuthScreen
+│       │       │   ├── theme/               # MaterialYouPalette, Theme, ThemeTypography
+│       │       │   ├── viewmodel/           # GymViewModel
+│       │       │   └── IronPulseRoot.kt
+│       │       ├── IronPulseApp.kt
+│       │       └── MainActivity.kt
 │       └── test/java/com/fathan/ironpulse/
-│           └── StartupSmokeTest.kt     # Smoke test startup & Robolectric suite
-├── gradle/
-│   └── libs.versions.toml              # Version catalog terpusat
-├── firebase.json                       # Konfigurasi Firebase project & emulator
-├── firebase-blueprint.json             # Blueprint skema koleksi Firestore
-├── firestore.rules                     # Aturan keamanan zero-trust Cloud Firestore
-├── firestore.test.js                   # Unit test validasi firestore.rules
-├── build.gradle.kts                    # Konfigurasi Gradle root
-└── settings.gradle.kts                 # Definisi repository & modul :app
+│           └── StartupSmokeTest.kt          # Robolectric CUJ, theme contrast, 3D medal & mascot tests
+├── docs/images/repmate-hero-banner.jpg      # RepMate hero banner graphic
+├── firestore.rules                          # Verified-owner & strict schema-validated Firestore rules
+└── gradle/libs.versions.toml                # Centralized version catalog
 ```
 
 ---
 
-## Izin Android & Komponen Sistem
+## Android Permissions & Cloud Security
 
-Seluruh izin yang dideklarasikan pada `app/src/main/AndroidManifest.xml` digunakan secara spesifik oleh fitur berikut:
-
-| Permission | Fungsi |
+### Declared Permissions (`AndroidManifest.xml`)
+| Permission | Purpose |
 | :--- | :--- |
-| `INTERNET`, `ACCESS_NETWORK_STATE` | Autentikasi Google Sign-In & sinkronisasi jadwal/log/ringtone ke Cloud Firestore. |
-| `POST_NOTIFICATIONS` | Menampilkan notifikasi pengingat alarm gym serta kontrol notifikasi timer istirahat. |
-| `SCHEDULE_EXACT_ALARM` | Menjadwalkan alarm gym harian secara presisi melalui `AlarmManager`. |
-| `RECEIVE_BOOT_COMPLETED` | Menjadwalkan ulang seluruh alarm aktif setelah perangkat menyala kembali atau saat jam/zona waktu berubah. |
-| `WAKE_LOCK` | Menjaga CPU tetap aktif sesaat ketika alarm berbunyi atau timer istirahat diproses. |
-| `VIBRATE` | Memberikan getaran alarm dan umpan balik haptik saat interaksi latihan. |
-| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Menjalankan `RestTimerService` agar hitung mundur istirahat antar set terus berjalan stabil di latar belakang. |
-| `USE_FULL_SCREEN_INTENT` | Menampilkan `AlarmRingActivity` secara penuh di atas layar kunci saat alarm berbunyi. |
+| `INTERNET`, `ACCESS_NETWORK_STATE` | Firebase Authentication & Cloud Firestore synchronization |
+| `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK` | Precise gym workout alarms that survive reboots and timezone changes |
+| `USE_FULL_SCREEN_INTENT`, `VIBRATE` | Lock-screen workout alarm ring UI (`AlarmRingActivity`) and tactile alerts |
+| `POST_NOTIFICATIONS` | Runtime notification alerts for exact workout reminders and active rest timers |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Reliable background rest countdown notification between gym sets (`RestTimerService`) |
+
+### Zero-Trust Cloud Security (`firestore.rules`)
+- **Default Deny:** Global wildcard rule blocks all unauthenticated or unrecognized document access (`allow read, write: if false`).
+- **Verified Owner Isolation:** Reads and writes under `/users/{userId}`, `/schedules/{dayKey}`, `/workoutLogs/{dateKey}`, and `/ringtones/{ringtoneId}` require `request.auth.uid == userId` and `request.auth.token.email_verified == true`.
+- **Immutable Keys & Field Schemas:** Enforces strict allowlists (`hasAll`/`hasOnly`), bounded field sizes, regex-checked day/date IDs, immutable `createdAt`/`userId`, and server-time bounds (`<= request.time`).
 
 ---
 
-## Autentikasi, Keamanan & Sinkronisasi Cloud
+## Build, Testing & CI/CD
 
-- **Google Sign-In Modern:** Menggunakan `androidx.credentials.CredentialManager` dan `com.google.android.libraries.identity.googleid` yang terhubung ke Firebase Authentication (`AuthScreen`), lengkap dengan alur pengisian *nickname* pengguna baru.
-- **Offline-First Cache:** Jadwal, log latihan, preferensi tema, dan profil jadwal tersimpan di cache lokal (`LocalGymCacheStore`, `PreferencesStore`, `ScheduleProfileStore`) sehingga aplikasi tetap responsif saat koneksi terputus dan disinkronkan saat online.
-- **Aturan Keamanan Zero-Trust (`firestore.rules`):**
-  - Default-deny (`allow read, write: if false`) untuk seluruh path tak terdaftar.
-  - Akses baca/tulis dibatasi ketat hanya untuk pemilik akun terverifikasi (`request.auth.uid == userId && request.auth.token.email_verified == true`).
-  - Validasi skema, tipe data, panjang string, batas item (maks. 30 gerakan per hari/log, batas ukuran ringtone kustom), dan validasi timestamp (`createdAt` / `updatedAt`) diterapkan di sisi server Firestore pada koleksi `users`, `schedules`, `workoutLogs`, dan `ringtones`.
+### Prerequisites
+- **JDK 21** and **Android SDK 36** (`ANDROID_SDK_ROOT` configured; **do not** create or rely on `local.properties`).
+- **Gradle 9.3.1** installed as `gradle` on `PATH` (use `gradle`, not `./gradlew`).
+- **Firebase Config (`app/google-services.json`):** Provide a valid Firebase Android config matching `applicationId = "com.aistudio.ironpulse.k7m2xp"` and your signing keystore SHA-1/SHA-256 fingerprints for live Google Sign-In.
 
----
-
-## Build, Pengujian & CI/CD (GitHub Actions)
-
-### Prasyarat Build Lokal
-- **JDK 21**
-- **Android SDK 36** (`platforms;android-36`, `build-tools;36.0.0`)
-- **Gradle 9.3.1** (di lingkungan AI Studio / sistem yang memakai `gradle` terpasang global, gunakan perintah `gradle`; jangan membuat file `local.properties` bila menggunakan `ANDROID_SDK_ROOT`)
-- File `app/google-services.json` dari proyek Firebase Anda (untuk mengaktifkan Firebase Auth & Firestore secara penuh pada perangkat)
-
-### Perintah Penting
-
+### Local Commands
 ```bash
-# Menjalankan seluruh unit test & Robolectric test
+# Run the full unit & Robolectric Compose CUJ test suite
 gradle :app:testDebugUnitTest --no-daemon --console=plain
 
-# Membangun Debug APK
-gradle :app:assembleDebug --no-daemon --console=plain
-
-# Membangun Release APK (minify + shrinkResources aktif)
-gradle :app:assembleRelease --no-daemon --console=plain
+# Build Debug & minified Release APKs
+gradle :app:assembleDebug :app:assembleRelease --no-daemon --console=plain
 ```
 
-Output APK dihasilkan di:
-- `app/build/outputs/apk/debug/app-debug.apk`
-- `app/build/outputs/apk/release/app-release.apk`
-
-### Pipeline CI/CD (`.github/workflows/android-apk.yml`)
-Workflow GitHub Actions otomatis berjalan pada push ke branch `main`, push tag `v*`, atau pemicu manual `workflow_dispatch`:
-1. Menjalankan `gradle :app:testDebugUnitTest` (termasuk cache Robolectric).
-2. Membangun **Debug APK** dan **Release APK** serta menyimpannya sebagai artifact (`ironpulse-debug-apk`, `ironpulse-release-apk`, `unit-test-reports`).
-3. Secara otomatis membuat **GitHub Release** berisi kedua file APK setiap kali ada push tag versi `v*` (otomatis ditandai *prerelease* jika tag mengandung `alpha`, `beta`, atau `rc`).
-
-**GitHub Repository Secrets (Opsional namun direkomendasikan untuk APK produksi/login aktif):**
-- `GOOGLE_SERVICES_JSON`: Isi JSON (atau Base64) dari `app/google-services.json` proyek Firebase Anda.
-- `FIRESTORE_DATABASE_ID`: ID database Firestore tujuan (default `(default)` jika kosong).
-- `DEBUG_KEYSTORE_BASE64`: Keystore penandatanganan dalam format Base64 agar SHA-1 konsisten dengan OAuth Google Sign-In di Firebase Console.
-
-> Jika `app/google-services.json` dan secret tidak tersedia saat CI berjalan, workflow tetap menyediakan konfigurasi fallback sementara agar kompilasi APK dan unit test tetap terverifikasi, namun fitur Google Sign-In/Firestore pada APK tersebut memerlukan konfigurasi Firebase asli.
+### GitHub Actions CI/CD (`.github/workflows/android-apk.yml`)
+Triggered on pushes to `main`, `v*` version tags, or manual `workflow_dispatch`:
+1. Configures **JDK 21**, **Android SDK 36**, and **Gradle 9.3.1** with cached Robolectric dependencies.
+2. Prepares `debug.keystore` (from `DEBUG_KEYSTORE_BASE64`, repo fallback, or ephemeral generation) and Firebase config (from `GOOGLE_SERVICES_JSON` and `FIRESTORE_DATABASE_ID`, or CI fallback for compilation & tests).
+3. Runs `gradle :app:testDebugUnitTest` and builds `:app:assembleDebug` + `:app:assembleRelease`.
+4. Uploads `ironpulse-release-apk`, `ironpulse-debug-apk`, and `unit-test-reports` artifacts, and automatically publishes GitHub Releases on `v*` tags.

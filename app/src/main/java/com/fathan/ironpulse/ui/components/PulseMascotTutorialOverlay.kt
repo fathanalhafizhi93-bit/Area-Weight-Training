@@ -611,8 +611,8 @@ fun PulseMascotTutorialOverlay(
                             stepCounter = null,
                             headline = lang.t("Hai, $friendlyName! Aku Pulse", "Hi, $friendlyName! I'm Pulse"),
                             body = lang.t(
-                                "Selamat datang di VeloLift! Pilih bahasamu di bawah, lalu ketuk layar di mana saja biar aku tunjukin semua fitur penting secara langsung.",
-                                "Welcome to VeloLift! Pick your language below, then tap anywhere on screen and I'll point out every key feature live."
+                                "Selamat datang di RepMate! Pilih bahasamu di bawah, lalu ketuk layar di mana saja biar aku tunjukin semua fitur penting secara langsung.",
+                                "Welcome to RepMate! Pick your language below, then tap anywhere on screen and I'll point out every key feature live."
                             ),
                             tapHint = null
                         )

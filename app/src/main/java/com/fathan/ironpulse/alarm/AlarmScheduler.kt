@@ -203,7 +203,7 @@ object AlarmScheduler {
             context = context,
             requestCode = REQUEST_CODE_TEST,
             dayKey = DayKey.fromCalendar(Calendar.getInstance()).key,
-            focusTitle = focusTitle.ifBlank { "Tes Alarm VeloLift" },
+            focusTitle = focusTitle.ifBlank { "Tes Alarm RepMate" },
             alarmTime = hhmm,
             snoozeMinutes = 5,
             volume = volume.coerceIn(0.1f, 1f),

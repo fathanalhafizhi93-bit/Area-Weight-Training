@@ -197,7 +197,7 @@ class LocalGymCacheStore(private val context: Context) {
 
     private fun decodeProfile(o: JSONObject, uid: String): UserProfile = UserProfile(
         userId = o.optString("userId", uid).ifBlank { uid },
-        displayName = o.optString("displayName", "Atlet VeloLift").ifBlank { "Atlet VeloLift" },
+        displayName = o.optString("displayName", "Atlet RepMate").ifBlank { "Atlet RepMate" },
         email = o.optString("email", ""),
         defaultRingtoneId = o.optString("defaultRingtoneId", "builtin_athletic_bell").ifBlank { "builtin_athletic_bell" },
         restRingtoneId = o.optString("restRingtoneId", "builtin_kettlebell_chime").ifBlank { "builtin_kettlebell_chime" },

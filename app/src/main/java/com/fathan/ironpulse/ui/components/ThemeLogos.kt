@@ -122,7 +122,7 @@ private fun DrawScope.drawMaterialYouEmblem(accent: Color) {
         cornerRadius = CornerRadius(corner, corner),
         style = Stroke(width = w * 0.055f)
     )
-    // Crisp VeloLift kinetic V-lift chevron + terminal lift dot
+    // Crisp RepMate kinetic lift chevron + terminal lift dot
     val vLift = Path().apply {
         moveTo(w * 0.23f, h * 0.34f)
         lineTo(w * 0.43f, h * 0.69f)
@@ -420,7 +420,7 @@ private fun DrawScope.drawXMaterialYouEmblem(accent: Color, phase: DayTimePhase)
         style = Stroke(width = w * 0.042f)
     )
 
-    // Crisp Alabaster Ivory VL kinetic lift trace with restrained precious-metal terminal node
+    // Crisp Alabaster Ivory RM kinetic lift trace with restrained precious-metal terminal node
     val vLift = Path().apply {
         moveTo(w * 0.23f, h * 0.34f)
         lineTo(w * 0.43f, h * 0.68f)
@@ -526,26 +526,26 @@ fun ThemeBrandWordmark(
     val text = when (theme) {
         UiTheme.MATERIAL_YOU -> buildAnnotatedString {
             withStyle(SpanStyle(color = Color(0xFFF4F1F8), fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold)) {
-                append("Velo")
+                append("Rep")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.ExtraBold)) {
-                append("Lift")
+                append("Mate")
             }
         }
         UiTheme.CARBON_FORGE -> buildAnnotatedString {
             withStyle(SpanStyle(brush = metallicBrush, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)) {
-                append("VELO")
+                append("REP")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)) {
-                append("LIFT")
+                append("MATE")
             }
         }
         UiTheme.UBUNTU_YARU -> buildAnnotatedString {
             withStyle(SpanStyle(color = Color(0xFFF6F5F4), fontFamily = fontPack.displayFont, fontWeight = FontWeight.Medium, letterSpacing = (-0.2).sp)) {
-                append("velo")
+                append("rep")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp)) {
-                append("lift")
+                append("mate")
             }
         }
         UiTheme.AMOLED_STEALTH -> buildAnnotatedString {
@@ -557,7 +557,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = 0.25.sp
                 )
             ) {
-                append("VELO")
+                append("REP")
             }
             withStyle(
                 SpanStyle(
@@ -567,7 +567,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = 0.25.sp
                 )
             ) {
-                append("_LIFT")
+                append("_MATE")
             }
         }
         UiTheme.FRUTIGER_AERO -> buildAnnotatedString {
@@ -580,7 +580,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = (-0.4).sp
                 )
             ) {
-                append("Velo")
+                append("Rep")
             }
             withStyle(
                 SpanStyle(
@@ -590,7 +590,7 @@ fun ThemeBrandWordmark(
                     letterSpacing = (-0.3).sp
                 )
             ) {
-                append("Lift")
+                append("Mate")
             }
         }
         UiTheme.XMATERIAL_YOU -> buildAnnotatedString {
@@ -600,18 +600,18 @@ fun ThemeBrandWordmark(
                 DayTimePhase.NIGHT -> Color(0xFFB0A4E3)
             }
             withStyle(SpanStyle(color = Color(0xFFF5F3EF), fontFamily = fontPack.displayFont, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.25).sp)) {
-                append("Velo")
+                append("Rep")
             }
             withStyle(SpanStyle(color = metalColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.15).sp)) {
-                append("Lift")
+                append("Mate")
             }
         }
         UiTheme.ANDROID_NOUGAT -> buildAnnotatedString {
             withStyle(SpanStyle(color = Color(0xFFECEFF1), fontFamily = fontPack.displayFont, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.1).sp)) {
-                append("Velo")
+                append("Rep")
             }
             withStyle(SpanStyle(color = accentColor, fontFamily = fontPack.displayFont, fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp)) {
-                append("Lift")
+                append("Mate")
             }
         }
     }
