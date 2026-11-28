@@ -18,8 +18,8 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 
-const PROJECT_ID = 'gen-lang-client-0024790154';
-const DATABASE_ID = 'ai-studio-android-myfirsta-22274fc5-533f-452d-a497-e73eea417c0c';
+const PROJECT_ID = 'gen-lang-client-0348865145';
+const DATABASE_ID = 'ai-studio-android-repmate-99aa60b7-9f0b-4339-9273-37bc921f4d28';
 
 let testEnv;
 
