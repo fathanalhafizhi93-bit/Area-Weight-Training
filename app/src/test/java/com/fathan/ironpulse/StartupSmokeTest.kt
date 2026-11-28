@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ButtonDefaults
@@ -3628,7 +3629,7 @@ class StartupSmokeTest {
             var activeCatSetter: ((SettingsCategory) -> Unit)? = null
 
             composeRule.setContent {
-                var activeCat by remember { mutableStateOf(SettingsCategory.CONFIGURATION) }
+                var activeCat by remember { mutableStateOf<SettingsCategory?>(SettingsCategory.CONFIGURATION) }
                 activeCatSetter = { activeCat = it }
                 val vmState by viewModel.uiState.collectAsStateWithLifecycle()
                 val uiState = remember(vmState.appPrefs) {
@@ -3652,7 +3653,8 @@ class StartupSmokeTest {
                             onRequestNotificationPermission = {},
                             onOpenExactAlarmSettings = {},
                             onPickCustomRingtone = {},
-                            activeCategory = activeCat
+                            activeCategory = activeCat,
+                            onSelectCategory = { activeCat = it }
                         )
                     }
                 }
@@ -4193,15 +4195,31 @@ class StartupSmokeTest {
                 vmStore,
                 ViewModelProvider.AndroidViewModelFactory.getInstance(ctx)
             )[GymViewModel::class.java]
-            viewModel.tapMascot()
-            val afterFirstTap = viewModel.uiState.value.mascot
-            assertTrue(afterFirstTap.speechEventId >= 1)
+            var latestState: IronPulseUiState? = null
+            composeRule.setContent {
+                val vmState by viewModel.uiState.collectAsStateWithLifecycle()
+                latestState = vmState
+            }
+            composeRule.waitForIdle()
+
+            val initialEventId = latestState?.mascot?.speechEventId ?: 0
+            composeRule.runOnUiThread {
+                viewModel.tapMascot()
+            }
+            composeRule.waitForIdle()
+
+            val afterFirstTap = latestState?.mascot
+            assertNotNull(afterFirstTap)
+            assertTrue(afterFirstTap!!.speechEventId > initialEventId)
             assertTrue(afterFirstTap.speechCooldownUntilMs > System.currentTimeMillis())
 
             val firstEventId = afterFirstTap.speechEventId
             // Immediate spam tap within 2000ms must not emit a new speech event
-            viewModel.tapMascot()
-            assertEquals(firstEventId, viewModel.uiState.value.mascot.speechEventId)
+            composeRule.runOnUiThread {
+                viewModel.tapMascot()
+            }
+            composeRule.waitForIdle()
+            assertEquals(firstEventId, latestState?.mascot?.speechEventId)
         } finally {
             vmStore.clear()
         }
@@ -4229,10 +4247,12 @@ class StartupSmokeTest {
                         Box(modifier = Modifier.fillMaxSize()) {
                             AmbientPhaseBackdrop()
                             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                                HeroAnimatedAtmosphereLayer(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    noAnim = false
-                                )
+                                Box(modifier = Modifier.fillMaxWidth().height(72.dp)) {
+                                    HeroAnimatedAtmosphereLayer(
+                                        modifier = Modifier.fillMaxSize(),
+                                        noAnim = false
+                                    )
+                                }
                                 MascotOrbFace(
                                     mascot = MascotUiState(),
                                     eyeStateFlow = eyeFlow,
@@ -4242,10 +4262,11 @@ class StartupSmokeTest {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .height(48.dp)
                                         .padding(top = 8.dp)
                                         .testTag("scroll_anim_sheen")
                                 ) {
-                                    GpuSheenOverlay(enabled = true)
+                                    GpuSheenOverlay(active = true)
                                 }
                                 ProceduralMedalEmblem(
                                     tier = MedalTier.GOLD,
